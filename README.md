@@ -31,6 +31,14 @@ A real-time 2-player Tic-Tac-Toe game built with Next.js, TypeScript, Tailwind C
 - Game reset functionality
 - Player avatars and names
 
+💰 **Coin-Stake System**
+
+- **Play with Coins**: Stake 5, 10, or 20 coins per game
+- **Winner Takes All**: Winner receives 90% of the pot (10% bot fee)
+- **Draw Refunds**: Both players get their stakes back on draws
+- **Daily Coins**: Claim 20 free coins daily with `/free_coin`
+- **Balance Management**: Check balance with `/balance`
+
 ## Tech Stack
 
 - **Frontend**: Next.js 15, React 19, TypeScript
@@ -84,6 +92,16 @@ npm install
         ".read": true,
         ".write": true
       }
+    },
+    "users": {
+      "$userId": {
+        ".read": true,
+        ".write": true
+      }
+    },
+    "transfers": {
+      ".read": true,
+      ".write": true
     }
   }
 }
@@ -110,6 +128,9 @@ NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your-project.appspot.com
 NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your-messaging-sender-id
 NEXT_PUBLIC_FIREBASE_APP_ID=your-app-id
 NEXT_PUBLIC_FIREBASE_DATABASE_URL=https://your-project-id-default-rtdb.firebaseio.com
+
+# Telegram Bot Token (for bot functionality)
+TELEGRAM_BOT_TOKEN=your-telegram-bot-token
 ```
 
 ### 5. Generate NEXTAUTH_SECRET
@@ -128,12 +149,48 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ## How to Play
 
+### Web Version
+
 1. **Login**: Sign in with your Google account
 2. **Create Game**: Click "Create Game" to start a new match
 3. **Share Code**: Copy the 6-character game code and share it with a friend
 4. **Join Game**: Enter the game code to join an existing game
 5. **Play**: Take turns placing X and O on the 3x3 grid
 6. **Win**: Get three in a row to win the game!
+
+### Telegram Bot
+
+1. **Start**: Send `/start` to get started
+2. **Get Coins**: Use `/free_coin` to claim daily coins
+3. **Create Game**: Use `/newgame` to create a stake game (5/10/20 coins)
+4. **Join Game**: Use `/join <gameId>` to join an existing game
+5. **Check Balance**: Use `/balance` to see your coin balance
+
+## Coin-Stake Gameplay
+
+### Game Creation
+
+- Choose stake amount: 5, 10, or 20 coins
+- System validates your balance before creating game
+- Stake is deducted immediately and held in escrow
+
+### Game Lobby
+
+- Shows stake amount and potential payout
+- Displays "Winner gets X coins – 10% fee"
+- Second player must have sufficient balance to join
+
+### Game Finish
+
+- **Win**: Winner receives 90% of total pot (stake × 2 × 0.9)
+- **Draw**: Both players get their original stake back
+- **Fee**: 10% of pot goes to bot system
+
+### Database Structure
+
+- `users/{userId}`: User coin balances and metadata
+- `games/{gameId}`: Game state including stake information
+- `transfers/{transferId}`: All coin transactions for audit trail
 
 ## Project Structure
 
@@ -148,31 +205,23 @@ src/
 ├── components/
 │   ├── Header.tsx                       # Navigation header
 │   ├── Providers.tsx                    # Auth providers
-│   └── TicTacToeBoard.tsx              # Game board component
-└── lib/
-    ├── auth.ts                          # Auth configuration
-    ├── firebase.ts                      # Firebase setup
-    ├── game.ts                          # Game types and utilities
-    └── gameService.ts                   # Firebase game operations
+│   └── GameBoard.tsx                    # Game board component
+├── games/
+│   └── xo/                              # X/O game implementation
+│       ├── game.ts                      # Game state management
+│       ├── logic.ts                     # Game logic
+│       ├── handlers.ts                  # Telegram bot handlers
+│       └── index.ts                     # Game registration
+├── lib/
+│   ├── firebase.ts                      # Firebase configuration
+│   ├── game.ts                          # Game types and utilities
+│   ├── gameService.ts                   # Game service layer
+│   └── coinService.ts                   # Coin management system
+└── bot/
+    ├── index.ts                         # Telegram bot entry point
+    └── games/
+        └── userStats.ts                 # User statistics tracking
 ```
-
-## Deployment
-
-### Vercel (Recommended)
-
-1. Push your code to GitHub
-2. Connect your repository to Vercel
-3. Add environment variables in Vercel dashboard
-4. Deploy!
-
-### Other Platforms
-
-The app can be deployed to any platform that supports Next.js:
-
-- Netlify
-- Railway
-- DigitalOcean App Platform
-- AWS Amplify
 
 ## Contributing
 
@@ -184,17 +233,4 @@ The app can be deployed to any platform that supports Next.js:
 
 ## License
 
-MIT License - see LICENSE file for details
-
-## Support
-
-If you encounter any issues:
-
-1. Check the console for error messages
-2. Verify your environment variables
-3. Ensure Firebase rules are set correctly
-4. Check that Google OAuth is properly configured
-
----
-
-Built with ❤️ using Next.js, TypeScript, and Firebase
+This project is licensed under the MIT License.

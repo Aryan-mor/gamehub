@@ -12,12 +12,12 @@ import { registerXoTelegramHandlers } from "./handlers";
  *   import { registerXoHandlers } from 'src/games/xo';
  *   registerXoHandlers(bot, deps);
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars
-export function registerXoHandlers(bot: any, deps: any): void {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function registerXoHandlers(bot: any): void {
   // Handlers will be implemented here.
   // Console log for confirmation:
   console.log(
     "[XO] registerXoHandlers called. Registering X/O game handlers..."
   );
-  registerXoTelegramHandlers(bot, deps);
+  registerXoTelegramHandlers(bot);
 }

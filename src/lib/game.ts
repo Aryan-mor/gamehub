@@ -15,6 +15,13 @@ export interface GameState {
   lastMoveAt: number;
   turnStartedAt?: number; // When the current player's turn started
   timeoutDuration?: number; // Timeout duration in milliseconds (default: 2 minutes)
+  // Coin stake fields
+  stake?: number; // Stake amount per player (5, 10, or 20)
+  stakePool?: number; // Total coins in the pot (stake * 2)
+  creatorId?: string; // ID of the game creator
+  joinerId?: string; // ID of the player who joined
+  winnerId?: string; // ID of the winner (for payouts)
+  finishedAt?: number; // When the game finished
 }
 
 export interface PlayerInfo {

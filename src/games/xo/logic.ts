@@ -5,6 +5,7 @@ import {
   getXoGame,
   createInitialGameState,
   setXoGame,
+  processGameCompletion,
 } from "./game";
 import { recordWin, recordDraw } from "../../bot/games/userStats";
 import type { GameState, Player } from "../../lib/game";
@@ -52,6 +53,9 @@ export async function makeXoMove(
     if (winnerId && loserId) {
       await recordWin(winnerId, loserId, "xo");
     }
+
+    // Process game completion (payout)
+    await processGameCompletion(gameId);
   } else if (isDraw(gameState.board)) {
     gameState.status = "draw";
 
@@ -61,6 +65,9 @@ export async function makeXoMove(
     if (playerXId && playerOId) {
       await recordDraw(playerXId, playerOId, "xo");
     }
+
+    // Process game completion (refund)
+    await processGameCompletion(gameId);
   } else {
     gameState.currentPlayer = getNextPlayer(gameState.currentPlayer) as
       | "X"
@@ -74,12 +81,12 @@ export async function makeXoMove(
 /**
  * Restart an X/O game with swapped players
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function restartXoGame(gameId: string): GameState | null {
+export async function restartXoGame(gameId: string): Promise<GameState | null> {
   const gameState = getXoGame(gameId);
   if (!gameState) {
     return null;
   }
+
   // Swap players: O becomes X, X becomes O
   const originalX = gameState.players.X;
   const originalO = gameState.players.O;
@@ -92,7 +99,25 @@ export function restartXoGame(gameId: string): GameState | null {
     status: "playing",
     currentPlayer: "X" as Player, // O (now X) starts first
     turnStartedAt: Date.now(),
+    // Preserve stake information for new game
+    stake: gameState.stake,
+    stakePool: gameState.stake! * 2,
+    creatorId: gameState.creatorId,
+    joinerId: gameState.joinerId,
   };
+
+  // Deduct stakes again for the new game
+  if (originalX?.id && originalO?.id && gameState.stake) {
+    try {
+      const { deductStake } = await import("../../lib/coinService");
+      await deductStake(originalX.id, gameState.stake, gameId);
+      await deductStake(originalO.id, gameState.stake, gameId);
+    } catch (error) {
+      console.error("Failed to deduct stakes for restart:", error);
+      return null;
+    }
+  }
+
   // Save new state
   setXoGame(gameId, newGameState);
   return newGameState;
@@ -101,12 +126,12 @@ export function restartXoGame(gameId: string): GameState | null {
 /**
  * Create a new X/O game with same players
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function newXoGame(gameId: string): GameState | null {
+export async function newXoGame(gameId: string): Promise<GameState | null> {
   const gameState = getXoGame(gameId);
   if (!gameState) {
     return null;
   }
+
   const newGameState: GameState = {
     ...createInitialGameState(),
     players: {
@@ -116,7 +141,25 @@ export function newXoGame(gameId: string): GameState | null {
     status: "playing",
     currentPlayer: "X" as Player,
     turnStartedAt: Date.now(),
+    // Preserve stake information for new game
+    stake: gameState.stake,
+    stakePool: gameState.stake! * 2,
+    creatorId: gameState.creatorId,
+    joinerId: gameState.joinerId,
   };
+
+  // Deduct stakes again for the new game
+  if (gameState.players.X?.id && gameState.players.O?.id && gameState.stake) {
+    try {
+      const { deductStake } = await import("../../lib/coinService");
+      await deductStake(gameState.players.X.id, gameState.stake, gameId);
+      await deductStake(gameState.players.O.id, gameState.stake, gameId);
+    } catch (error) {
+      console.error("Failed to deduct stakes for new game:", error);
+      return null;
+    }
+  }
+
   // Save new state
   setXoGame(gameId, newGameState);
   return newGameState;

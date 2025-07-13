@@ -1,0 +1,5 @@
+---
+description:don't run any yarn dev and yarn bot
+globs:
+alwaysApply: false
+---
