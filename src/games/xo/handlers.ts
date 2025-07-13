@@ -22,28 +22,53 @@ import {
  * @param deps - Shared dependencies (game store, logger, etc.)
  */
 export function registerXoTelegramHandlers(bot: any) {
-  // /newgame command - now prompts for stake selection
+  // /newgame command - now shows game selection
   bot.onText(/\/newgame/, async (msg: any) => {
     const chatId = msg.chat.id;
     const userId = msg.from?.id;
+    const isBotChat = msg.chat.type === "private";
+
     if (!userId) {
       await bot.sendMessage(chatId, "❌ Unable to identify user");
       return;
     }
 
-    const stakeKeyboard = {
-      inline_keyboard: [
-        [
-          { text: "5 Coins", callback_data: `create_stake:5` },
-          { text: "10 Coins", callback_data: `create_stake:10` },
+    // If it's a bot chat (private), show only single-player games
+    if (isBotChat) {
+      const singlePlayerKeyboard = {
+        inline_keyboard: [
+          [{ text: "🎲 Dice Game", callback_data: "newgame:dice" }],
         ],
-        [{ text: "20 Coins", callback_data: `create_stake:20` }],
-      ],
-    };
+      };
 
-    await bot.sendMessage(chatId, "🎮 X/O Game\n\nChoose stake amount:", {
-      reply_markup: stakeKeyboard,
-    });
+      await bot.sendMessage(
+        chatId,
+        "🎮 Choose a game to play:\n\n*Single-player games available in bot chat*",
+        {
+          reply_markup: singlePlayerKeyboard,
+          parse_mode: "Markdown",
+        }
+      );
+    } else {
+      // If it's a group chat, show all games
+      const allGamesKeyboard = {
+        inline_keyboard: [
+          [
+            { text: "🎮 X/O Game", callback_data: "newgame:xo" },
+            { text: "🎲 Dice Game", callback_data: "newgame:dice" },
+          ],
+        ],
+      };
+
+      await bot.sendMessage(
+        chatId,
+        "🎮 Choose a game to play:\n\n*All games available in group chat*",
+        {
+          reply_markup: allGamesKeyboard,
+          parse_mode: "Markdown",
+        }
+      );
+    }
   });
 
   // /join command
@@ -100,6 +125,83 @@ export function registerXoTelegramHandlers(bot: any) {
     const action = parts[0];
     const gameId = parts[1];
     const position = parts[2];
+
+    // --- New Game Selection Handler ---
+    if (action === "newgame" && parts[1]) {
+      const gameType = parts[1];
+      console.log(
+        `[BOT] newgame selection: userId=${userId}, gameType=${gameType}`
+      );
+
+      if (gameType === "dice") {
+        // Show dice stake selection
+        const stakeKeyboard = {
+          inline_keyboard: [
+            [
+              { text: "2 Coins", callback_data: `dice_stake:2` },
+              { text: "5 Coins", callback_data: `dice_stake:5` },
+            ],
+            [
+              { text: "10 Coins", callback_data: `dice_stake:10` },
+              { text: "20 Coins", callback_data: `dice_stake:20` },
+            ],
+          ],
+        };
+
+        const text = "🎲 Dice Guess Game\n\nChoose your stake amount:";
+
+        // Update the message
+        const inlineMessageId = callbackQuery.inline_message_id;
+        if (inlineMessageId) {
+          await bot.editMessageText(text, {
+            inline_message_id: inlineMessageId,
+            reply_markup: stakeKeyboard,
+          });
+        } else if (chatId && callbackQuery.message?.message_id) {
+          await bot.editMessageText(text, {
+            chat_id: chatId,
+            message_id: callbackQuery.message.message_id,
+            reply_markup: stakeKeyboard,
+          });
+        }
+
+        await bot.answerCallbackQuery(callbackQuery.id);
+        return;
+      }
+
+      if (gameType === "xo") {
+        // Show X/O stake selection
+        const stakeKeyboard = {
+          inline_keyboard: [
+            [
+              { text: "5 Coins", callback_data: `create_stake:5` },
+              { text: "10 Coins", callback_data: `create_stake:10` },
+            ],
+            [{ text: "20 Coins", callback_data: `create_stake:20` }],
+          ],
+        };
+
+        const text = "🎮 X/O Game\n\nChoose stake amount:";
+
+        // Update the message
+        const inlineMessageId = callbackQuery.inline_message_id;
+        if (inlineMessageId) {
+          await bot.editMessageText(text, {
+            inline_message_id: inlineMessageId,
+            reply_markup: stakeKeyboard,
+          });
+        } else if (chatId && callbackQuery.message?.message_id) {
+          await bot.editMessageText(text, {
+            chat_id: chatId,
+            message_id: callbackQuery.message.message_id,
+            reply_markup: stakeKeyboard,
+          });
+        }
+
+        await bot.answerCallbackQuery(callbackQuery.id);
+        return;
+      }
+    }
 
     // --- Create Stake Handler ---
     if (action === "create_stake" && parts[1]) {
@@ -693,14 +795,14 @@ export function registerXoTelegramHandlers(bot: any) {
           inline_keyboard: [
             [
               {
-                text: "🔄 Play Again (Same Stake)",
-                callback_data: `dice_play_again_same:${stake}`,
+                text: "🎯 Play Again (Same Stake & Guess)",
+                callback_data: `dice_play_again_exact:${stake}:${guess}`,
               },
             ],
             [
               {
-                text: "🎯 Play Again (Same Stake & Guess)",
-                callback_data: `dice_play_again_exact:${stake}:${guess}`,
+                text: "🔄 Play Again (Same Stake)",
+                callback_data: `dice_play_again_same:${stake}`,
               },
             ],
             [
