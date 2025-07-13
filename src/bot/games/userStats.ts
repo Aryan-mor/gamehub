@@ -127,6 +127,6 @@ export async function formatStatsMessage(
   const totalWinsMessage = `🏆 ${winnerName} has won ${
     winnerStats.totalWins
   } ${gameType.toUpperCase()} games total`;
-  const headToHeadMessage = `⚔️ ${winnerName} has beaten ${loserName} ${headToHead.user1Wins} times`;
+  const headToHeadMessage = `⚔️ ${winnerName} has beaten ${loserName} ${headToHead.user1Wins} times\n⚔️ ${loserName} has beaten ${winnerName} ${headToHead.user2Wins} times`;
   return `${totalWinsMessage}\n${headToHeadMessage}`;
 }
