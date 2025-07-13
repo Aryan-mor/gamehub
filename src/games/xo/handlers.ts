@@ -15,6 +15,14 @@ import {
   DICE_STAKES,
   type DiceStake,
 } from "../../bot/games/dice";
+import {
+  createFootballGame,
+  setFootballGuess,
+  processFootballResult,
+  FOOTBALL_STAKES,
+  FOOTBALL_DIRECTIONS,
+  type FootballStake,
+} from "../../bot/games/football";
 
 /**
  * Registers all XO-specific Telegram bot handlers (move, join, restart, etc.).
@@ -38,6 +46,7 @@ export function registerXoTelegramHandlers(bot: any) {
       const singlePlayerKeyboard = {
         inline_keyboard: [
           [{ text: "🎲 Dice Game", callback_data: "newgame:dice" }],
+          [{ text: "⚽️ Football Game", callback_data: "newgame:football" }],
         ],
       };
 
@@ -57,6 +66,7 @@ export function registerXoTelegramHandlers(bot: any) {
             { text: "🎮 X/O Game", callback_data: "newgame:xo" },
             { text: "🎲 Dice Game", callback_data: "newgame:dice" },
           ],
+          [{ text: "⚽️ Football Game", callback_data: "newgame:football" }],
         ],
       };
 
@@ -149,6 +159,42 @@ export function registerXoTelegramHandlers(bot: any) {
         };
 
         const text = "🎲 Dice Guess Game\n\nChoose your stake amount:";
+
+        // Update the message
+        const inlineMessageId = callbackQuery.inline_message_id;
+        if (inlineMessageId) {
+          await bot.editMessageText(text, {
+            inline_message_id: inlineMessageId,
+            reply_markup: stakeKeyboard,
+          });
+        } else if (chatId && callbackQuery.message?.message_id) {
+          await bot.editMessageText(text, {
+            chat_id: chatId,
+            message_id: callbackQuery.message.message_id,
+            reply_markup: stakeKeyboard,
+          });
+        }
+
+        await bot.answerCallbackQuery(callbackQuery.id);
+        return;
+      }
+
+      if (gameType === "football") {
+        // Show football stake selection
+        const stakeKeyboard = {
+          inline_keyboard: [
+            [
+              { text: "2 Coins", callback_data: `football_stake:2` },
+              { text: "5 Coins", callback_data: `football_stake:5` },
+            ],
+            [
+              { text: "10 Coins", callback_data: `football_stake:10` },
+              { text: "20 Coins", callback_data: `football_stake:20` },
+            ],
+          ],
+        };
+
+        const text = "⚽️ Direction Guess Game\n\nChoose your stake amount:";
 
         // Update the message
         const inlineMessageId = callbackQuery.inline_message_id;
@@ -311,6 +357,35 @@ export function registerXoTelegramHandlers(bot: any) {
         if (inlineMessageId) {
           await bot.editMessageText(
             "🎲 Dice Guess Game\n\nChoose your stake amount:",
+            {
+              inline_message_id: inlineMessageId,
+              reply_markup: stakeKeyboard,
+            }
+          );
+        }
+        await bot.answerCallbackQuery(callbackQuery.id);
+        return;
+      }
+
+      if (gameId === "football") {
+        // Show stake selection for football games
+        const stakeKeyboard = {
+          inline_keyboard: [
+            [
+              { text: "2 Coins", callback_data: `football_stake:2` },
+              { text: "5 Coins", callback_data: `football_stake:5` },
+            ],
+            [
+              { text: "10 Coins", callback_data: `football_stake:10` },
+              { text: "20 Coins", callback_data: `football_stake:20` },
+            ],
+          ],
+        };
+
+        const inlineMessageId = callbackQuery.inline_message_id;
+        if (inlineMessageId) {
+          await bot.editMessageText(
+            "⚽️ Direction Guess Game\n\nChoose your stake amount:",
             {
               inline_message_id: inlineMessageId,
               reply_markup: stakeKeyboard,
@@ -853,7 +928,10 @@ export function registerXoTelegramHandlers(bot: any) {
         }
 
         // Create new game with same stake
-        const gameState = await createDiceGame(userId.toString(), stake);
+        const gameState = await createDiceGame(
+          userId.toString(),
+          stake as DiceStake
+        );
 
         // Show guess options
         const guessKeyboard = {
@@ -942,7 +1020,10 @@ export function registerXoTelegramHandlers(bot: any) {
         }
 
         // Create new game with same stake
-        const gameState = await createDiceGame(userId.toString(), stake);
+        const gameState = await createDiceGame(
+          userId.toString(),
+          stake as DiceStake
+        );
 
         // Set the same guess immediately
         await setDiceGuess(gameState.id, guess);
@@ -1052,6 +1133,437 @@ export function registerXoTelegramHandlers(bot: any) {
       console.log(`[DICE] Play again new game: showing stake selection`);
       return;
     }
+
+    // --- Football Game Handlers ---
+
+    // Handle football stake selection
+    if (action === "football_stake" && parts[1]) {
+      console.log(
+        `[FOOTBALL] football_stake callback received: userId=${userId}, parts=`,
+        parts
+      );
+      const stake = parseInt(parts[1]) as FootballStake;
+      console.log(`[FOOTBALL] Parsed stake: ${stake}`);
+
+      if (!FOOTBALL_STAKES.includes(stake)) {
+        console.log(`[FOOTBALL] Invalid stake amount: ${stake}`);
+        await bot.answerCallbackQuery(callbackQuery.id, {
+          text: "Invalid stake amount",
+          show_alert: true,
+        });
+        return;
+      }
+
+      try {
+        console.log(
+          `[FOOTBALL] Creating football game for userId=${userId}, stake=${stake}`
+        );
+        const gameState = await createFootballGame(userId.toString(), stake);
+
+        const directionKeyboard = {
+          inline_keyboard: [
+            [
+              {
+                text: "Top-Left",
+                callback_data: `football_guess:${gameState.id}:1`,
+              },
+              {
+                text: "Top-Right",
+                callback_data: `football_guess:${gameState.id}:2`,
+              },
+            ],
+            [
+              {
+                text: "Center",
+                callback_data: `football_guess:${gameState.id}:3`,
+              },
+            ],
+            [
+              {
+                text: "Bottom-Left",
+                callback_data: `football_guess:${gameState.id}:4`,
+              },
+              {
+                text: "Bottom-Right",
+                callback_data: `football_guess:${gameState.id}:5`,
+              },
+            ],
+          ],
+        };
+
+        const chatId = callbackQuery.message?.chat.id;
+        const messageId = callbackQuery.message?.message_id;
+        const inlineMessageId = callbackQuery.inline_message_id;
+        const text =
+          `⚽️ Direction Guess Game - Stake: ${stake} Coins\n\nWhere do you want to shoot?\n\n` +
+          `🎯 Win 4× your stake if the ball lands in your chosen direction!`;
+        if (inlineMessageId) {
+          await bot.editMessageText(text, {
+            inline_message_id: inlineMessageId,
+            reply_markup: directionKeyboard,
+          });
+        } else if (chatId && messageId) {
+          await bot.editMessageText(text, {
+            chat_id: chatId,
+            message_id: messageId,
+            reply_markup: directionKeyboard,
+          });
+        }
+
+        await bot.answerCallbackQuery(callbackQuery.id);
+        console.log(
+          `[FOOTBALL] Created game ${gameState.id} with stake ${stake} for user ${userId}`
+        );
+        return;
+      } catch (error: any) {
+        await bot.answerCallbackQuery(callbackQuery.id, {
+          text: error.message || "Failed to create football game",
+          show_alert: true,
+        });
+        return;
+      }
+    }
+
+    // Handle football direction selection
+    if (action === "football_guess" && parts[1] && parts[2]) {
+      console.log(
+        `[FOOTBALL] football_guess callback received: userId=${userId}, parts=`,
+        parts
+      );
+      const gameId = parts[1];
+      const guess = parseInt(parts[2]);
+      console.log(
+        `[FOOTBALL] Processing guess: gameId=${gameId}, guess=${guess}`
+      );
+
+      try {
+        // Set the guess and get game state
+        console.log(`[FOOTBALL] Setting guess for game ${gameId}`);
+        const gameState = await setFootballGuess(gameId, guess);
+        const stake = gameState.stake;
+
+        // Send the football emoji
+        console.log(`[FOOTBALL] Sending football emoji to chatId=${chatId}`);
+        const footballMessage = await bot.sendDice(chatId, { emoji: "⚽️" });
+        const footballResult = footballMessage.dice?.value;
+        console.log(
+          `[FOOTBALL] Football message received:`,
+          JSON.stringify(footballMessage, null, 2)
+        );
+        console.log(`[FOOTBALL] Football result: ${footballResult}`);
+
+        if (!footballResult) {
+          console.log(`[FOOTBALL] Failed to get football result from message`);
+          throw new Error("Failed to get football result");
+        }
+
+        // Wait for football animation to finish (3 seconds)
+        console.log(`[FOOTBALL] Waiting for football animation to finish...`);
+        await new Promise((resolve) => setTimeout(resolve, 3000));
+
+        // Process the result
+        console.log(
+          `[FOOTBALL] Processing football result: gameId=${gameId}, footballResult=${footballResult}`
+        );
+        const result = await processFootballResult(gameId, footballResult);
+
+        // Update the original message to remove buttons
+        const resultChatId = callbackQuery.message?.chat.id;
+        const messageId = callbackQuery.message?.message_id;
+        const inlineMessageId = callbackQuery.inline_message_id;
+        if (inlineMessageId) {
+          await bot.editMessageText(result.message, {
+            inline_message_id: inlineMessageId,
+            reply_markup: { inline_keyboard: [] },
+          });
+        } else if (resultChatId && messageId) {
+          await bot.editMessageText(result.message, {
+            chat_id: resultChatId,
+            message_id: messageId,
+            reply_markup: { inline_keyboard: [] },
+          });
+        }
+
+        // Send result message with glass buttons
+        const resultEmoji = result.won ? "🎉" : "😔";
+        const guessDirection =
+          FOOTBALL_DIRECTIONS[guess as keyof typeof FOOTBALL_DIRECTIONS];
+        const resultDirection =
+          FOOTBALL_DIRECTIONS[
+            footballResult as keyof typeof FOOTBALL_DIRECTIONS
+          ];
+        const resultText = result.won
+          ? `${resultEmoji} **Congratulations! You won ${result.reward} coins!**\n\n⚽️ You aimed for: ${guessDirection}\n📍 Ball landed: ${resultDirection}\n💰 Reward: ${result.reward} coins`
+          : `${resultEmoji} **Better luck next time!**\n\n⚽️ You aimed for: ${guessDirection}\n📍 Ball landed: ${resultDirection}\n💸 You lost ${stake} coins`;
+
+        const playAgainKeyboard = {
+          inline_keyboard: [
+            [
+              {
+                text: "🎯 Play Again (Same Stake & Direction)",
+                callback_data: `football_play_again_exact:${stake}:${guess}`,
+              },
+            ],
+            [
+              {
+                text: "🔄 Play Again (Same Stake)",
+                callback_data: `football_play_again_same:${stake}`,
+              },
+            ],
+            [
+              {
+                text: "⚽️ New Football Game",
+                callback_data: "football_play_again_new",
+              },
+            ],
+          ],
+        };
+
+        await bot.sendMessage(chatId, resultText, {
+          parse_mode: "Markdown",
+          reply_markup: playAgainKeyboard,
+        });
+
+        await bot.answerCallbackQuery(callbackQuery.id);
+        console.log(
+          `[FOOTBALL] Game ${gameId} completed: won=${result.won}, reward=${result.reward}`
+        );
+        return;
+      } catch (error: any) {
+        console.error(`[FOOTBALL] Error processing football guess:`, error);
+        await bot.answerCallbackQuery(callbackQuery.id, {
+          text: error.message || "Failed to process football game",
+          show_alert: true,
+        });
+        return;
+      }
+    }
+
+    // Handle play again with same stake
+    if (action === "football_play_again_same" && parts[1]) {
+      const stake = parseInt(parts[1]) as FootballStake;
+      console.log(
+        `[FOOTBALL] Play again same stake: userId=${userId}, stake=${stake}`
+      );
+
+      try {
+        // Check balance
+        const hasBalance = await requireBalance(userId.toString(), stake);
+        if (!hasBalance) {
+          await bot.answerCallbackQuery(callbackQuery.id, {
+            text: "Insufficient Coins.",
+            show_alert: true,
+          });
+          return;
+        }
+
+        // Create new game with same stake
+        const gameState = await createFootballGame(userId.toString(), stake);
+
+        // Show direction options
+        const directionKeyboard = {
+          inline_keyboard: [
+            [
+              {
+                text: "Top-Left",
+                callback_data: `football_guess:${gameState.id}:1`,
+              },
+              {
+                text: "Top-Right",
+                callback_data: `football_guess:${gameState.id}:2`,
+              },
+            ],
+            [
+              {
+                text: "Center",
+                callback_data: `football_guess:${gameState.id}:3`,
+              },
+            ],
+            [
+              {
+                text: "Bottom-Left",
+                callback_data: `football_guess:${gameState.id}:4`,
+              },
+              {
+                text: "Bottom-Right",
+                callback_data: `football_guess:${gameState.id}:5`,
+              },
+            ],
+          ],
+        };
+
+        const text = `⚽️ Football Game - Stake: ${stake} Coins\n\nWhere do you want to shoot?`;
+
+        // Update the message
+        const inlineMessageId = callbackQuery.inline_message_id;
+        if (inlineMessageId) {
+          await bot.editMessageText(text, {
+            inline_message_id: inlineMessageId,
+            reply_markup: directionKeyboard,
+          });
+        } else if (chatId && callbackQuery.message?.message_id) {
+          await bot.editMessageText(text, {
+            chat_id: chatId,
+            message_id: callbackQuery.message.message_id,
+            reply_markup: directionKeyboard,
+          });
+        }
+
+        await bot.answerCallbackQuery(callbackQuery.id);
+        console.log(
+          `[FOOTBALL] Play again same stake: created game ${gameState.id}`
+        );
+        return;
+      } catch (error: any) {
+        await bot.answerCallbackQuery(callbackQuery.id, {
+          text: error.message || "Failed to start new game",
+          show_alert: true,
+        });
+        return;
+      }
+    }
+
+    // Handle play again with same stake and same direction
+    if (action === "football_play_again_exact" && parts[1] && parts[2]) {
+      const stake = parseInt(parts[1]) as FootballStake;
+      const guess = parseInt(parts[2]);
+      console.log(
+        `[FOOTBALL] Play again exact: userId=${userId}, stake=${stake}, guess=${guess}`
+      );
+
+      try {
+        // Check balance
+        const hasBalance = await requireBalance(userId.toString(), stake);
+        if (!hasBalance) {
+          await bot.answerCallbackQuery(callbackQuery.id, {
+            text: "Insufficient Coins.",
+            show_alert: true,
+          });
+          return;
+        }
+
+        // Create new game with same stake
+        const gameState = await createFootballGame(userId.toString(), stake);
+
+        // Set the same guess immediately
+        await setFootballGuess(gameState.id, guess);
+
+        // Send the football emoji
+        console.log(`[FOOTBALL] Sending football emoji to chatId=${chatId}`);
+        const footballMessage = await bot.sendDice(chatId, { emoji: "⚽️" });
+        const footballResult = footballMessage.dice?.value;
+        console.log(`[FOOTBALL] Football result: ${footballResult}`);
+
+        if (!footballResult) {
+          console.log(`[FOOTBALL] Failed to get football result from message`);
+          throw new Error("Failed to get football result");
+        }
+
+        // Wait for football animation to finish (3 seconds)
+        console.log(`[FOOTBALL] Waiting for football animation to finish...`);
+        await new Promise((resolve) => setTimeout(resolve, 3000));
+
+        // Process the result
+        console.log(
+          `[FOOTBALL] Processing football result: gameId=${gameState.id}, footballResult=${footballResult}`
+        );
+        const result = await processFootballResult(
+          gameState.id,
+          footballResult
+        );
+
+        // Send result message with glass buttons
+        const resultEmoji = result.won ? "🎉" : "😔";
+        const guessDirection =
+          FOOTBALL_DIRECTIONS[guess as keyof typeof FOOTBALL_DIRECTIONS];
+        const resultDirection =
+          FOOTBALL_DIRECTIONS[
+            footballResult as keyof typeof FOOTBALL_DIRECTIONS
+          ];
+        const resultText = result.won
+          ? `${resultEmoji} **Congratulations! You won ${result.reward} coins!**\n\n⚽️ You aimed for: ${guessDirection}\n📍 Ball landed: ${resultDirection}\n💰 Reward: ${result.reward} coins`
+          : `${resultEmoji} **Better luck next time!**\n\n⚽️ You aimed for: ${guessDirection}\n📍 Ball landed: ${resultDirection}\n💸 You lost ${stake} coins`;
+
+        const playAgainKeyboard = {
+          inline_keyboard: [
+            [
+              {
+                text: "🎯 Play Again (Same Stake & Direction)",
+                callback_data: `football_play_again_exact:${stake}:${guess}`,
+              },
+            ],
+            [
+              {
+                text: "🔄 Play Again (Same Stake)",
+                callback_data: `football_play_again_same:${stake}`,
+              },
+            ],
+            [
+              {
+                text: "⚽️ New Football Game",
+                callback_data: "football_play_again_new",
+              },
+            ],
+          ],
+        };
+
+        await bot.sendMessage(chatId, resultText, {
+          parse_mode: "Markdown",
+          reply_markup: playAgainKeyboard,
+        });
+
+        await bot.answerCallbackQuery(callbackQuery.id);
+        console.log(
+          `[FOOTBALL] Play again exact: completed game ${gameState.id}`
+        );
+        return;
+      } catch (error: any) {
+        await bot.answerCallbackQuery(callbackQuery.id, {
+          text: error.message || "Failed to start new game",
+          show_alert: true,
+        });
+        return;
+      }
+    }
+
+    // Handle new football game
+    if (action === "football_play_again_new") {
+      console.log(`[FOOTBALL] Play again new game: userId=${userId}`);
+
+      const stakeKeyboard = {
+        inline_keyboard: [
+          [
+            { text: "2 Coins", callback_data: `football_stake:2` },
+            { text: "5 Coins", callback_data: `football_stake:5` },
+          ],
+          [
+            { text: "10 Coins", callback_data: `football_stake:10` },
+            { text: "20 Coins", callback_data: `football_stake:20` },
+          ],
+        ],
+      };
+
+      const text = "⚽️ Direction Guess Game\n\nChoose your stake amount:";
+
+      // Update the message
+      const inlineMessageId = callbackQuery.inline_message_id;
+      if (inlineMessageId) {
+        await bot.editMessageText(text, {
+          inline_message_id: inlineMessageId,
+          reply_markup: stakeKeyboard,
+        });
+      } else if (chatId && callbackQuery.message?.message_id) {
+        await bot.editMessageText(text, {
+          chat_id: chatId,
+          message_id: callbackQuery.message.message_id,
+          reply_markup: stakeKeyboard,
+        });
+      }
+
+      await bot.answerCallbackQuery(callbackQuery.id);
+      console.log(`[FOOTBALL] Play again new game: showing stake selection`);
+      return;
+    }
   });
 
   // Inline query handler (restored)
@@ -1144,7 +1656,13 @@ export function registerXoTelegramHandlers(bot: any) {
               { text: "🎲 Dice Game", callback_data: "inline_start_game:dice" },
             ],
             [
+              {
+                text: "⚽️ Football Game",
+                callback_data: "inline_start_game:football",
+              },
               { text: "Dots & Boxes", callback_data: "inline_start_game:dots" },
+            ],
+            [
               {
                 text: "Memory Game",
                 callback_data: "inline_start_game:memory",

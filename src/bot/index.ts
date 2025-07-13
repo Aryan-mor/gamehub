@@ -5,6 +5,7 @@ dotenv.config({ path: ".env.local" });
 import TelegramBot from "node-telegram-bot-api";
 import { registerXoHandlers } from "../games/xo";
 import { registerDiceHandlers } from "./games/diceHandlers";
+import { registerFootballHandlers } from "./games/footballHandlers";
 
 import {
   getUser,
@@ -28,14 +29,25 @@ registerXoHandlers(bot);
 // Register dice game handlers
 registerDiceHandlers(bot);
 
+// Register football game handlers
+registerFootballHandlers(bot);
+
 // Set bot commands (generic)
 bot.setMyCommands([
   { command: "/start", description: "Start the bot" },
   { command: "/newgame", description: "Create a new X/O game with stake" },
   { command: "/dice", description: "Play dice guess game" },
+  {
+    command: "/football_game",
+    description: "Play football direction guess game",
+  },
   { command: "/games", description: "Show your unfinished games" },
   { command: "/stats", description: "Show your X/O game statistics" },
   { command: "/dice_stats", description: "Show your dice game statistics" },
+  {
+    command: "/football_stats",
+    description: "Show your football game statistics",
+  },
   { command: "/balance", description: "Show your coin balance" },
   { command: "/free_coin", description: "Claim your daily free coins" },
   { command: "/help", description: "Show help information" },
@@ -62,10 +74,12 @@ bot.onText(/\/help/, async (msg) => {
       `/start - Start the bot\n` +
       `/newgame - Create a new X/O game with stake\n` +
       `/dice - Play dice guess game\n` +
+      `/football_game - Play football direction guess game\n` +
       `/join <gameId> - Join an existing game\n` +
       `/games - Show your unfinished games\n` +
       `/stats - Show your X/O game statistics\n` +
       `/dice_stats - Show your dice game statistics\n` +
+      `/football_stats - Show your football game statistics\n` +
       `/balance - Show your coin balance\n` +
       `/free_coin - Claim your daily free coins\n` +
       `/help - Show this help message`
