@@ -121,11 +121,11 @@ export function joinTicTacToeGame(
 /**
  * Make a move in a TicTacToe game
  */
-export function makeMove(
+export async function makeMove(
   gameId: string,
   playerId: string,
   position: number
-): { success: boolean; gameState?: GameState; error?: string } {
+): Promise<{ success: boolean; gameState?: GameState; error?: string }> {
   const gameState = ticTacToeGames.get(gameId);
 
   if (!gameState) {
@@ -159,7 +159,7 @@ export function makeMove(
     const loserId =
       winner === "X" ? gameState.players.O?.id : gameState.players.X?.id;
     if (winnerId && loserId) {
-      recordWin(winnerId, loserId);
+      await recordWin(winnerId, loserId, "xo");
     }
   } else if (isDraw(gameState.board)) {
     gameState.status = "draw";
@@ -168,7 +168,7 @@ export function makeMove(
     const playerXId = gameState.players.X?.id;
     const playerOId = gameState.players.O?.id;
     if (playerXId && playerOId) {
-      recordDraw(playerXId, playerOId);
+      await recordDraw(playerXId, playerOId, "xo");
     }
   } else {
     gameState.currentPlayer = getNextPlayer(gameState.currentPlayer) as Player;
@@ -282,7 +282,9 @@ ${symbols[6]} | ${symbols[7]} | ${symbols[8]}
 /**
  * Get the status message for a TicTacToe game
  */
-export function getTicTacToeStatusMessage(game: GameState): string {
+export async function formatTicTacToeStatusMessage(
+  game: GameState
+): Promise<string> {
   if (game.winner) {
     const winnerName =
       game.winner === "X" ? game.players.X?.name : game.players.O?.name;
@@ -296,7 +298,13 @@ export function getTicTacToeStatusMessage(game: GameState): string {
 
     const statsMessage =
       winnerId && loserId && winnerName && loserName
-        ? formatStatsMessage(winnerId, loserId, winnerName, loserName)
+        ? await formatStatsMessage(
+            winnerId,
+            loserId,
+            winnerName,
+            loserName,
+            "xo"
+          )
         : "";
 
     return `🎉 ${winnerName || "Unknown"} wins!\n\n${statsMessage}`;

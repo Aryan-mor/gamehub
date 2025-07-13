@@ -10,7 +10,7 @@ import {
   makeMove,
   restartTicTacToeGame,
   formatTicTacToeBoard,
-  getTicTacToeStatusMessage,
+  formatTicTacToeStatusMessage,
   createTicTacToeKeyboard,
   getTicTacToeGame,
 } from "./games/tictactoe";
@@ -113,7 +113,7 @@ bot.onText(/\/stats/, async (msg: TelegramBot.Message) => {
     return;
   }
 
-  const stats = getUserStatistics(userId.toString());
+  const stats = await getUserStatistics(userId.toString(), "xo");
   const winRate =
     stats.totalGames > 0
       ? ((stats.totalWins / stats.totalGames) * 100).toFixed(1)
@@ -148,7 +148,7 @@ bot.onText(
       return;
     }
 
-    const stats = getUserStatistics(userId.toString());
+    const stats = await getUserStatistics(userId.toString(), "xo");
     const h2hMessage = `
 ⚔️ *Head-to-Head Statistics*
 
@@ -364,7 +364,7 @@ bot.on("callback_query", async (callbackQuery: TelegramBot.CallbackQuery) => {
       }
 
       // Use modularized TicTacToe move function
-      const moveResult = makeMove(gameId, userId.toString(), pos);
+      const moveResult = await makeMove(gameId, userId.toString(), pos);
 
       if (!moveResult.success) {
         await bot.answerCallbackQuery(callbackQuery.id, {
@@ -392,7 +392,9 @@ bot.on("callback_query", async (callbackQuery: TelegramBot.CallbackQuery) => {
 
         // Format the game board and status using modularized functions
         const boardMessage = formatTicTacToeBoard(moveResult.gameState.board);
-        const statusMessage = getTicTacToeStatusMessage(moveResult.gameState);
+        const statusMessage = await formatTicTacToeStatusMessage(
+          moveResult.gameState
+        );
         const fullMessage = `${boardMessage}\n\n${statusMessage}`;
 
         // Create the game board keyboard - show restart buttons if game is over
@@ -537,7 +539,9 @@ bot.on("callback_query", async (callbackQuery: TelegramBot.CallbackQuery) => {
 
         // Format the game board and status using modularized functions
         const boardMessage = formatTicTacToeBoard(updatedGameState.board);
-        const statusMessage = getTicTacToeStatusMessage(updatedGameState);
+        const statusMessage = await formatTicTacToeStatusMessage(
+          updatedGameState
+        );
         const fullMessage = `${boardMessage}\n\n${statusMessage}`;
 
         const keyboard = createTicTacToeKeyboard(updatedGameState, gameId);
@@ -1063,7 +1067,7 @@ Waiting for another player to join...
 
         // Format the game board and status using modularized functions
         const boardMessage = formatTicTacToeBoard(newGameState.board);
-        const statusMessage = getTicTacToeStatusMessage(newGameState); // New game, both players can click
+        const statusMessage = await formatTicTacToeStatusMessage(newGameState); // New game, both players can click
         const fullMessage = `${boardMessage}\n\n${statusMessage}`;
 
         const keyboard = createTicTacToeKeyboard(newGameState, gameId);
@@ -1521,7 +1525,7 @@ The game will automatically update for both players!
 
 async function sendGameBoard(chatId: number, game: GameState, gameId: string) {
   const boardMessage = formatTicTacToeBoard(game.board);
-  const statusMessage = getTicTacToeStatusMessage(game);
+  const statusMessage = await formatTicTacToeStatusMessage(game);
   const fullMessage = `${boardMessage}\n\n${statusMessage}`;
 
   const keyboard = createTicTacToeKeyboard(game, gameId);
