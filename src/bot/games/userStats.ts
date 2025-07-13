@@ -130,3 +130,72 @@ export async function formatStatsMessage(
   const headToHeadMessage = `⚔️ ${winnerName} has beaten ${loserName} ${headToHead.user1Wins} times\n⚔️ ${loserName} has beaten ${winnerName} ${headToHead.user2Wins} times`;
   return `${totalWinsMessage}\n${headToHeadMessage}`;
 }
+
+// --- COIN SYSTEM ---
+export interface UserCoinData {
+  coins: number;
+  lastFreeCoinAt?: number; // ms timestamp
+}
+
+const USER_COIN_PATH = "users";
+
+/**
+ * Get user coin data, auto-creating with 0 coins if missing.
+ */
+export async function getUser(id: string): Promise<UserCoinData> {
+  if (!database) throw new Error("Firebase not initialized");
+  const userRef = ref(database, `${USER_COIN_PATH}/${id}`);
+  const snap = await get(userRef);
+  if (snap.exists()) {
+    return snap.val();
+  } else {
+    const data: UserCoinData = { coins: 0 };
+    await set(userRef, data);
+    return data;
+  }
+}
+
+/**
+ * Add coins to user and persist.
+ */
+export async function addCoins(
+  id: string,
+  amount: number,
+  reason: string
+): Promise<void> {
+  if (!database) throw new Error("Firebase not initialized");
+  const user = await getUser(id);
+  user.coins += amount;
+  await set(ref(database, `${USER_COIN_PATH}/${id}`), user);
+  // Log the grant
+  console.log(`[COIN] Grant: userId=${id} amount=${amount} reason=${reason}`);
+}
+
+/**
+ * Set last free coin claim timestamp.
+ */
+export async function setLastFreeCoinAt(
+  id: string,
+  timestamp: number
+): Promise<void> {
+  if (!database) throw new Error("Firebase not initialized");
+  const user = await getUser(id);
+  user.lastFreeCoinAt = timestamp;
+  await set(ref(database, `${USER_COIN_PATH}/${id}`), user);
+}
+
+/**
+ * Check if user can claim daily coins (24h cooldown).
+ * Returns: { canClaim: boolean, nextClaimIn: number }
+ */
+export async function canClaimDaily(
+  id: string
+): Promise<{ canClaim: boolean; nextClaimIn: number }> {
+  const user = await getUser(id);
+  const now = Date.now();
+  if (!user.lastFreeCoinAt) return { canClaim: true, nextClaimIn: 0 };
+  const elapsed = now - user.lastFreeCoinAt;
+  const DAY = 24 * 60 * 60 * 1000;
+  if (elapsed >= DAY) return { canClaim: true, nextClaimIn: 0 };
+  return { canClaim: false, nextClaimIn: DAY - elapsed };
+}
