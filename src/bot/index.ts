@@ -342,13 +342,49 @@ bot.on("callback_query", async (callbackQuery: TelegramBot.CallbackQuery) => {
           `📝 Editing inline message ${inlineMessageId} to update game board...`
         );
 
+        // Determine if it's the current user's turn
+        const currentPlayerId = gameState.players[gameState.currentPlayer]?.id;
+        const isCurrentUserTurn = currentPlayerId === userId.toString();
+        console.log(
+          `🎯 Current user turn: ${isCurrentUserTurn}, Current player: ${gameState.currentPlayer}, User ID: ${userId}`
+        );
+        console.log(
+          `🔍 Debug - Current player ID: ${currentPlayerId}, User ID: ${userId}, Players:`,
+          {
+            X: gameState.players.X?.id,
+            O: gameState.players.O?.id,
+            currentPlayer: gameState.currentPlayer,
+          }
+        );
+
         // Format the game board and status
         const boardMessage = formatBoard(gameState.board);
-        const statusMessage = getGameStatusMessage(gameState, false);
+        const statusMessage = getGameStatusMessage(gameState);
         const fullMessage = `${boardMessage}\n\n${statusMessage}`;
 
-        // Create the game board keyboard
-        const keyboard = createBoardKeyboard(gameState, gameId, false);
+        // Create the game board keyboard - show restart buttons if game is over
+        let keyboard;
+        if (gameState.winner || gameState.status === "draw") {
+          // Game is over - show restart buttons
+          keyboard = {
+            inline_keyboard: [
+              [
+                {
+                  text: "🔄 Play Again",
+                  callback_data: `restart_game:${gameId}`,
+                },
+                {
+                  text: "🎮 New Game",
+                  callback_data: `new_game:${gameId}`,
+                },
+              ],
+            ],
+          };
+          console.log(`🎯 Game over - showing restart buttons`);
+        } else {
+          // Game is still active - show game board
+          keyboard = createBoardKeyboard(gameState, gameId, true);
+        }
 
         try {
           await bot.editMessageText(fullMessage, {
@@ -398,6 +434,13 @@ bot.on("callback_query", async (callbackQuery: TelegramBot.CallbackQuery) => {
       }
 
       await bot.answerCallbackQuery(callbackQuery.id);
+    } else if (action === "noop") {
+      // Handle noop actions (clicked on occupied cell or not your turn)
+      console.log("🔄 Processing noop callback - ignoring invalid move");
+      await bot.answerCallbackQuery(callbackQuery.id, {
+        text: "Invalid move",
+        show_alert: false,
+      });
     } else if (action === "copy" && gameId) {
       // Copy game ID to clipboard (show as notification)
       await bot.answerCallbackQuery(callbackQuery.id, {
@@ -497,13 +540,19 @@ bot.on("callback_query", async (callbackQuery: TelegramBot.CallbackQuery) => {
           `📝 Editing inline message ${inlineMessageId} to show game board...`
         );
 
+        // Determine if it's the joining player's turn (joining player is O)
+        const isJoiningPlayerTurn = gameState.currentPlayer !== "X";
+        console.log(
+          `🎯 Joining player turn: ${isJoiningPlayerTurn}, Current player: ${gameState.currentPlayer}`
+        );
+
         // Format the game board and status
         const boardMessage = formatBoard(gameState.board);
-        const statusMessage = getGameStatusMessage(gameState, false);
+        const statusMessage = getGameStatusMessage(gameState);
         const fullMessage = `${boardMessage}\n\n${statusMessage}`;
 
-        // Create the game board keyboard
-        const keyboard = createBoardKeyboard(gameState, gameId, false);
+        // Create the game board keyboard - always make cells clickable for inline games
+        const keyboard = createBoardKeyboard(gameState, gameId, true);
 
         try {
           await bot.editMessageText(fullMessage, {
@@ -535,10 +584,7 @@ bot.on("callback_query", async (callbackQuery: TelegramBot.CallbackQuery) => {
       }
 
       try {
-        await bot.answerCallbackQuery(callbackQuery.id, {
-          text: "Successfully joined the game!",
-          show_alert: true,
-        });
+        await bot.answerCallbackQuery(callbackQuery.id);
         console.log("✅ Join game callback query answered successfully");
       } catch (error) {
         console.error("Failed to answer join game callback query:", error);
@@ -720,10 +766,7 @@ Invite your friend to join:
 
         console.log("🔄 Answering callback query...");
         // Always answer the callback query to stop the loading spinner
-        await bot.answerCallbackQuery(callbackQuery.id, {
-          text: `${gameName} created!`,
-          show_alert: true,
-        });
+        await bot.answerCallbackQuery(callbackQuery.id);
 
         console.log(`✅ Callback query answered successfully for ${gameType}`);
         console.log("=== GAME CREATION COMPLETED SUCCESSFULLY ===");
@@ -859,7 +902,7 @@ Invite your friend to join:
           console.log(`📍 Original chat context: ${originalChatId}`);
 
           const gameMessage = `
-🎮 ${gameName} created by ${callbackQuery.from?.first_name || "Player"}!
+🎮 ${gameName}
 
 ${gameDescription}
 
@@ -971,10 +1014,7 @@ Waiting for another player to join...
 
         console.log("🔄 Answering inline callback query...");
         try {
-          await bot.answerCallbackQuery(callbackQuery.id, {
-            text: `${gameName} created!`,
-            show_alert: true,
-          });
+          await bot.answerCallbackQuery(callbackQuery.id);
           console.log("✅ Inline callback query answered successfully");
         } catch (callbackError) {
           console.error(
@@ -1030,6 +1070,241 @@ Waiting for another player to join...
           });
         }
       }
+    } else if (action === "restart_game" && gameId) {
+      console.log("🎮 Processing restart_game callback");
+      console.log("  Game ID:", gameId);
+      console.log("  User ID:", userId);
+      console.log("  Chat ID:", chatId);
+
+      // Handle restart game (same players, swapped order)
+      const gameState = games.get(gameId);
+
+      if (!gameState) {
+        console.error(`❌ Game ${gameId} not found for restart`);
+        try {
+          await bot.answerCallbackQuery(callbackQuery.id, {
+            text: "Game not found",
+            show_alert: true,
+          });
+        } catch (error) {
+          console.error(
+            "Failed to answer callback query for missing game:",
+            error
+          );
+        }
+        return;
+      }
+
+      // Check if user is part of the game
+      const isPlayerX = gameState.players.X?.id === userId.toString();
+      const isPlayerO = gameState.players.O?.id === userId.toString();
+
+      if (!isPlayerX && !isPlayerO) {
+        console.error(`❌ User ${userId} is not part of game ${gameId}`);
+        try {
+          await bot.answerCallbackQuery(callbackQuery.id, {
+            text: "You are not part of this game",
+            show_alert: true,
+          });
+        } catch (error) {
+          console.error(
+            "Failed to answer callback query for non-player:",
+            error
+          );
+        }
+        return;
+      }
+
+      console.log(`🔄 Restarting game ${gameId} with swapped players`);
+
+      // Swap players: O becomes X, X becomes O
+      const originalX = gameState.players.X;
+      const originalO = gameState.players.O;
+
+      // Create new game state with swapped players
+      const newGameState: GameState = {
+        ...createInitialGameState(),
+        players: {
+          X: originalO, // O becomes X (starts first)
+          O: originalX, // X becomes O
+        },
+        status: "playing",
+        currentPlayer: "X", // O (now X) starts first
+        turnStartedAt: Date.now(),
+      };
+
+      games.set(gameId, newGameState);
+
+      // For inline queries, we need to edit the inline message
+      const inlineMessageId = callbackQuery.inline_message_id;
+
+      if (inlineMessageId) {
+        console.log(
+          `📝 Editing inline message ${inlineMessageId} for restart...`
+        );
+
+        // Format the game board and status
+        const boardMessage = formatBoard(newGameState.board);
+        const statusMessage = getGameStatusMessage(newGameState); // New game, both players can click
+        const fullMessage = `${boardMessage}\n\n${statusMessage}`;
+
+        // Create the game board keyboard - all cells should be clickable for new game
+        const keyboard = createBoardKeyboard(newGameState, gameId, true);
+
+        try {
+          await bot.editMessageText(fullMessage, {
+            inline_message_id: inlineMessageId,
+            parse_mode: "Markdown",
+            reply_markup: keyboard,
+          });
+          console.log(`✅ Inline message updated for restart successfully`);
+        } catch (editError) {
+          console.error(
+            "❌ Error editing inline message for restart:",
+            editError
+          );
+          console.error("Edit error details:", {
+            error:
+              editError instanceof Error
+                ? editError.message
+                : String(editError),
+            inlineMessageId,
+          });
+        }
+      } else {
+        console.error("❌ No inline_message_id found for restart_game");
+      }
+
+      try {
+        await bot.answerCallbackQuery(callbackQuery.id, {
+          text: "Game restarted! O goes first now.",
+          show_alert: true,
+        });
+        console.log("✅ Restart game callback query answered successfully");
+      } catch (error) {
+        console.error("Failed to answer restart game callback query:", error);
+      }
+
+      console.log("=== GAME RESTARTED SUCCESSFULLY ===");
+    } else if (action === "new_game" && gameId) {
+      console.log("🎮 Processing new_game callback");
+      console.log("  Game ID:", gameId);
+      console.log("  User ID:", userId);
+      console.log("  Chat ID:", chatId);
+
+      // Handle new game - reset to game selection menu
+      const gameState = games.get(gameId);
+
+      if (!gameState) {
+        console.error(`❌ Game ${gameId} not found for new game`);
+        try {
+          await bot.answerCallbackQuery(callbackQuery.id, {
+            text: "Game not found",
+            show_alert: true,
+          });
+        } catch (error) {
+          console.error(
+            "Failed to answer callback query for missing game:",
+            error
+          );
+        }
+        return;
+      }
+
+      // Check if user is part of the game
+      const isPlayerX = gameState.players.X?.id === userId.toString();
+      const isPlayerO = gameState.players.O?.id === userId.toString();
+
+      if (!isPlayerX && !isPlayerO) {
+        console.error(`❌ User ${userId} is not part of game ${gameId}`);
+        try {
+          await bot.answerCallbackQuery(callbackQuery.id, {
+            text: "You are not part of this game",
+            show_alert: true,
+          });
+        } catch (error) {
+          console.error(
+            "Failed to answer callback query for non-player:",
+            error
+          );
+        }
+        return;
+      }
+
+      console.log(`🔄 Resetting to game selection menu for new game`);
+
+      // Remove the old game from memory
+      games.delete(gameId);
+
+      // For inline queries, we need to edit the inline message
+      const inlineMessageId = callbackQuery.inline_message_id;
+
+      if (inlineMessageId) {
+        console.log(
+          `📝 Editing inline message ${inlineMessageId} to show game selection...`
+        );
+
+        const gameSelectionMessage = `
+🎮 Choose a game to play:
+
+Select what you want to play with your friend:
+        `;
+
+        const gameSelectionKeyboard: TelegramBot.InlineKeyboardMarkup = {
+          inline_keyboard: [
+            [
+              {
+                text: "X/O Game",
+                callback_data: "inline_start_game:xo",
+              },
+              {
+                text: "Dots & Boxes",
+                callback_data: "inline_start_game:dots",
+              },
+            ],
+            [
+              {
+                text: "Memory Game",
+                callback_data: "inline_start_game:memory",
+              },
+            ],
+          ],
+        };
+
+        try {
+          await bot.editMessageText(gameSelectionMessage, {
+            inline_message_id: inlineMessageId,
+            parse_mode: "Markdown",
+            reply_markup: gameSelectionKeyboard,
+          });
+          console.log(
+            `✅ Inline message updated to game selection successfully`
+          );
+        } catch (editError) {
+          console.error(
+            "❌ Error editing inline message for game selection:",
+            editError
+          );
+          console.error("Edit error details:", {
+            error:
+              editError instanceof Error
+                ? editError.message
+                : String(editError),
+            inlineMessageId,
+          });
+        }
+      } else {
+        console.error("❌ No inline_message_id found for new_game");
+      }
+
+      try {
+        await bot.answerCallbackQuery(callbackQuery.id);
+        console.log("✅ New game callback query answered successfully");
+      } catch (error) {
+        console.error("Failed to answer new game callback query:", error);
+      }
+
+      console.log("=== GAME SELECTION MENU SHOWN SUCCESSFULLY ===");
     }
   } catch (error) {
     console.error("❌ Error handling callback query:", error);
@@ -1380,7 +1655,7 @@ ${symbols[6]} | ${symbols[7]} | ${symbols[8]}
   `.trim();
 }
 
-function getGameStatusMessage(game: GameState, isMyTurn: boolean): string {
+function getGameStatusMessage(game: GameState): string {
   if (game.winner) {
     const winnerName =
       game.winner === "X" ? game.players.X?.name : game.players.O?.name;
@@ -1394,11 +1669,7 @@ function getGameStatusMessage(game: GameState, isMyTurn: boolean): string {
   const currentPlayerName =
     game.currentPlayer === "X" ? game.players.X?.name : game.players.O?.name;
 
-  if (isMyTurn) {
-    return `🎯 It's your turn!`;
-  } else {
-    return `⏳ Waiting for ${currentPlayerName || "opponent"} to move...`;
-  }
+  return `🎯 It's ${currentPlayerName || "opponent"}'s turn`;
 }
 
 async function sendGameBoard(
@@ -1408,7 +1679,7 @@ async function sendGameBoard(
   isMyTurn: boolean
 ) {
   const boardMessage = formatBoard(game.board);
-  const statusMessage = getGameStatusMessage(game, isMyTurn);
+  const statusMessage = getGameStatusMessage(game);
   const fullMessage = `${boardMessage}\n\n${statusMessage}`;
 
   const keyboard = createBoardKeyboard(game, gameId, isMyTurn);
@@ -1434,7 +1705,7 @@ async function updateGameMessage(
   if (!messageId) return;
 
   const boardMessage = formatBoard(game.board);
-  const statusMessage = getGameStatusMessage(game, false);
+  const statusMessage = getGameStatusMessage(game);
   const fullMessage = `${boardMessage}\n\n${statusMessage}`;
 
   const keyboard = createBoardKeyboard(game, gameId, false);
