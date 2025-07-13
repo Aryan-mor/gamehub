@@ -554,30 +554,39 @@ export function registerXoTelegramHandlers(bot: any) {
 
         const guessKeyboard = {
           inline_keyboard: [
-            // Exact values row 1
+            // Exact values row 1 (4x multiplier)
             [
-              { text: "1", callback_data: `dice_guess:${gameState.id}:1` },
-              { text: "2", callback_data: `dice_guess:${gameState.id}:2` },
-              { text: "3", callback_data: `dice_guess:${gameState.id}:3` },
+              { text: "1 (4×)", callback_data: `dice_guess:${gameState.id}:1` },
+              { text: "2 (4×)", callback_data: `dice_guess:${gameState.id}:2` },
+              { text: "3 (4×)", callback_data: `dice_guess:${gameState.id}:3` },
             ],
-            // Exact values row 2
+            // Exact values row 2 (4x multiplier)
             [
-              { text: "4", callback_data: `dice_guess:${gameState.id}:4` },
-              { text: "5", callback_data: `dice_guess:${gameState.id}:5` },
-              { text: "6", callback_data: `dice_guess:${gameState.id}:6` },
+              { text: "4 (4×)", callback_data: `dice_guess:${gameState.id}:4` },
+              { text: "5 (4×)", callback_data: `dice_guess:${gameState.id}:5` },
+              { text: "6 (4×)", callback_data: `dice_guess:${gameState.id}:6` },
             ],
-            // Ranges row 1
+            // Ranges row 1 (2x multiplier)
             [
-              { text: "ODD", callback_data: `dice_guess:${gameState.id}:ODD` },
               {
-                text: "EVEN",
+                text: "ODD (2×)",
+                callback_data: `dice_guess:${gameState.id}:ODD`,
+              },
+              {
+                text: "EVEN (2×)",
                 callback_data: `dice_guess:${gameState.id}:EVEN`,
               },
             ],
-            // Ranges row 2
+            // Ranges row 2 (2x multiplier)
             [
-              { text: "1-3", callback_data: `dice_guess:${gameState.id}:1-3` },
-              { text: "4-6", callback_data: `dice_guess:${gameState.id}:4-6` },
+              {
+                text: "1-3 (2×)",
+                callback_data: `dice_guess:${gameState.id}:1-3`,
+              },
+              {
+                text: "4-6 (2×)",
+                callback_data: `dice_guess:${gameState.id}:4-6`,
+              },
             ],
           ],
         };
@@ -748,28 +757,34 @@ export function registerXoTelegramHandlers(bot: any) {
         const guessKeyboard = {
           inline_keyboard: [
             [
-              { text: "1", callback_data: `dice_guess:${gameState.id}:1` },
-              { text: "2", callback_data: `dice_guess:${gameState.id}:2` },
-              { text: "3", callback_data: `dice_guess:${gameState.id}:3` },
+              { text: "1 (4×)", callback_data: `dice_guess:${gameState.id}:1` },
+              { text: "2 (4×)", callback_data: `dice_guess:${gameState.id}:2` },
+              { text: "3 (4×)", callback_data: `dice_guess:${gameState.id}:3` },
             ],
             [
-              { text: "4", callback_data: `dice_guess:${gameState.id}:4` },
-              { text: "5", callback_data: `dice_guess:${gameState.id}:5` },
-              { text: "6", callback_data: `dice_guess:${gameState.id}:6` },
+              { text: "4 (4×)", callback_data: `dice_guess:${gameState.id}:4` },
+              { text: "5 (4×)", callback_data: `dice_guess:${gameState.id}:5` },
+              { text: "6 (4×)", callback_data: `dice_guess:${gameState.id}:6` },
             ],
             [
               {
-                text: "ODD (1,3,5)",
+                text: "ODD (2×)",
                 callback_data: `dice_guess:${gameState.id}:ODD`,
               },
               {
-                text: "EVEN (2,4,6)",
+                text: "EVEN (2×)",
                 callback_data: `dice_guess:${gameState.id}:EVEN`,
               },
             ],
             [
-              { text: "1-3", callback_data: `dice_guess:${gameState.id}:1-3` },
-              { text: "4-6", callback_data: `dice_guess:${gameState.id}:4-6` },
+              {
+                text: "1-3 (2×)",
+                callback_data: `dice_guess:${gameState.id}:1-3`,
+              },
+              {
+                text: "4-6 (2×)",
+                callback_data: `dice_guess:${gameState.id}:4-6`,
+              },
             ],
           ],
         };
