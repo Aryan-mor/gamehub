@@ -568,7 +568,6 @@ export class GameService {
         ...processedGameState,
         board: boardObject,
       };
-
       await set(gameRef, gameStateToSave);
       console.log(
         `Player ${inactivePlayer} timed out. Player ${winningPlayer} wins.`
