@@ -4,14 +4,16 @@ dotenv.config({ path: ".env.local" });
 
 // @ts-expect-error - node-telegram-bot-api types issue
 import TelegramBot from "node-telegram-bot-api";
+import { PlayerInfo, GameState, createInitialGameState } from "../lib/game";
 import {
-  PlayerInfo,
-  GameState,
-  createInitialGameState,
-  checkWinner,
-  isDraw,
-  getNextPlayer,
-} from "../lib/game";
+  createTicTacToeGame,
+  joinTicTacToeGame,
+  makeMove,
+  restartTicTacToeGame,
+  formatTicTacToeBoard,
+  getTicTacToeStatusMessage,
+  createTicTacToeKeyboard,
+} from "./games/tictactoe";
 
 // Initialize bot
 const token = process.env.TELEGRAM_BOT_TOKEN;
@@ -299,40 +301,25 @@ bot.on("callback_query", async (callbackQuery: TelegramBot.CallbackQuery) => {
         return;
       }
 
-      // Check if it's the player's turn
-      const currentPlayerInfo = gameState.players[gameState.currentPlayer];
-      if (!currentPlayerInfo || currentPlayerInfo.id !== userId.toString()) {
+      // Use modularized TicTacToe move function
+      const moveResult = makeMove(gameId, userId.toString(), pos);
+
+      if (!moveResult.success) {
         await bot.answerCallbackQuery(callbackQuery.id, {
-          text: "Not your turn",
+          text: moveResult.error || "Invalid move",
         });
         return;
       }
 
-      // Check if cell is empty
-      if (gameState.board[pos] !== "-") {
+      if (!moveResult.gameState) {
         await bot.answerCallbackQuery(callbackQuery.id, {
-          text: "Cell already occupied",
+          text: "Game state error",
         });
         return;
       }
 
-      // Make the move
-      gameState.board[pos] = gameState.currentPlayer;
-      gameState.lastMoveAt = Date.now();
-
-      // Check for winner
-      const winner = checkWinner(gameState.board);
-      if (winner) {
-        gameState.status = "won";
-        gameState.winner = winner;
-      } else if (isDraw(gameState.board)) {
-        gameState.status = "draw";
-      } else {
-        gameState.currentPlayer = getNextPlayer(gameState.currentPlayer);
-        gameState.turnStartedAt = Date.now();
-      }
-
-      games.set(gameId, gameState);
+      // Update the game state
+      games.set(gameId, moveResult.gameState);
 
       // For inline queries, we need to edit the inline message instead of sending new messages
       const inlineMessageId = callbackQuery.inline_message_id;
@@ -342,29 +329,17 @@ bot.on("callback_query", async (callbackQuery: TelegramBot.CallbackQuery) => {
           `📝 Editing inline message ${inlineMessageId} to update game board...`
         );
 
-        // Determine if it's the current user's turn
-        const currentPlayerId = gameState.players[gameState.currentPlayer]?.id;
-        const isCurrentUserTurn = currentPlayerId === userId.toString();
-        console.log(
-          `🎯 Current user turn: ${isCurrentUserTurn}, Current player: ${gameState.currentPlayer}, User ID: ${userId}`
-        );
-        console.log(
-          `🔍 Debug - Current player ID: ${currentPlayerId}, User ID: ${userId}, Players:`,
-          {
-            X: gameState.players.X?.id,
-            O: gameState.players.O?.id,
-            currentPlayer: gameState.currentPlayer,
-          }
-        );
-
-        // Format the game board and status
-        const boardMessage = formatBoard(gameState.board);
-        const statusMessage = getGameStatusMessage(gameState);
+        // Format the game board and status using modularized functions
+        const boardMessage = formatTicTacToeBoard(moveResult.gameState.board);
+        const statusMessage = getTicTacToeStatusMessage(moveResult.gameState);
         const fullMessage = `${boardMessage}\n\n${statusMessage}`;
 
         // Create the game board keyboard - show restart buttons if game is over
         let keyboard;
-        if (gameState.winner || gameState.status === "draw") {
+        if (
+          moveResult.gameState.winner ||
+          moveResult.gameState.status === "draw"
+        ) {
           // Game is over - show restart buttons
           keyboard = {
             inline_keyboard: [
@@ -383,7 +358,11 @@ bot.on("callback_query", async (callbackQuery: TelegramBot.CallbackQuery) => {
           console.log(`🎯 Game over - showing restart buttons`);
         } else {
           // Game is still active - show game board
-          keyboard = createBoardKeyboard(gameState, gameId, true);
+          keyboard = createTicTacToeKeyboard(
+            moveResult.gameState,
+            gameId,
+            true
+          );
         }
 
         try {
@@ -412,7 +391,7 @@ bot.on("callback_query", async (callbackQuery: TelegramBot.CallbackQuery) => {
         await updateGameMessage(
           chatId,
           callbackQuery.message?.message_id,
-          gameState,
+          moveResult.gameState,
           gameId
         );
 
@@ -428,7 +407,7 @@ bot.on("callback_query", async (callbackQuery: TelegramBot.CallbackQuery) => {
         await updateGameMessage(
           originalChatId,
           activeGame?.lastMessageId,
-          gameState,
+          moveResult.gameState,
           gameId
         );
       }
@@ -453,11 +432,15 @@ bot.on("callback_query", async (callbackQuery: TelegramBot.CallbackQuery) => {
       console.log("  User ID:", userId);
       console.log("  Chat ID:", chatId);
 
-      // Handle join game from shared message
-      const gameState = games.get(gameId);
+      // Use modularized TicTacToe join function
+      const updatedGameState = joinTicTacToeGame(
+        gameId,
+        userId.toString(),
+        callbackQuery.from?.first_name || "Player"
+      );
 
-      if (!gameState) {
-        console.error(`❌ Game ${gameId} not found`);
+      if (!updatedGameState) {
+        console.error(`❌ Failed to join game ${gameId}`);
         try {
           await bot.answerCallbackQuery(callbackQuery.id, {
             text: "Game not found or already full",
@@ -472,63 +455,21 @@ bot.on("callback_query", async (callbackQuery: TelegramBot.CallbackQuery) => {
         return;
       }
 
-      if (gameState.players.O) {
-        console.error(`❌ Game ${gameId} is full`);
-        try {
-          await bot.answerCallbackQuery(callbackQuery.id, {
-            text: "Game is full",
-            show_alert: true,
-          });
-        } catch (error) {
-          console.error(
-            "Failed to answer callback query for full game:",
-            error
-          );
-        }
-        return;
-      }
-
-      // Check if user is already in the game
-      if (gameState.players.X?.id === userId.toString()) {
-        console.log(`✅ User ${userId} is the creator of game ${gameId}`);
-        try {
-          await bot.answerCallbackQuery(callbackQuery.id, {
-            text: "You created this game!",
-            show_alert: true,
-          });
-        } catch (error) {
-          console.error("Failed to answer callback query for creator:", error);
-        }
-        return;
-      }
-
-      console.log(`🔄 Adding player ${userId} as O to game ${gameId}`);
-
-      // Join the game
-      const playerInfo: PlayerInfo = {
-        id: userId.toString(),
-        name: callbackQuery.from?.first_name || "Player",
-        email: `${userId}@telegram.user`,
-        disconnected: false,
-        lastSeen: Date.now(),
-      };
-
-      gameState.players.O = playerInfo;
-      gameState.status = "playing";
-      gameState.currentPlayer = "X";
-      gameState.turnStartedAt = Date.now();
-
-      games.set(gameId, gameState);
+      // Update the main games map
+      games.set(gameId, updatedGameState);
 
       // Get the original chat context where the game was created
-      const activeGame = activeGames.get(gameState.players.X?.id || "");
+      const activeGame = activeGames.get(updatedGameState.players.X?.id || "");
       const originalChatId = activeGame?.originalChatId || chatId;
 
       console.log(`📍 Original chat context: ${originalChatId}`);
 
       activeGames.set(chatId.toString(), {
         gameId,
-        players: { X: gameState.players.X?.id, O: gameState.players.O?.id },
+        players: {
+          X: updatedGameState.players.X?.id,
+          O: updatedGameState.players.O?.id,
+        },
         originalChatId: originalChatId,
       });
 
@@ -541,18 +482,22 @@ bot.on("callback_query", async (callbackQuery: TelegramBot.CallbackQuery) => {
         );
 
         // Determine if it's the joining player's turn (joining player is O)
-        const isJoiningPlayerTurn = gameState.currentPlayer !== "X";
+        const isJoiningPlayerTurn = updatedGameState.currentPlayer !== "X";
         console.log(
-          `🎯 Joining player turn: ${isJoiningPlayerTurn}, Current player: ${gameState.currentPlayer}`
+          `🎯 Joining player turn: ${isJoiningPlayerTurn}, Current player: ${updatedGameState.currentPlayer}`
         );
 
-        // Format the game board and status
-        const boardMessage = formatBoard(gameState.board);
-        const statusMessage = getGameStatusMessage(gameState);
+        // Format the game board and status using modularized functions
+        const boardMessage = formatTicTacToeBoard(updatedGameState.board);
+        const statusMessage = getTicTacToeStatusMessage(updatedGameState);
         const fullMessage = `${boardMessage}\n\n${statusMessage}`;
 
         // Create the game board keyboard - always make cells clickable for inline games
-        const keyboard = createBoardKeyboard(gameState, gameId, true);
+        const keyboard = createTicTacToeKeyboard(
+          updatedGameState,
+          gameId,
+          true
+        );
 
         try {
           await bot.editMessageText(fullMessage, {
@@ -580,7 +525,7 @@ bot.on("callback_query", async (callbackQuery: TelegramBot.CallbackQuery) => {
         console.log(
           `📤 Fallback: Sending game board to original chat ${originalChatId}`
         );
-        await sendGameBoard(originalChatId, gameState, gameId, false);
+        await sendGameBoard(originalChatId, updatedGameState, gameId, false);
       }
 
       try {
@@ -645,36 +590,19 @@ bot.on("callback_query", async (callbackQuery: TelegramBot.CallbackQuery) => {
             `🎯 Creating X/O game for user ${userId} in chat ${chatId}`
           );
 
-          // Create a new X/O game
-          const playerInfo: PlayerInfo = {
-            id: userId.toString(),
-            name: callbackQuery.from?.first_name || "Player",
-            email: `${userId}@telegram.user`,
-            disconnected: false,
-            lastSeen: Date.now(),
-          };
+          // Use modularized TicTacToe game creation function
+          const { gameId: newGameId, gameState } = createTicTacToeGame(
+            userId.toString(),
+            callbackQuery.from?.first_name || "Player"
+          );
 
-          console.log("✅ Player info created:", {
-            id: playerInfo.id,
-            name: playerInfo.name,
-            email: playerInfo.email,
+          console.log("✅ Game created with modularized function:", {
+            gameId: newGameId,
+            playerId: gameState.players.X?.id,
+            playerName: gameState.players.X?.name,
           });
 
-          const newGameId = Math.random()
-            .toString(36)
-            .substring(2, 8)
-            .toUpperCase();
-
-          console.log("🎲 Generated game ID:", newGameId);
-
-          const gameState: GameState = {
-            ...createInitialGameState(),
-            players: { X: playerInfo },
-            status: "waiting",
-          };
-
-          console.log("✅ Game state created successfully");
-
+          // Update the main games map and active games
           games.set(newGameId, gameState);
           activeGames.set(chatId.toString(), {
             gameId: newGameId,
@@ -858,39 +786,22 @@ Invite your friend to join:
             `🎯 Creating X/O game for user ${userId} in chat ${chatId} (inline)`
           );
 
-          // Create a new X/O game
-          const playerInfo: PlayerInfo = {
-            id: userId.toString(),
-            name: callbackQuery.from?.first_name || "Player",
-            email: `${userId}@telegram.user`,
-            disconnected: false,
-            lastSeen: Date.now(),
-          };
+          // Use modularized TicTacToe game creation function
+          const { gameId: newGameId, gameState } = createTicTacToeGame(
+            userId.toString(),
+            callbackQuery.from?.first_name || "Player"
+          );
 
-          console.log("✅ Player info created for inline game:", {
-            id: playerInfo.id,
-            name: playerInfo.name,
-            email: playerInfo.email,
+          console.log("✅ Game created with modularized function (inline):", {
+            gameId: newGameId,
+            playerId: gameState.players.X?.id,
+            playerName: gameState.players.X?.name,
           });
-
-          const newGameId = Math.random()
-            .toString(36)
-            .substring(2, 8)
-            .toUpperCase();
-
-          console.log("🎲 Generated game ID for inline game:", newGameId);
-
-          const gameState: GameState = {
-            ...createInitialGameState(),
-            players: { X: playerInfo },
-            status: "waiting",
-          };
-
-          console.log("✅ Game state created successfully for inline game");
 
           // Store the original chat ID where the game was created
           const originalChatId = chatId;
 
+          // Update the main games map and active games
           games.set(newGameId, gameState);
           activeGames.set(chatId.toString(), {
             gameId: newGameId,
@@ -1076,10 +987,10 @@ Waiting for another player to join...
       console.log("  User ID:", userId);
       console.log("  Chat ID:", chatId);
 
-      // Handle restart game (same players, swapped order)
-      const gameState = games.get(gameId);
+      // Use modularized TicTacToe restart function
+      const newGameState = restartTicTacToeGame(gameId);
 
-      if (!gameState) {
+      if (!newGameState) {
         console.error(`❌ Game ${gameId} not found for restart`);
         try {
           await bot.answerCallbackQuery(callbackQuery.id, {
@@ -1095,44 +1006,7 @@ Waiting for another player to join...
         return;
       }
 
-      // Check if user is part of the game
-      const isPlayerX = gameState.players.X?.id === userId.toString();
-      const isPlayerO = gameState.players.O?.id === userId.toString();
-
-      if (!isPlayerX && !isPlayerO) {
-        console.error(`❌ User ${userId} is not part of game ${gameId}`);
-        try {
-          await bot.answerCallbackQuery(callbackQuery.id, {
-            text: "You are not part of this game",
-            show_alert: true,
-          });
-        } catch (error) {
-          console.error(
-            "Failed to answer callback query for non-player:",
-            error
-          );
-        }
-        return;
-      }
-
-      console.log(`🔄 Restarting game ${gameId} with swapped players`);
-
-      // Swap players: O becomes X, X becomes O
-      const originalX = gameState.players.X;
-      const originalO = gameState.players.O;
-
-      // Create new game state with swapped players
-      const newGameState: GameState = {
-        ...createInitialGameState(),
-        players: {
-          X: originalO, // O becomes X (starts first)
-          O: originalX, // X becomes O
-        },
-        status: "playing",
-        currentPlayer: "X", // O (now X) starts first
-        turnStartedAt: Date.now(),
-      };
-
+      // Update the main games map
       games.set(gameId, newGameState);
 
       // For inline queries, we need to edit the inline message
@@ -1143,13 +1017,13 @@ Waiting for another player to join...
           `📝 Editing inline message ${inlineMessageId} for restart...`
         );
 
-        // Format the game board and status
-        const boardMessage = formatBoard(newGameState.board);
-        const statusMessage = getGameStatusMessage(newGameState); // New game, both players can click
+        // Format the game board and status using modularized functions
+        const boardMessage = formatTicTacToeBoard(newGameState.board);
+        const statusMessage = getTicTacToeStatusMessage(newGameState); // New game, both players can click
         const fullMessage = `${boardMessage}\n\n${statusMessage}`;
 
         // Create the game board keyboard - all cells should be clickable for new game
-        const keyboard = createBoardKeyboard(newGameState, gameId, true);
+        const keyboard = createTicTacToeKeyboard(newGameState, gameId, true);
 
         try {
           await bot.editMessageText(fullMessage, {
@@ -1176,10 +1050,7 @@ Waiting for another player to join...
       }
 
       try {
-        await bot.answerCallbackQuery(callbackQuery.id, {
-          text: "Game restarted! O goes first now.",
-          show_alert: true,
-        });
+        await bot.answerCallbackQuery(callbackQuery.id);
         console.log("✅ Restart game callback query answered successfully");
       } catch (error) {
         console.error("Failed to answer restart game callback query:", error);
@@ -1600,77 +1471,7 @@ The game will automatically update for both players!
   await bot.sendMessage(chatId, helpMessage);
 });
 
-// Helper functions
-function createBoardKeyboard(
-  game: GameState,
-  gameId: string,
-  isMyTurn: boolean
-): TelegramBot.InlineKeyboardMarkup {
-  const keyboard: TelegramBot.InlineKeyboardButton[][] = [];
-  let row: TelegramBot.InlineKeyboardButton[] = [];
-
-  for (let i = 0; i < 9; i++) {
-    const cell = game.board[i];
-    let text = "⬜";
-    let callbackData = `move:${gameId}:${i}`;
-
-    if (cell === "X") {
-      text = "❌";
-      callbackData = "noop";
-    } else if (cell === "O") {
-      text = "⭕";
-      callbackData = "noop";
-    }
-
-    // Disable buttons if not player's turn or game is over
-    if (!isMyTurn || game.winner || game.status === "draw") {
-      callbackData = "noop";
-    }
-
-    row.push({
-      text,
-      callback_data: callbackData,
-    });
-
-    if (row.length === 3) {
-      keyboard.push(row);
-      row = [];
-    }
-  }
-
-  return { inline_keyboard: keyboard };
-}
-
-function formatBoard(board: string[]): string {
-  const symbols = board.map((cell) =>
-    cell === "-" ? "⬜" : cell === "X" ? "❌" : "⭕"
-  );
-
-  return `
-${symbols[0]} | ${symbols[1]} | ${symbols[2]}
----------
-${symbols[3]} | ${symbols[4]} | ${symbols[5]}
----------
-${symbols[6]} | ${symbols[7]} | ${symbols[8]}
-  `.trim();
-}
-
-function getGameStatusMessage(game: GameState): string {
-  if (game.winner) {
-    const winnerName =
-      game.winner === "X" ? game.players.X?.name : game.players.O?.name;
-    return `🎉 ${winnerName || "Unknown"} wins!`;
-  }
-
-  if (game.status === "draw") {
-    return `🤝 It's a draw!`;
-  }
-
-  const currentPlayerName =
-    game.currentPlayer === "X" ? game.players.X?.name : game.players.O?.name;
-
-  return `🎯 It's ${currentPlayerName || "opponent"}'s turn`;
-}
+// Helper functions - now using modularized TicTacToe functions
 
 async function sendGameBoard(
   chatId: number,
@@ -1678,11 +1479,11 @@ async function sendGameBoard(
   gameId: string,
   isMyTurn: boolean
 ) {
-  const boardMessage = formatBoard(game.board);
-  const statusMessage = getGameStatusMessage(game);
+  const boardMessage = formatTicTacToeBoard(game.board);
+  const statusMessage = getTicTacToeStatusMessage(game);
   const fullMessage = `${boardMessage}\n\n${statusMessage}`;
 
-  const keyboard = createBoardKeyboard(game, gameId, isMyTurn);
+  const keyboard = createTicTacToeKeyboard(game, gameId, isMyTurn);
 
   const sentMessage = await bot.sendMessage(chatId, fullMessage, {
     parse_mode: "Markdown",
@@ -1704,11 +1505,11 @@ async function updateGameMessage(
 ) {
   if (!messageId) return;
 
-  const boardMessage = formatBoard(game.board);
-  const statusMessage = getGameStatusMessage(game);
+  const boardMessage = formatTicTacToeBoard(game.board);
+  const statusMessage = getTicTacToeStatusMessage(game);
   const fullMessage = `${boardMessage}\n\n${statusMessage}`;
 
-  const keyboard = createBoardKeyboard(game, gameId, false);
+  const keyboard = createTicTacToeKeyboard(game, gameId, false);
 
   try {
     await bot.editMessageText(fullMessage, {

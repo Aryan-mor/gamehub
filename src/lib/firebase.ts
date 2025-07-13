@@ -50,7 +50,7 @@ NEXT_PUBLIC_FIREBASE_DATABASE_URL=https://your-project-id-default-rtdb.firebasei
 }
 
 // Initialize Firebase
-let app: any;
+let app: ReturnType<typeof initializeApp> | undefined;
 let auth: Auth | undefined;
 let database: Database | undefined;
 
