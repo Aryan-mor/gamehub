@@ -23,6 +23,13 @@ import {
   FOOTBALL_DIRECTIONS,
   type FootballStake,
 } from "../../bot/games/football";
+import {
+  createBasketballGame,
+  setBasketballGuess,
+  processBasketballResult,
+  BASKETBALL_STAKES,
+  type BasketballStake,
+} from "../../bot/games/basketball";
 
 /**
  * Registers all XO-specific Telegram bot handlers (move, join, restart, etc.).
@@ -47,6 +54,7 @@ export function registerXoTelegramHandlers(bot: any) {
         inline_keyboard: [
           [{ text: "🎲 Dice Game", callback_data: "newgame:dice" }],
           [{ text: "⚽️ Football Game", callback_data: "newgame:football" }],
+          [{ text: "🏀 Basketball Game", callback_data: "newgame:basketball" }],
         ],
       };
 
@@ -66,7 +74,10 @@ export function registerXoTelegramHandlers(bot: any) {
             { text: "🎮 X/O Game", callback_data: "newgame:xo" },
             { text: "🎲 Dice Game", callback_data: "newgame:dice" },
           ],
-          [{ text: "⚽️ Football Game", callback_data: "newgame:football" }],
+          [
+            { text: "⚽️ Football Game", callback_data: "newgame:football" },
+            { text: "🏀 Basketball Game", callback_data: "newgame:basketball" },
+          ],
         ],
       };
 
@@ -195,6 +206,42 @@ export function registerXoTelegramHandlers(bot: any) {
         };
 
         const text = "⚽️ Direction Guess Game\n\nChoose your stake amount:";
+
+        // Update the message
+        const inlineMessageId = callbackQuery.inline_message_id;
+        if (inlineMessageId) {
+          await bot.editMessageText(text, {
+            inline_message_id: inlineMessageId,
+            reply_markup: stakeKeyboard,
+          });
+        } else if (chatId && callbackQuery.message?.message_id) {
+          await bot.editMessageText(text, {
+            chat_id: chatId,
+            message_id: callbackQuery.message.message_id,
+            reply_markup: stakeKeyboard,
+          });
+        }
+
+        await bot.answerCallbackQuery(callbackQuery.id);
+        return;
+      }
+
+      if (gameType === "basketball") {
+        // Show basketball stake selection
+        const stakeKeyboard = {
+          inline_keyboard: [
+            [
+              { text: "2 Coins", callback_data: `basketball_stake:2` },
+              { text: "5 Coins", callback_data: `basketball_stake:5` },
+            ],
+            [
+              { text: "10 Coins", callback_data: `basketball_stake:10` },
+              { text: "20 Coins", callback_data: `basketball_stake:20` },
+            ],
+          ],
+        };
+
+        const text = "🏀 Hoop Shot Game\n\nChoose your stake amount:";
 
         // Update the message
         const inlineMessageId = callbackQuery.inline_message_id;
@@ -386,6 +433,35 @@ export function registerXoTelegramHandlers(bot: any) {
         if (inlineMessageId) {
           await bot.editMessageText(
             "⚽️ Direction Guess Game\n\nChoose your stake amount:",
+            {
+              inline_message_id: inlineMessageId,
+              reply_markup: stakeKeyboard,
+            }
+          );
+        }
+        await bot.answerCallbackQuery(callbackQuery.id);
+        return;
+      }
+
+      if (gameId === "basketball") {
+        // Show stake selection for basketball games
+        const stakeKeyboard = {
+          inline_keyboard: [
+            [
+              { text: "2 Coins", callback_data: `basketball_stake:2` },
+              { text: "5 Coins", callback_data: `basketball_stake:5` },
+            ],
+            [
+              { text: "10 Coins", callback_data: `basketball_stake:10` },
+              { text: "20 Coins", callback_data: `basketball_stake:20` },
+            ],
+          ],
+        };
+
+        const inlineMessageId = callbackQuery.inline_message_id;
+        if (inlineMessageId) {
+          await bot.editMessageText(
+            "🏀 Hoop Shot Game\n\nChoose your stake amount:",
             {
               inline_message_id: inlineMessageId,
               reply_markup: stakeKeyboard,
@@ -1564,6 +1640,409 @@ export function registerXoTelegramHandlers(bot: any) {
       console.log(`[FOOTBALL] Play again new game: showing stake selection`);
       return;
     }
+
+    // --- Basketball Game Handlers ---
+
+    // Handle basketball stake selection
+    if (action === "basketball_stake" && parts[1]) {
+      console.log(
+        `[BASKETBALL] basketball_stake callback received: userId=${userId}, parts=`,
+        parts
+      );
+      const stake = parseInt(parts[1]) as BasketballStake;
+      console.log(`[BASKETBALL] Parsed stake: ${stake}`);
+
+      if (!BASKETBALL_STAKES.includes(stake)) {
+        console.log(`[BASKETBALL] Invalid stake amount: ${stake}`);
+        await bot.answerCallbackQuery(callbackQuery.id, {
+          text: "Invalid stake amount",
+          show_alert: true,
+        });
+        return;
+      }
+
+      try {
+        console.log(
+          `[BASKETBALL] Creating basketball game for userId=${userId}, stake=${stake}`
+        );
+        const gameState = await createBasketballGame(userId.toString(), stake);
+
+        const guessKeyboard = {
+          inline_keyboard: [
+            [
+              {
+                text: "🏀 Score",
+                callback_data: `basketball_guess:${gameState.id}:score`,
+              },
+              {
+                text: "❌ Miss",
+                callback_data: `basketball_guess:${gameState.id}:miss`,
+              },
+            ],
+          ],
+        };
+
+        const chatId = callbackQuery.message?.chat.id;
+        const messageId = callbackQuery.message?.message_id;
+        const inlineMessageId = callbackQuery.inline_message_id;
+        const text =
+          `🏀 Hoop Shot Game - Stake: ${stake} Coins\n\nWill your shot score?\n\n` +
+          `🎯 Win 2× your stake if you guess correctly!`;
+        if (inlineMessageId) {
+          await bot.editMessageText(text, {
+            inline_message_id: inlineMessageId,
+            reply_markup: guessKeyboard,
+          });
+        } else if (chatId && messageId) {
+          await bot.editMessageText(text, {
+            chat_id: chatId,
+            message_id: messageId,
+            reply_markup: guessKeyboard,
+          });
+        }
+
+        await bot.answerCallbackQuery(callbackQuery.id);
+        console.log(
+          `[BASKETBALL] Created game ${gameState.id} with stake ${stake} for user ${userId}`
+        );
+        return;
+      } catch (error: any) {
+        await bot.answerCallbackQuery(callbackQuery.id, {
+          text: error.message || "Failed to create basketball game",
+          show_alert: true,
+        });
+        return;
+      }
+    }
+
+    // Handle basketball guess selection
+    if (action === "basketball_guess" && parts[1] && parts[2]) {
+      console.log(
+        `[BASKETBALL] basketball_guess callback received: userId=${userId}, parts=`,
+        parts
+      );
+      const gameId = parts[1];
+      const guess = parts[2] as "score" | "miss";
+      console.log(
+        `[BASKETBALL] Processing guess: gameId=${gameId}, guess=${guess}`
+      );
+
+      try {
+        // Set the guess and get game state
+        console.log(`[BASKETBALL] Setting guess for game ${gameId}`);
+        const gameState = await setBasketballGuess(gameId, guess);
+        const stake = gameState.stake;
+
+        // Send the basketball emoji
+        console.log(
+          `[BASKETBALL] Sending basketball emoji to chatId=${chatId}`
+        );
+        const basketballMessage = await bot.sendDice(chatId, { emoji: "🏀" });
+        const basketballResult = basketballMessage.dice?.value;
+        console.log(
+          `[BASKETBALL] Basketball message received:`,
+          JSON.stringify(basketballMessage, null, 2)
+        );
+        console.log(`[BASKETBALL] Basketball result: ${basketballResult}`);
+
+        if (!basketballResult) {
+          console.log(
+            `[BASKETBALL] Failed to get basketball result from message`
+          );
+          throw new Error("Failed to get basketball result");
+        }
+
+        // Wait for basketball animation to finish (3 seconds)
+        console.log(
+          `[BASKETBALL] Waiting for basketball animation to finish...`
+        );
+        await new Promise((resolve) => setTimeout(resolve, 3000));
+
+        // Process the result
+        console.log(
+          `[BASKETBALL] Processing basketball result: gameId=${gameId}, basketballResult=${basketballResult}`
+        );
+        const result = await processBasketballResult(gameId, basketballResult);
+
+        // Update the original message to remove buttons
+        const resultChatId = callbackQuery.message?.chat.id;
+        const messageId = callbackQuery.message?.message_id;
+        const inlineMessageId = callbackQuery.inline_message_id;
+        if (inlineMessageId) {
+          await bot.editMessageText(result.message, {
+            inline_message_id: inlineMessageId,
+            reply_markup: { inline_keyboard: [] },
+          });
+        } else if (resultChatId && messageId) {
+          await bot.editMessageText(result.message, {
+            chat_id: resultChatId,
+            message_id: messageId,
+            reply_markup: { inline_keyboard: [] },
+          });
+        }
+
+        // Send result message with play again buttons
+        const resultEmoji = result.won ? "🎉" : "😔";
+        const guessText = guess === "score" ? "🏀 Score" : "❌ Miss";
+        const resultText = basketballResult >= 4 ? "🏀 SCORED" : "❌ MISSED";
+        const finalResultText = result.won
+          ? `${resultEmoji} **Congratulations! You won ${result.reward} coins!**\n\n🏀 You guessed: ${guessText}\n🏀 Shot result: ${resultText}\n💰 Reward: ${result.reward} coins`
+          : `${resultEmoji} **Better luck next time!**\n\n🏀 You guessed: ${guessText}\n🏀 Shot result: ${resultText}\n💸 You lost ${stake} coins`;
+
+        const playAgainKeyboard = {
+          inline_keyboard: [
+            [
+              {
+                text: "🎯 Play Again (Same Stake & Guess)",
+                callback_data: `basketball_play_again_exact:${stake}:${guess}`,
+              },
+            ],
+            [
+              {
+                text: "🔄 Play Again (Same Stake)",
+                callback_data: `basketball_play_again_same:${stake}`,
+              },
+            ],
+            [
+              {
+                text: "🏀 New Basketball Game",
+                callback_data: "basketball_play_again_new",
+              },
+            ],
+          ],
+        };
+
+        await bot.sendMessage(chatId, finalResultText, {
+          parse_mode: "Markdown",
+          reply_markup: playAgainKeyboard,
+        });
+
+        await bot.answerCallbackQuery(callbackQuery.id);
+        console.log(
+          `[BASKETBALL] Game ${gameId} completed: won=${result.won}, reward=${result.reward}`
+        );
+        return;
+      } catch (error: any) {
+        console.error(`[BASKETBALL] Error processing basketball guess:`, error);
+        await bot.answerCallbackQuery(callbackQuery.id, {
+          text: error.message || "Failed to process basketball game",
+          show_alert: true,
+        });
+        return;
+      }
+    }
+
+    // Handle play again with same stake
+    if (action === "basketball_play_again_same" && parts[1]) {
+      const stake = parseInt(parts[1]) as BasketballStake;
+      console.log(
+        `[BASKETBALL] Play again same stake: userId=${userId}, stake=${stake}`
+      );
+
+      try {
+        // Check balance
+        const hasBalance = await requireBalance(userId.toString(), stake);
+        if (!hasBalance) {
+          await bot.answerCallbackQuery(callbackQuery.id, {
+            text: "Insufficient Coins.",
+            show_alert: true,
+          });
+          return;
+        }
+
+        // Create new game with same stake
+        const gameState = await createBasketballGame(userId.toString(), stake);
+
+        // Show guess options
+        const guessKeyboard = {
+          inline_keyboard: [
+            [
+              {
+                text: "🏀 Score",
+                callback_data: `basketball_guess:${gameState.id}:score`,
+              },
+              {
+                text: "❌ Miss",
+                callback_data: `basketball_guess:${gameState.id}:miss`,
+              },
+            ],
+          ],
+        };
+
+        const text = `🏀 Hoop Shot Game - Stake: ${stake} Coins\n\nWill your shot score?`;
+
+        // Update the message
+        const inlineMessageId = callbackQuery.inline_message_id;
+        if (inlineMessageId) {
+          await bot.editMessageText(text, {
+            inline_message_id: inlineMessageId,
+            reply_markup: guessKeyboard,
+          });
+        } else if (chatId && callbackQuery.message?.message_id) {
+          await bot.editMessageText(text, {
+            chat_id: chatId,
+            message_id: callbackQuery.message.message_id,
+            reply_markup: guessKeyboard,
+          });
+        }
+
+        await bot.answerCallbackQuery(callbackQuery.id);
+        console.log(
+          `[BASKETBALL] Play again same stake: created game ${gameState.id}`
+        );
+        return;
+      } catch (error: any) {
+        await bot.answerCallbackQuery(callbackQuery.id, {
+          text: error.message || "Failed to start new game",
+          show_alert: true,
+        });
+        return;
+      }
+    }
+
+    // Handle play again with same stake and same guess
+    if (action === "basketball_play_again_exact" && parts[1] && parts[2]) {
+      const stake = parseInt(parts[1]) as BasketballStake;
+      const guess = parts[2] as "score" | "miss";
+      console.log(
+        `[BASKETBALL] Play again exact: userId=${userId}, stake=${stake}, guess=${guess}`
+      );
+
+      try {
+        // Check balance
+        const hasBalance = await requireBalance(userId.toString(), stake);
+        if (!hasBalance) {
+          await bot.answerCallbackQuery(callbackQuery.id, {
+            text: "Insufficient Coins.",
+            show_alert: true,
+          });
+          return;
+        }
+
+        // Create new game with same stake
+        const gameState = await createBasketballGame(userId.toString(), stake);
+
+        // Set the same guess immediately
+        await setBasketballGuess(gameState.id, guess);
+
+        // Send the basketball emoji
+        console.log(
+          `[BASKETBALL] Sending basketball emoji to chatId=${chatId}`
+        );
+        const basketballMessage = await bot.sendDice(chatId, { emoji: "🏀" });
+        const basketballResult = basketballMessage.dice?.value;
+        console.log(`[BASKETBALL] Basketball result: ${basketballResult}`);
+
+        if (!basketballResult) {
+          console.log(
+            `[BASKETBALL] Failed to get basketball result from message`
+          );
+          throw new Error("Failed to get basketball result");
+        }
+
+        // Wait for basketball animation to finish (3 seconds)
+        console.log(
+          `[BASKETBALL] Waiting for basketball animation to finish...`
+        );
+        await new Promise((resolve) => setTimeout(resolve, 3000));
+
+        // Process the result
+        console.log(
+          `[BASKETBALL] Processing basketball result: gameId=${gameState.id}, basketballResult=${basketballResult}`
+        );
+        const result = await processBasketballResult(
+          gameState.id,
+          basketballResult
+        );
+
+        // Send result message with play again buttons
+        const resultEmoji = result.won ? "🎉" : "😔";
+        const guessText = guess === "score" ? "🏀 Score" : "❌ Miss";
+        const resultText = basketballResult >= 4 ? "🏀 SCORED" : "❌ MISSED";
+        const finalResultText = result.won
+          ? `${resultEmoji} **Congratulations! You won ${result.reward} coins!**\n\n🏀 You guessed: ${guessText}\n🏀 Shot result: ${resultText}\n💰 Reward: ${result.reward} coins`
+          : `${resultEmoji} **Better luck next time!**\n\n🏀 You guessed: ${guessText}\n🏀 Shot result: ${resultText}\n💸 You lost ${stake} coins`;
+
+        const playAgainKeyboard = {
+          inline_keyboard: [
+            [
+              {
+                text: "🎯 Play Again (Same Stake & Guess)",
+                callback_data: `basketball_play_again_exact:${stake}:${guess}`,
+              },
+            ],
+            [
+              {
+                text: "🔄 Play Again (Same Stake)",
+                callback_data: `basketball_play_again_same:${stake}`,
+              },
+            ],
+            [
+              {
+                text: "🏀 New Basketball Game",
+                callback_data: "basketball_play_again_new",
+              },
+            ],
+          ],
+        };
+
+        await bot.sendMessage(chatId, finalResultText, {
+          parse_mode: "Markdown",
+          reply_markup: playAgainKeyboard,
+        });
+
+        await bot.answerCallbackQuery(callbackQuery.id);
+        console.log(
+          `[BASKETBALL] Play again exact: completed game ${gameState.id}`
+        );
+        return;
+      } catch (error: any) {
+        await bot.answerCallbackQuery(callbackQuery.id, {
+          text: error.message || "Failed to start new game",
+          show_alert: true,
+        });
+        return;
+      }
+    }
+
+    // Handle new basketball game
+    if (action === "basketball_play_again_new") {
+      console.log(`[BASKETBALL] Play again new game: userId=${userId}`);
+
+      const stakeKeyboard = {
+        inline_keyboard: [
+          [
+            { text: "2 Coins", callback_data: `basketball_stake:2` },
+            { text: "5 Coins", callback_data: `basketball_stake:5` },
+          ],
+          [
+            { text: "10 Coins", callback_data: `basketball_stake:10` },
+            { text: "20 Coins", callback_data: `basketball_stake:20` },
+          ],
+        ],
+      };
+
+      const text = "🏀 Hoop Shot Game\n\nChoose your stake amount:";
+
+      // Update the message
+      const inlineMessageId = callbackQuery.inline_message_id;
+      if (inlineMessageId) {
+        await bot.editMessageText(text, {
+          inline_message_id: inlineMessageId,
+          reply_markup: stakeKeyboard,
+        });
+      } else if (chatId && callbackQuery.message?.message_id) {
+        await bot.editMessageText(text, {
+          chat_id: chatId,
+          message_id: callbackQuery.message.message_id,
+          reply_markup: stakeKeyboard,
+        });
+      }
+
+      await bot.answerCallbackQuery(callbackQuery.id);
+      console.log(`[BASKETBALL] Play again new game: showing stake selection`);
+      return;
+    }
   });
 
   // Inline query handler (restored)
@@ -1660,8 +2139,12 @@ export function registerXoTelegramHandlers(bot: any) {
                 text: "⚽️ Football Game",
                 callback_data: "inline_start_game:football",
               },
-              { text: "Dots & Boxes", callback_data: "inline_start_game:dots" },
+              {
+                text: "🏀 Basketball Game",
+                callback_data: "inline_start_game:basketball",
+              },
             ],
+            [{ text: "Dots & Boxes", callback_data: "inline_start_game:dots" }],
             [
               {
                 text: "Memory Game",
