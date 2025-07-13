@@ -9,6 +9,7 @@ import {
   isDraw,
   getNextPlayer,
 } from "./game";
+import { recordWin, recordDraw } from "../bot/games/userStats";
 
 // Check if Firebase is properly initialized
 const checkFirebaseConnection = () => {
@@ -237,8 +238,28 @@ export class GameService {
     if (winner) {
       processedGameState.status = "won";
       processedGameState.winner = winner;
+
+      // Record the win
+      const winnerId =
+        winner === "X"
+          ? processedGameState.players.X?.id
+          : processedGameState.players.O?.id;
+      const loserId =
+        winner === "X"
+          ? processedGameState.players.O?.id
+          : processedGameState.players.X?.id;
+      if (winnerId && loserId) {
+        recordWin(winnerId, loserId);
+      }
     } else if (isDraw(processedGameState.board)) {
       processedGameState.status = "draw";
+
+      // Record the draw
+      const playerXId = processedGameState.players.X?.id;
+      const playerOId = processedGameState.players.O?.id;
+      if (playerXId && playerOId) {
+        recordDraw(playerXId, playerOId);
+      }
     } else {
       // Switch turns and reset turn timer
       processedGameState.currentPlayer = getNextPlayer(

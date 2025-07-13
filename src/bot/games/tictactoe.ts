@@ -5,6 +5,7 @@ import {
   Player,
 } from "../../lib/game";
 import TelegramBot from "node-telegram-bot-api";
+import { recordWin, recordDraw, formatStatsMessage } from "./userStats";
 
 // In-memory game storage for X/O games
 const ticTacToeGames = new Map<string, GameState>();
@@ -31,7 +32,7 @@ const WINNING_COMBINATIONS = [
  */
 export function checkWinner(board: string[]): string | null {
   for (const [a, b, c] of WINNING_COMBINATIONS) {
-    if (board[a] && board[a] === board[b] && board[a] === board[c]) {
+    if (board[a] !== "-" && board[a] === board[b] && board[a] === board[c]) {
       return board[a];
     }
   }
@@ -94,6 +95,11 @@ export function joinTicTacToeGame(
     return null;
   }
 
+  // Check if the user is already in the game (as X)
+  if (gameState.players.X?.id === joinerId) {
+    return null;
+  }
+
   const playerInfo: PlayerInfo = {
     id: joinerId,
     name: joinerName,
@@ -146,8 +152,24 @@ export function makeMove(
   if (winner) {
     gameState.status = "won";
     gameState.winner = winner as Player;
+
+    // Record the win
+    const winnerId =
+      winner === "X" ? gameState.players.X?.id : gameState.players.O?.id;
+    const loserId =
+      winner === "X" ? gameState.players.O?.id : gameState.players.X?.id;
+    if (winnerId && loserId) {
+      recordWin(winnerId, loserId);
+    }
   } else if (isDraw(gameState.board)) {
     gameState.status = "draw";
+
+    // Record the draw
+    const playerXId = gameState.players.X?.id;
+    const playerOId = gameState.players.O?.id;
+    if (playerXId && playerOId) {
+      recordDraw(playerXId, playerOId);
+    }
   } else {
     gameState.currentPlayer = getNextPlayer(gameState.currentPlayer) as Player;
     gameState.turnStartedAt = Date.now();
@@ -264,7 +286,20 @@ export function getTicTacToeStatusMessage(game: GameState): string {
   if (game.winner) {
     const winnerName =
       game.winner === "X" ? game.players.X?.name : game.players.O?.name;
-    return `🎉 ${winnerName || "Unknown"} wins!`;
+    const loserName =
+      game.winner === "X" ? game.players.O?.name : game.players.X?.name;
+
+    const winnerId =
+      game.winner === "X" ? game.players.X?.id : game.players.O?.id;
+    const loserId =
+      game.winner === "X" ? game.players.O?.id : game.players.X?.id;
+
+    const statsMessage =
+      winnerId && loserId && winnerName && loserName
+        ? formatStatsMessage(winnerId, loserId, winnerName, loserName)
+        : "";
+
+    return `🎉 ${winnerName || "Unknown"} wins!\n\n${statsMessage}`;
   }
 
   if (game.status === "draw") {
@@ -282,8 +317,7 @@ export function getTicTacToeStatusMessage(game: GameState): string {
  */
 export function createTicTacToeKeyboard(
   game: GameState,
-  gameId: string,
-  isMyTurn: boolean
+  gameId: string
 ): TelegramBot.InlineKeyboardMarkup {
   const keyboard: TelegramBot.InlineKeyboardButton[][] = [];
   let row: TelegramBot.InlineKeyboardButton[] = [];
@@ -301,8 +335,13 @@ export function createTicTacToeKeyboard(
       callbackData = "noop";
     }
 
-    // Disable buttons if not player's turn or game is over
-    if (!isMyTurn || game.winner || game.status === "draw") {
+    // For inline mode, we need to check if it's the current player's turn
+    // and if the user making the request is the current player
+    const isCurrentPlayerTurn =
+      game.currentPlayer && !game.winner && game.status !== "draw";
+
+    // Only enable buttons if it's the current player's turn and the game is active
+    if (!isCurrentPlayerTurn) {
       callbackData = "noop";
     }
 
