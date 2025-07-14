@@ -1,16 +1,17 @@
 import { getDiceStats } from "./dice";
+import TelegramBot from "node-telegram-bot-api";
 
 /**
  * Registers all dice game Telegram bot handlers
  * @param bot - The TelegramBot instance
  */
-export function registerDiceHandlers(bot: any) {
+export function registerDiceHandlers(bot: TelegramBot) {
   console.log(
     "[DICE] registerDiceHandlers called. Registering dice game handlers..."
   );
 
   // /dice_game command
-  bot.onText(/\/dice_game/, async (msg: any) => {
+  bot.onText(/\/dice_game/, async (msg: TelegramBot.Message) => {
     const chatId = msg.chat.id;
     const userId = msg.from?.id;
     if (!userId) {
@@ -39,7 +40,7 @@ export function registerDiceHandlers(bot: any) {
   });
 
   // /dice_stats command
-  bot.onText(/\/dice_stats/, async (msg: any) => {
+  bot.onText(/\/dice_stats/, async (msg: TelegramBot.Message) => {
     const chatId = msg.chat.id;
     const userId = msg.from?.id;
     if (!userId) {
@@ -62,14 +63,14 @@ export function registerDiceHandlers(bot: any) {
         `💰 Total Winnings: ${stats.totalWinnings} Coins`;
 
       await bot.sendMessage(chatId, message);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error(`[DICE] /dice_stats error for userId=${userId}:`, error);
       await bot.sendMessage(chatId, "❌ Failed to fetch your dice stats.");
     }
   });
 
   // Inline query handler for dice game
-  bot.on("inline_query", async (inlineQuery: any) => {
+  bot.on("inline_query", async (inlineQuery: TelegramBot.InlineQuery) => {
     const query = inlineQuery.query;
     const userId = inlineQuery.from?.id;
 
@@ -77,7 +78,7 @@ export function registerDiceHandlers(bot: any) {
 
     // Handle dice game inline queries
     if (query === "dice" || query === "dice_game" || query === "🎲") {
-      const results = [
+      const results: TelegramBot.InlineQueryResult[] = [
         {
           type: "article",
           id: "dice_game",

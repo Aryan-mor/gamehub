@@ -249,7 +249,7 @@ export class GameService {
           ? processedGameState.players.O?.id
           : processedGameState.players.X?.id;
       if (winnerId && loserId) {
-        recordWin(winnerId, loserId);
+        recordWin(winnerId, loserId, "xo");
       }
     } else if (isDraw(processedGameState.board)) {
       processedGameState.status = "draw";
@@ -258,7 +258,7 @@ export class GameService {
       const playerXId = processedGameState.players.X?.id;
       const playerOId = processedGameState.players.O?.id;
       if (playerXId && playerOId) {
-        recordDraw(playerXId, playerOId);
+        recordDraw(playerXId, playerOId, "xo");
       }
     } else {
       // Switch turns and reset turn timer

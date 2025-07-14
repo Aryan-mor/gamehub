@@ -1,18 +1,16 @@
 "use client";
 
-import { useSession } from "next-auth/react";
-import { redirect } from "next/navigation";
 import { useState, useEffect } from "react";
 
 export default function Home() {
-  const { data: session, status } = useSession();
+  // Placeholder for Telegram login logic or minimal home page
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  if (!mounted || status === "loading") {
+  if (!mounted) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-gray-900"></div>
@@ -20,12 +18,9 @@ export default function Home() {
     );
   }
 
-  if (!session) {
-    redirect("/login");
-  }
-
-  // Redirect to lobby if authenticated
-  redirect("/lobby");
-
-  return null;
+  return (
+    <div className="min-h-screen flex items-center justify-center">
+      <h1 className="text-3xl font-bold">Welcome to GameHub (Telegram Auth Only)</h1>
+    </div>
+  );
 }
