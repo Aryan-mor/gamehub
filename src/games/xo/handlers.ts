@@ -7,7 +7,13 @@ import {
   VALID_STAKES,
 } from "./game";
 import { makeXoMove, restartXoGame } from "./logic";
-import { formatStatsMessage } from "../../bot/games/userStats";
+import {
+  formatStatsMessage,
+  getUser,
+  addCoins,
+  canClaimDaily,
+  setLastFreeCoinAt,
+} from "../../bot/games/userStats";
 import { requireBalance } from "../../lib/coinService";
 import {
   createDiceGame,
@@ -152,6 +158,141 @@ export function registerXoTelegramHandlers(bot: TelegramBot) {
     const action = parts[0];
     const gameId = parts[1];
     const position = parts[2];
+
+    // --- Glass Button Handlers ---
+    console.log(
+      `[BOT] Callback query received: data=${data}, userId=${userId}`
+    );
+
+    if (data === "startgame") {
+      const isBotChat = callbackQuery.message?.chat.type === "private";
+
+      // If it's a bot chat (private), show only single-player games
+      if (isBotChat) {
+        const singlePlayerKeyboard = {
+          inline_keyboard: [
+            [{ text: "🎲 Dice Game", callback_data: "newgame:dice" }],
+            [{ text: "⚽️ Football Game", callback_data: "newgame:football" }],
+            [
+              {
+                text: "🏀 Basketball Game",
+                callback_data: "newgame:basketball",
+              },
+            ],
+          ],
+        };
+
+        await bot.editMessageText(
+          "🎮 Choose a game to play:\n\n*Single-player games available in bot chat*",
+          {
+            chat_id: chatId,
+            message_id: callbackQuery.message?.message_id,
+            reply_markup: singlePlayerKeyboard,
+            parse_mode: "Markdown",
+          }
+        );
+      } else {
+        // If it's a group chat, show all games
+        const allGamesKeyboard = {
+          inline_keyboard: [
+            [
+              { text: "🎮 X/O Game", callback_data: "newgame:xo" },
+              { text: "🎲 Dice Game", callback_data: "newgame:dice" },
+            ],
+            [
+              { text: "⚽️ Football Game", callback_data: "newgame:football" },
+              {
+                text: "🏀 Basketball Game",
+                callback_data: "newgame:basketball",
+              },
+            ],
+          ],
+        };
+
+        await bot.editMessageText(
+          "🎮 Choose a game to play:\n\n*All games available in group chat*",
+          {
+            chat_id: chatId,
+            message_id: callbackQuery.message?.message_id,
+            reply_markup: allGamesKeyboard,
+            parse_mode: "Markdown",
+          }
+        );
+      }
+
+      await bot.answerCallbackQuery(callbackQuery.id);
+      return;
+    }
+
+    if (data === "freecoin") {
+      const userId = String(callbackQuery.from?.id);
+      const { canClaim, nextClaimIn } = await canClaimDaily(userId);
+
+      if (canClaim) {
+        await addCoins(userId, 20, "daily free coin");
+        await setLastFreeCoinAt(userId, Date.now());
+        await bot.editMessageText(
+          `🪙 You claimed <b>+20</b> daily Coins! Come back tomorrow.`,
+          {
+            chat_id: chatId,
+            message_id: callbackQuery.message?.message_id,
+            parse_mode: "HTML",
+          }
+        );
+      } else {
+        // Format nextClaimIn as HH:MM:SS
+        const h = Math.floor(nextClaimIn / 3600000);
+        const m = Math.floor((nextClaimIn % 3600000) / 60000);
+        const s = Math.floor((nextClaimIn % 60000) / 1000);
+        const pad = (n: number) => n.toString().padStart(2, "0");
+        await bot.editMessageText(
+          `⏰ You already claimed today. Come back in ${pad(h)}:${pad(m)}:${pad(
+            s
+          )}.`,
+          {
+            chat_id: chatId,
+            message_id: callbackQuery.message?.message_id,
+          }
+        );
+      }
+
+      await bot.answerCallbackQuery(callbackQuery.id);
+      return;
+    }
+
+    if (data === "help") {
+      await bot.editMessageText(
+        `Available commands:\n` +
+          `/start - Start the bot\n` +
+          `/startgame - Start a new game\n` +
+          `/freecoin - Claim your daily free coins\n` +
+          `/help - Show this help message\n` +
+          `/newgame - Create a new game\n` +
+          `/games - Show your unfinished games\n` +
+          `/stats - Show your game statistics\n` +
+          `/balance - Show your coin balance`,
+        {
+          chat_id: chatId,
+          message_id: callbackQuery.message?.message_id,
+        }
+      );
+
+      await bot.answerCallbackQuery(callbackQuery.id);
+      return;
+    }
+
+    if (data === "balance") {
+      const userId = String(callbackQuery.from?.id);
+      const user = await getUser(userId);
+      await bot.editMessageText(`💰 Your balance: <b>${user.coins}</b> Coins`, {
+        chat_id: chatId,
+        message_id: callbackQuery.message?.message_id,
+        parse_mode: "HTML",
+      });
+
+      await bot.answerCallbackQuery(callbackQuery.id);
+      return;
+    }
 
     // --- New Game Selection Handler ---
     if (action === "newgame" && parts[1]) {

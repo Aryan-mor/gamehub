@@ -1,5 +1,5 @@
 import dotenv from "dotenv";
-dotenv.config({ path: ".env.local" });
+dotenv.config();
 
 import { initializeApp } from "firebase/app";
 import { getAuth, Auth } from "firebase/auth";

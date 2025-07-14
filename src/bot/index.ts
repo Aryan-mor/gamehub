@@ -22,6 +22,24 @@ if (!token) {
 
 const bot = new TelegramBot(token, { polling: true });
 
+// Add error handlers for debugging
+bot.on("polling_error", (error) => {
+  console.error("❌ Polling error:", error);
+});
+
+bot.on("error", (error) => {
+  console.error("❌ Bot error:", error);
+});
+
+bot.on("message", (msg) => {
+  console.log("📨 Raw message received:", {
+    chatId: msg.chat.id,
+    text: msg.text,
+    from: msg.from?.username || msg.from?.first_name,
+    userId: msg.from?.id,
+  });
+});
+
 // Register all X/O handlers (and future games)
 registerXoHandlers(bot);
 
@@ -37,12 +55,13 @@ registerBasketballHandlers(bot);
 // Set bot commands (generic)
 bot.setMyCommands([
   { command: "/start", description: "Start the bot" },
+  { command: "/startgame", description: "Start a new game" },
+  { command: "/freecoin", description: "Claim your daily free coins" },
+  { command: "/help", description: "Show help information" },
   { command: "/newgame", description: "Create a new game" },
   { command: "/games", description: "Show your unfinished games" },
   { command: "/stats", description: "Show your game statistics" },
   { command: "/balance", description: "Show your coin balance" },
-  { command: "/free_coin", description: "Claim your daily free coins" },
-  { command: "/help", description: "Show help information" },
 ]);
 
 // Add generic /start and /help handlers
@@ -53,13 +72,42 @@ bot.onText(/\/start/, async (msg) => {
   console.log(
     `[BOT] /start received from userId=${userId}, username=${username}`
   );
-  const user = await getUser(userId);
-  let welcome = `🎮 Welcome to GameHub!\n\nUse /help to see available commands.\n\n💰 Earn and claim daily Coins with /free_coin!`;
-  if (user.coins === 0 && !user.lastFreeCoinAt) {
-    await addCoins(userId, 100, "initial grant");
-    welcome = `🎉 You received 100\u202FCoins for joining!\n\n` + welcome;
+
+  try {
+    const user = await getUser(userId);
+    let welcome = `🎮 Welcome to GameHub!\n\n💰 Earn and claim daily Coins with /freecoin!\n\n🎯 Choose an action below:`;
+    if (user.coins === 0 && !user.lastFreeCoinAt) {
+      await addCoins(userId, 100, "initial grant");
+      welcome = `🎉 You received 100\u202FCoins for joining!\n\n` + welcome;
+    }
+
+    // Glass buttons keyboard
+    const glassKeyboard = {
+      inline_keyboard: [
+        [
+          { text: "🎮 Start Game", callback_data: "startgame" },
+          { text: "🪙 Free Coin", callback_data: "freecoin" },
+        ],
+        [
+          { text: "❓ Help", callback_data: "help" },
+          { text: "💰 Balance", callback_data: "balance" },
+        ],
+      ],
+    };
+
+    console.log(
+      `[BOT] Sending glass keyboard to userId=${userId}:`,
+      JSON.stringify(glassKeyboard, null, 2)
+    );
+    await bot.sendMessage(chatId, welcome, { reply_markup: glassKeyboard });
+    console.log(`[BOT] /start response sent successfully to userId=${userId}`);
+  } catch (error) {
+    console.error(`[BOT] /start error for userId=${userId}:`, error);
+    await bot.sendMessage(
+      chatId,
+      "🎮 Welcome to GameHub!\n\nUse /help to see available commands."
+    );
   }
-  await bot.sendMessage(chatId, welcome);
 });
 
 bot.onText(/\/help/, async (msg) => {
@@ -73,13 +121,69 @@ bot.onText(/\/help/, async (msg) => {
     chatId,
     `Available commands:\n` +
       `/start - Start the bot\n` +
+      `/startgame - Start a new game\n` +
+      `/freecoin - Claim your daily free coins\n` +
+      `/help - Show this help message\n` +
       `/newgame - Create a new game\n` +
       `/games - Show your unfinished games\n` +
       `/stats - Show your game statistics\n` +
-      `/balance - Show your coin balance\n` +
-      `/free_coin - Claim your daily free coins\n` +
-      `/help - Show this help message`
+      `/balance - Show your coin balance`
   );
+});
+
+// /startgame command - same as /newgame
+bot.onText(/\/startgame/, async (msg) => {
+  const chatId = msg.chat.id;
+  const userId = msg.from?.id;
+  const isBotChat = msg.chat.type === "private";
+
+  if (!userId) {
+    await bot.sendMessage(chatId, "❌ Unable to identify user");
+    return;
+  }
+
+  // If it's a bot chat (private), show only single-player games
+  if (isBotChat) {
+    const singlePlayerKeyboard = {
+      inline_keyboard: [
+        [{ text: "🎲 Dice Game", callback_data: "newgame:dice" }],
+        [{ text: "⚽️ Football Game", callback_data: "newgame:football" }],
+        [{ text: "🏀 Basketball Game", callback_data: "newgame:basketball" }],
+      ],
+    };
+
+    await bot.sendMessage(
+      chatId,
+      "🎮 Choose a game to play:\n\n*Single-player games available in bot chat*",
+      {
+        reply_markup: singlePlayerKeyboard,
+        parse_mode: "Markdown",
+      }
+    );
+  } else {
+    // If it's a group chat, show all games
+    const allGamesKeyboard = {
+      inline_keyboard: [
+        [
+          { text: "🎮 X/O Game", callback_data: "newgame:xo" },
+          { text: "🎲 Dice Game", callback_data: "newgame:dice" },
+        ],
+        [
+          { text: "⚽️ Football Game", callback_data: "newgame:football" },
+          { text: "🏀 Basketball Game", callback_data: "newgame:basketball" },
+        ],
+      ],
+    };
+
+    await bot.sendMessage(
+      chatId,
+      "🎮 Choose a game to play:\n\n*All games available in group chat*",
+      {
+        reply_markup: allGamesKeyboard,
+        parse_mode: "Markdown",
+      }
+    );
+  }
 });
 
 // Add any additional generic bot setup or shared utilities here.
@@ -132,6 +236,7 @@ const freeCoinHandler = async (msg: TelegramBot.Message) => {
   }
 };
 bot.onText(/\/free_coin/, freeCoinHandler);
+bot.onText(/\/freecoin/, freeCoinHandler);
 
 // /games: show unfinished games
 bot.onText(/\/games/, async (msg) => {
@@ -234,3 +339,5 @@ bot.onText(/\/dice/, async (msg) => {
     }
   );
 });
+
+export default bot;
