@@ -1,6 +1,4 @@
-// Load environment variables
-import dotenv from "dotenv";
-dotenv.config({ path: ".env.local" });
+import "dotenv/config";
 
 import TelegramBot from "node-telegram-bot-api";
 import { registerXoHandlers } from "../games/xo";
