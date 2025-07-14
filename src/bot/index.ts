@@ -64,6 +64,11 @@ bot.onText(/\/start/, async (msg) => {
 
 bot.onText(/\/help/, async (msg) => {
   const chatId = msg.chat.id;
+  const userId = String(msg.from?.id);
+  const username = msg.from?.username || "unknown";
+  console.log(
+    `[BOT] /help received from userId=${userId}, username=${username}`
+  );
   await bot.sendMessage(
     chatId,
     `Available commands:\n` +
@@ -85,6 +90,10 @@ bot.onText(/\/help/, async (msg) => {
 bot.onText(/\/balance/, async (msg) => {
   const chatId = msg.chat.id;
   const userId = String(msg.from?.id);
+  const username = msg.from?.username || "unknown";
+  console.log(
+    `[BOT] /balance received from userId=${userId}, username=${username}`
+  );
   const user = await getUser(userId);
   await bot.sendMessage(chatId, `💰 Your balance: <b>${user.coins}</b> Coins`, {
     parse_mode: "HTML",
@@ -95,6 +104,10 @@ bot.onText(/\/balance/, async (msg) => {
 const freeCoinHandler = async (msg: TelegramBot.Message) => {
   const chatId = msg.chat.id;
   const userId = String(msg.from?.id);
+  const username = msg.from?.username || "unknown";
+  console.log(
+    `[BOT] /free_coin received from userId=${userId}, username=${username}`
+  );
   const { canClaim, nextClaimIn } = await canClaimDaily(userId);
   if (canClaim) {
     await addCoins(userId, 20, "daily free coin");
@@ -124,7 +137,10 @@ bot.onText(/\/free_coin/, freeCoinHandler);
 bot.onText(/\/games/, async (msg) => {
   const chatId = msg.chat.id;
   const userId = String(msg.from?.id);
-  console.log(`[BOT] /games called by userId=${userId}`);
+  const username = msg.from?.username || "unknown";
+  console.log(
+    `[BOT] /games received from userId=${userId}, username=${username}`
+  );
 
   try {
     const unfinishedGames = getUnfinishedGamesForUser(userId);
@@ -174,7 +190,10 @@ bot.onText(/\/games/, async (msg) => {
 bot.onText(/\/stats/, async (msg) => {
   const chatId = msg.chat.id;
   const userId = String(msg.from?.id);
-  console.log(`[BOT] /stats called by userId=${userId}`);
+  const username = msg.from?.username || "unknown";
+  console.log(
+    `[BOT] /stats received from userId=${userId}, username=${username}`
+  );
   try {
     const stats = await getUserStatistics(userId, "xo");
     console.log(`[BOT] /stats result for userId=${userId}:`, stats);
