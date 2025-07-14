@@ -1,0 +1,85 @@
+{
+  "getMe": {
+    "ok": true,
+    "result": {
+      "id": 8068742132,
+      "is_bot": true,
+      "first_name": "Gamehub",
+      "username": "playonhubbot",
+      "can_join_groups": true,
+      "can_read_all_group_messages": false,
+      "supports_inline_queries": true,
+      "can_connect_to_business": false,
+      "has_main_web_app": false
+    }
+  },
+  "getCommands": {
+    "ok": true,
+    "result": [
+      {
+        "command": "start",
+        "description": "Start the bot"
+      },
+      {
+        "command": "newgame",
+        "description": "Create a new X/O game with stake"
+      },
+      {
+        "command": "dice",
+        "description": "Play dice guess game"
+      },
+      {
+        "command": "football_game",
+        "description": "Play football direction guess game"
+      },
+      {
+        "command": "basketball_game",
+        "description": "Play basketball hoop shot game"
+      },
+      {
+        "command": "games",
+        "description": "Show your unfinished games"
+      },
+      {
+        "command": "stats",
+        "description": "Show your X/O game statistics"
+      },
+      {
+        "command": "dice_stats",
+        "description": "Show your dice game statistics"
+      },
+      {
+        "command": "football_stats",
+        "description": "Show your football game statistics"
+      },
+      {
+        "command": "basketball_stats",
+        "description": "Show your basketball game statistics"
+      },
+      {
+        "command": "balance",
+        "description": "Show your coin balance"
+      },
+      {
+        "command": "free_coin",
+        "description": "Claim your daily free coins"
+      },
+      {
+        "command": "help",
+        "description": "Show help information"
+      }
+    ]
+  },
+  "getDescription": {
+    "ok": true,
+    "result": {
+      "description": ""
+    }
+  },
+  "getMenuButton": {
+    "ok": true,
+    "result": {
+      "type": "commands"
+    }
+  }
+}

@@ -37,27 +37,9 @@ registerBasketballHandlers(bot);
 // Set bot commands (generic)
 bot.setMyCommands([
   { command: "/start", description: "Start the bot" },
-  { command: "/newgame", description: "Create a new X/O game with stake" },
-  { command: "/dice", description: "Play dice guess game" },
-  {
-    command: "/football_game",
-    description: "Play football direction guess game",
-  },
-  {
-    command: "/basketball_game",
-    description: "Play basketball hoop shot game",
-  },
+  { command: "/newgame", description: "Create a new game" },
   { command: "/games", description: "Show your unfinished games" },
-  { command: "/stats", description: "Show your X/O game statistics" },
-  { command: "/dice_stats", description: "Show your dice game statistics" },
-  {
-    command: "/football_stats",
-    description: "Show your football game statistics",
-  },
-  {
-    command: "/basketball_stats",
-    description: "Show your basketball game statistics",
-  },
+  { command: "/stats", description: "Show your game statistics" },
   { command: "/balance", description: "Show your coin balance" },
   { command: "/free_coin", description: "Claim your daily free coins" },
   { command: "/help", description: "Show help information" },
@@ -67,6 +49,10 @@ bot.setMyCommands([
 bot.onText(/\/start/, async (msg) => {
   const chatId = msg.chat.id;
   const userId = String(msg.from?.id);
+  const username = msg.from?.username || "unknown";
+  console.log(
+    `[BOT] /start received from userId=${userId}, username=${username}`
+  );
   const user = await getUser(userId);
   let welcome = `🎮 Welcome to GameHub!\n\nUse /help to see available commands.\n\n💰 Earn and claim daily Coins with /free_coin!`;
   if (user.coins === 0 && !user.lastFreeCoinAt) {
@@ -82,16 +68,9 @@ bot.onText(/\/help/, async (msg) => {
     chatId,
     `Available commands:\n` +
       `/start - Start the bot\n` +
-      `/newgame - Create a new X/O game with stake\n` +
-      `/dice - Play dice guess game\n` +
-      `/football_game - Play football direction guess game\n` +
-      `/basketball_game - Play basketball hoop shot game\n` +
-      `/join <gameId> - Join an existing game\n` +
+      `/newgame - Create a new game\n` +
       `/games - Show your unfinished games\n` +
-      `/stats - Show your X/O game statistics\n` +
-      `/dice_stats - Show your dice game statistics\n` +
-      `/football_stats - Show your football game statistics\n` +
-      `/basketball_stats - Show your basketball game statistics\n` +
+      `/stats - Show your game statistics\n` +
       `/balance - Show your coin balance\n` +
       `/free_coin - Claim your daily free coins\n` +
       `/help - Show this help message`
