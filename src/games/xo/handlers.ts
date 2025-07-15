@@ -1828,10 +1828,8 @@ export function registerXoTelegramHandlers(bot: TelegramBot) {
       }
     }
 
-    // Handle blackjack play again
-    if (action === "blackjack_play_again" && parts[1]) {
-      // const stake = parseInt(parts[1]); // Not used in this handler
-
+    // Handle blackjack play again (choose stake)
+    if (action === "blackjack_play_again_choose") {
       const stakeKeyboard = {
         inline_keyboard: [
           [
@@ -1848,13 +1846,10 @@ export function registerXoTelegramHandlers(bot: TelegramBot) {
           ],
         ],
       };
-
       const text = "🃏 Blackjack Game\n\nChoose your stake amount:";
-
       const chatId = callbackQuery.message?.chat.id;
       const messageId = callbackQuery.message?.message_id;
       const inlineMessageId = callbackQuery.inline_message_id;
-
       if (inlineMessageId) {
         await bot.editMessageText(text, {
           inline_message_id: inlineMessageId,
@@ -1867,9 +1862,7 @@ export function registerXoTelegramHandlers(bot: TelegramBot) {
           reply_markup: stakeKeyboard,
         });
       }
-
       await bot.answerCallbackQuery(callbackQuery.id);
-      console.log(`[BLACKJACK] Play again: showing stake selection`);
       return;
     }
 
