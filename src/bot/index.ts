@@ -6,6 +6,7 @@ import { registerDiceHandlers } from "./games/diceHandlers";
 import { registerFootballHandlers } from "./games/footballHandlers";
 import { registerBasketballHandlers } from "./games/basketballHandlers";
 import { registerBlackjackHandlers } from "./games/blackjackHandlers";
+import { registerAdminCommands } from "./admin/adminCommands";
 
 import {
   getUser,
@@ -55,6 +56,9 @@ registerBasketballHandlers(bot);
 
 // Register blackjack game handlers
 registerBlackjackHandlers(bot);
+
+// Register admin commands
+registerAdminCommands(bot);
 
 // Set bot commands (generic)
 bot.setMyCommands([
