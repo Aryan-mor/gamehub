@@ -21,6 +21,7 @@ import {
   processDiceResult,
   DICE_STAKES,
   type DiceStake,
+  getDiceResultText,
 } from "../../bot/games/dice";
 import {
   createFootballGame,
@@ -1085,6 +1086,30 @@ export function registerXoTelegramHandlers(bot: TelegramBot) {
       const guess = parts[2];
       console.log(`[DICE] Processing guess: gameId=${gameId}, guess=${guess}`);
 
+      // --- Game Running Status ---
+      const diceLoadingMessages = [
+        "⏳ Rolling the dice... Please wait for the result.",
+        "🔄 Shaking the cup...",
+        "🎲 Tossing the dice...",
+        "⏳ Game is running... Please wait for the result.",
+      ];
+      const loadingMsg =
+        diceLoadingMessages[
+          Math.floor(Math.random() * diceLoadingMessages.length)
+        ];
+      const inlineMessageId = callbackQuery.inline_message_id;
+      const messageId = callbackQuery.message?.message_id;
+      if (inlineMessageId) {
+        await bot.editMessageText(loadingMsg, {
+          inline_message_id: inlineMessageId,
+        });
+      } else if (chatId && messageId) {
+        await bot.editMessageText(loadingMsg, {
+          chat_id: chatId,
+          message_id: messageId,
+        });
+      }
+
       try {
         // Set the guess and get game state
         console.log(`[DICE] Setting guess for game ${gameId}`);
@@ -1116,28 +1141,14 @@ export function registerXoTelegramHandlers(bot: TelegramBot) {
         );
         const result = await processDiceResult(gameId, diceResult);
 
-        // Update the original message to remove buttons
-        const resultChatId = callbackQuery.message?.chat.id;
-        const messageId = callbackQuery.message?.message_id;
-        const inlineMessageId = callbackQuery.inline_message_id;
-        if (inlineMessageId) {
-          await bot.editMessageText(result.message, {
-            inline_message_id: inlineMessageId,
-            reply_markup: { inline_keyboard: [] },
-          });
-        } else if (resultChatId && messageId) {
-          await bot.editMessageText(result.message, {
-            chat_id: resultChatId,
-            message_id: messageId,
-            reply_markup: { inline_keyboard: [] },
-          });
-        }
-
-        // Send result message with glass buttons
-        const resultEmoji = result.won ? "🎉" : "😔";
-        const resultText = result.won
-          ? `${resultEmoji} **Congratulations! You won ${result.reward} coins!**\n\n🎯 Your guess: ${guess}\n🎲 Dice: ${diceResult}\n💰 Reward: ${result.reward} coins`
-          : `${resultEmoji} **Better luck next time!**\n\n🎯 Your guess: ${guess}\n🎲 Dice: ${diceResult}\n💸 You lost ${stake} coins`;
+        // Use centralized result text
+        const resultText = getDiceResultText(
+          result.won,
+          result.reward,
+          guess,
+          diceResult,
+          stake
+        );
 
         const playAgainKeyboard = {
           inline_keyboard: [
@@ -1162,10 +1173,27 @@ export function registerXoTelegramHandlers(bot: TelegramBot) {
           ],
         };
 
-        await bot.sendMessage(chatId, resultText, {
-          parse_mode: "Markdown",
-          reply_markup: playAgainKeyboard,
-        });
+        // Always update the original message to the result (with glass buttons)
+        if (inlineMessageId) {
+          await bot.editMessageText(resultText, {
+            inline_message_id: inlineMessageId,
+            parse_mode: "Markdown",
+            reply_markup: playAgainKeyboard,
+          });
+        } else if (chatId && messageId) {
+          await bot.editMessageText(resultText, {
+            chat_id: chatId,
+            message_id: messageId,
+            parse_mode: "Markdown",
+            reply_markup: playAgainKeyboard,
+          });
+        } else {
+          // Fallback: send as a new message
+          await bot.sendMessage(chatId, resultText, {
+            parse_mode: "Markdown",
+            reply_markup: playAgainKeyboard,
+          });
+        }
 
         await bot.answerCallbackQuery(callbackQuery.id);
         console.log(
@@ -1300,6 +1328,29 @@ export function registerXoTelegramHandlers(bot: TelegramBot) {
     if (action === "dice_play_again_exact" && parts[1] && parts[2]) {
       const stake = parseInt(parts[1]);
       const guess = parts[2];
+      const inlineMessageId = callbackQuery.inline_message_id;
+      const messageId = callbackQuery.message?.message_id;
+      // --- Game Running Status ---
+      const diceLoadingMessages = [
+        "⏳ Rolling the dice... Please wait for the result.",
+        "🔄 Shaking the cup...",
+        "🎲 Tossing the dice...",
+        "⏳ Game is running... Please wait for the result.",
+      ];
+      const loadingMsg =
+        diceLoadingMessages[
+          Math.floor(Math.random() * diceLoadingMessages.length)
+        ];
+      if (inlineMessageId) {
+        await bot.editMessageText(loadingMsg, {
+          inline_message_id: inlineMessageId,
+        });
+      } else if (chatId && messageId) {
+        await bot.editMessageText(loadingMsg, {
+          chat_id: chatId,
+          message_id: messageId,
+        });
+      }
       console.log(
         `[DICE] Play again exact: userId=${userId}, stake=${stake}, guess=${guess}`
       );
@@ -1345,24 +1396,27 @@ export function registerXoTelegramHandlers(bot: TelegramBot) {
         );
         const result = await processDiceResult(gameState.id, diceResult);
 
-        // Send result message with glass buttons
-        const resultEmoji = result.won ? "🎉" : "😔";
-        const resultText = result.won
-          ? `${resultEmoji} **Congratulations! You won ${result.reward} coins!**\n\n🎯 Your guess: ${guess}\n🎲 Dice: ${diceResult}\n💰 Reward: ${result.reward} coins`
-          : `${resultEmoji} **Better luck next time!**\n\n🎯 Your guess: ${guess}\n🎲 Dice: ${diceResult}\n💸 You lost ${stake} coins`;
+        // Use centralized result text
+        const resultText = getDiceResultText(
+          result.won,
+          result.reward,
+          guess,
+          diceResult,
+          stake
+        );
 
         const playAgainKeyboard = {
           inline_keyboard: [
             [
               {
-                text: "🔄 Play Again (Same Stake)",
-                callback_data: `dice_play_again_same:${stake}`,
+                text: "🎯 Play Again (Same Stake & Guess)",
+                callback_data: `dice_play_again_exact:${stake}:${guess}`,
               },
             ],
             [
               {
-                text: "🎯 Play Again (Same Stake & Guess)",
-                callback_data: `dice_play_again_exact:${stake}:${guess}`,
+                text: "🔄 Play Again (Same Stake)",
+                callback_data: `dice_play_again_same:${stake}`,
               },
             ],
             [
@@ -1374,10 +1428,27 @@ export function registerXoTelegramHandlers(bot: TelegramBot) {
           ],
         };
 
-        await bot.sendMessage(chatId, resultText, {
-          parse_mode: "Markdown",
-          reply_markup: playAgainKeyboard,
-        });
+        // Always update the original message to the result (with glass buttons)
+        if (inlineMessageId) {
+          await bot.editMessageText(resultText, {
+            inline_message_id: inlineMessageId,
+            parse_mode: "Markdown",
+            reply_markup: playAgainKeyboard,
+          });
+        } else if (chatId && messageId) {
+          await bot.editMessageText(resultText, {
+            chat_id: chatId,
+            message_id: messageId,
+            parse_mode: "Markdown",
+            reply_markup: playAgainKeyboard,
+          });
+        } else {
+          // Fallback: send as a new message
+          await bot.sendMessage(chatId, resultText, {
+            parse_mode: "Markdown",
+            reply_markup: playAgainKeyboard,
+          });
+        }
 
         await bot.answerCallbackQuery(callbackQuery.id);
         console.log(`[DICE] Play again exact: completed game ${gameState.id}`);
@@ -1556,6 +1627,30 @@ export function registerXoTelegramHandlers(bot: TelegramBot) {
         `[FOOTBALL] Processing guess: gameId=${gameId}, guess=${guess}`
       );
 
+      // --- Game Running Status ---
+      const footballLoadingMessages = [
+        "⏳ Kicking the ball... Please wait for the result.",
+        "🔄 Preparing the shot...",
+        "⚽️ Shooting...",
+        "⏳ Game is running... Please wait for the result.",
+      ];
+      const loadingMsg =
+        footballLoadingMessages[
+          Math.floor(Math.random() * footballLoadingMessages.length)
+        ];
+      const inlineMessageId = callbackQuery.inline_message_id;
+      const messageId = callbackQuery.message?.message_id;
+      if (inlineMessageId) {
+        await bot.editMessageText(loadingMsg, {
+          inline_message_id: inlineMessageId,
+        });
+      } else if (chatId && messageId) {
+        await bot.editMessageText(loadingMsg, {
+          chat_id: chatId,
+          message_id: messageId,
+        });
+      }
+
       try {
         // Set the guess and get game state
         console.log(`[FOOTBALL] Setting guess for game ${gameId}`);
@@ -1588,17 +1683,15 @@ export function registerXoTelegramHandlers(bot: TelegramBot) {
         const result = await processFootballResult(gameId, footballResult);
 
         // Update the original message to remove buttons
-        const resultChatId = callbackQuery.message?.chat.id;
-        const messageId = callbackQuery.message?.message_id;
         const inlineMessageId = callbackQuery.inline_message_id;
         if (inlineMessageId) {
           await bot.editMessageText(result.message, {
             inline_message_id: inlineMessageId,
             reply_markup: { inline_keyboard: [] },
           });
-        } else if (resultChatId && messageId) {
+        } else if (chatId && messageId) {
           await bot.editMessageText(result.message, {
-            chat_id: resultChatId,
+            chat_id: chatId,
             message_id: messageId,
             reply_markup: { inline_keyboard: [] },
           });
@@ -1639,10 +1732,27 @@ export function registerXoTelegramHandlers(bot: TelegramBot) {
           ],
         };
 
-        await bot.sendMessage(chatId, resultText, {
-          parse_mode: "Markdown",
-          reply_markup: playAgainKeyboard,
-        });
+        // Always update the original message to the result (with glass buttons)
+        if (inlineMessageId) {
+          await bot.editMessageText(resultText, {
+            inline_message_id: inlineMessageId,
+            parse_mode: "Markdown",
+            reply_markup: playAgainKeyboard,
+          });
+        } else if (chatId && messageId) {
+          await bot.editMessageText(resultText, {
+            chat_id: chatId,
+            message_id: messageId,
+            parse_mode: "Markdown",
+            reply_markup: playAgainKeyboard,
+          });
+        } else {
+          // Fallback: send as a new message
+          await bot.sendMessage(chatId, resultText, {
+            parse_mode: "Markdown",
+            reply_markup: playAgainKeyboard,
+          });
+        }
 
         await bot.answerCallbackQuery(callbackQuery.id);
         console.log(
@@ -1770,6 +1880,29 @@ export function registerXoTelegramHandlers(bot: TelegramBot) {
     if (action === "football_play_again_exact" && parts[1] && parts[2]) {
       const stake = parseInt(parts[1]) as FootballStake;
       const guess = parseInt(parts[2]);
+      const inlineMessageId = callbackQuery.inline_message_id;
+      const messageId = callbackQuery.message?.message_id;
+      // --- Game Running Status ---
+      const footballLoadingMessages = [
+        "⏳ Kicking the ball... Please wait for the result.",
+        "🔄 Preparing the shot...",
+        "⚽️ Shooting...",
+        "⏳ Game is running... Please wait for the result.",
+      ];
+      const loadingMsg =
+        footballLoadingMessages[
+          Math.floor(Math.random() * footballLoadingMessages.length)
+        ];
+      if (inlineMessageId) {
+        await bot.editMessageText(loadingMsg, {
+          inline_message_id: inlineMessageId,
+        });
+      } else if (chatId && messageId) {
+        await bot.editMessageText(loadingMsg, {
+          chat_id: chatId,
+          message_id: messageId,
+        });
+      }
       console.log(
         `[FOOTBALL] Play again exact: userId=${userId}, stake=${stake}, guess=${guess}`
       );
@@ -1850,10 +1983,27 @@ export function registerXoTelegramHandlers(bot: TelegramBot) {
           ],
         };
 
-        await bot.sendMessage(chatId, resultText, {
-          parse_mode: "Markdown",
-          reply_markup: playAgainKeyboard,
-        });
+        // Always update the original message to the result (with glass buttons)
+        if (inlineMessageId) {
+          await bot.editMessageText(resultText, {
+            inline_message_id: inlineMessageId,
+            parse_mode: "Markdown",
+            reply_markup: playAgainKeyboard,
+          });
+        } else if (chatId && messageId) {
+          await bot.editMessageText(resultText, {
+            chat_id: chatId,
+            message_id: messageId,
+            parse_mode: "Markdown",
+            reply_markup: playAgainKeyboard,
+          });
+        } else {
+          // Fallback: send as a new message
+          await bot.sendMessage(chatId, resultText, {
+            parse_mode: "Markdown",
+            reply_markup: playAgainKeyboard,
+          });
+        }
 
         await bot.answerCallbackQuery(callbackQuery.id);
         console.log(
@@ -2018,6 +2168,30 @@ export function registerXoTelegramHandlers(bot: TelegramBot) {
         `[BASKETBALL] Processing guess: gameId=${gameId}, guess=${guess}`
       );
 
+      // --- Game Running Status ---
+      const basketballLoadingMessages = [
+        "⏳ Shooting the hoop... Please wait for the result.",
+        "🔄 Aiming for the basket...",
+        "🏀 Throwing the ball...",
+        "⏳ Game is running... Please wait for the result.",
+      ];
+      const loadingMsg =
+        basketballLoadingMessages[
+          Math.floor(Math.random() * basketballLoadingMessages.length)
+        ];
+      const inlineMessageId = callbackQuery.inline_message_id;
+      const messageId = callbackQuery.message?.message_id;
+      if (inlineMessageId) {
+        await bot.editMessageText(loadingMsg, {
+          inline_message_id: inlineMessageId,
+        });
+      } else if (chatId && messageId) {
+        await bot.editMessageText(loadingMsg, {
+          chat_id: chatId,
+          message_id: messageId,
+        });
+      }
+
       try {
         // Set the guess and get game state
         console.log(`[BASKETBALL] Setting guess for game ${gameId}`);
@@ -2056,17 +2230,15 @@ export function registerXoTelegramHandlers(bot: TelegramBot) {
         const result = await processBasketballResult(gameId, basketballResult);
 
         // Update the original message to remove buttons
-        const resultChatId = callbackQuery.message?.chat.id;
-        const messageId = callbackQuery.message?.message_id;
         const inlineMessageId = callbackQuery.inline_message_id;
         if (inlineMessageId) {
           await bot.editMessageText(result.message, {
             inline_message_id: inlineMessageId,
             reply_markup: { inline_keyboard: [] },
           });
-        } else if (resultChatId && messageId) {
+        } else if (chatId && messageId) {
           await bot.editMessageText(result.message, {
-            chat_id: resultChatId,
+            chat_id: chatId,
             message_id: messageId,
             reply_markup: { inline_keyboard: [] },
           });
@@ -2103,10 +2275,27 @@ export function registerXoTelegramHandlers(bot: TelegramBot) {
           ],
         };
 
-        await bot.sendMessage(chatId, finalResultText, {
-          parse_mode: "Markdown",
-          reply_markup: playAgainKeyboard,
-        });
+        // Always update the original message to the result (with glass buttons)
+        if (inlineMessageId) {
+          await bot.editMessageText(finalResultText, {
+            inline_message_id: inlineMessageId,
+            parse_mode: "Markdown",
+            reply_markup: playAgainKeyboard,
+          });
+        } else if (chatId && messageId) {
+          await bot.editMessageText(finalResultText, {
+            chat_id: chatId,
+            message_id: messageId,
+            parse_mode: "Markdown",
+            reply_markup: playAgainKeyboard,
+          });
+        } else {
+          // Fallback: send as a new message
+          await bot.sendMessage(chatId, finalResultText, {
+            parse_mode: "Markdown",
+            reply_markup: playAgainKeyboard,
+          });
+        }
 
         await bot.answerCallbackQuery(callbackQuery.id);
         console.log(
@@ -2218,6 +2407,29 @@ export function registerXoTelegramHandlers(bot: TelegramBot) {
     if (action === "basketball_play_again_exact" && parts[1] && parts[2]) {
       const stake = parseInt(parts[1]) as BasketballStake;
       const guess = parts[2] as "score" | "miss";
+      const inlineMessageId = callbackQuery.inline_message_id;
+      const messageId = callbackQuery.message?.message_id;
+      // --- Game Running Status ---
+      const basketballLoadingMessages = [
+        "⏳ Shooting the hoop... Please wait for the result.",
+        "🔄 Aiming for the basket...",
+        "🏀 Throwing the ball...",
+        "⏳ Game is running... Please wait for the result.",
+      ];
+      const loadingMsg =
+        basketballLoadingMessages[
+          Math.floor(Math.random() * basketballLoadingMessages.length)
+        ];
+      if (inlineMessageId) {
+        await bot.editMessageText(loadingMsg, {
+          inline_message_id: inlineMessageId,
+        });
+      } else if (chatId && messageId) {
+        await bot.editMessageText(loadingMsg, {
+          chat_id: chatId,
+          message_id: messageId,
+        });
+      }
       console.log(
         `[BASKETBALL] Play again exact: userId=${userId}, stake=${stake}, guess=${guess}`
       );
@@ -2300,10 +2512,27 @@ export function registerXoTelegramHandlers(bot: TelegramBot) {
           ],
         };
 
-        await bot.sendMessage(chatId, finalResultText, {
-          parse_mode: "Markdown",
-          reply_markup: playAgainKeyboard,
-        });
+        // Always update the original message to the result (with glass buttons)
+        if (inlineMessageId) {
+          await bot.editMessageText(finalResultText, {
+            inline_message_id: inlineMessageId,
+            parse_mode: "Markdown",
+            reply_markup: playAgainKeyboard,
+          });
+        } else if (chatId && messageId) {
+          await bot.editMessageText(finalResultText, {
+            chat_id: chatId,
+            message_id: messageId,
+            parse_mode: "Markdown",
+            reply_markup: playAgainKeyboard,
+          });
+        } else {
+          // Fallback: send as a new message
+          await bot.sendMessage(chatId, finalResultText, {
+            parse_mode: "Markdown",
+            reply_markup: playAgainKeyboard,
+          });
+        }
 
         await bot.answerCallbackQuery(callbackQuery.id);
         console.log(

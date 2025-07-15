@@ -220,9 +220,13 @@ export async function processDiceResult(
     console.log(`[DICE] No payout - game lost or no reward`);
   }
 
-  const message = won
-    ? `🎲 You rolled a ${diceResult}!\nYour guess: ${gameState.guess}\n➕ You won ${reward} Coins! (10% fee applied)`
-    : `🎲 You rolled a ${diceResult}!\nYour guess: ${gameState.guess}\n❌ No match. You lost your stake.`;
+  const message = getDiceResultText(
+    won,
+    reward,
+    gameState.guess,
+    diceResult,
+    gameState.stake
+  );
 
   console.log(
     `[DICE] Game ${gameId} completed: won=${won}, reward=${reward}, fee=${fee}`
@@ -299,6 +303,19 @@ function calculateDiceWinnings(
   );
 
   return { won: true, reward: payout, fee };
+}
+
+export function getDiceResultText(
+  won: boolean,
+  reward: number,
+  guess: string,
+  diceResult: number,
+  stake: number
+): string {
+  const resultEmoji = won ? "🎉" : "😔";
+  return won
+    ? `${resultEmoji} **Congratulations! You won ${reward} coins!**\n\n🎯 Your guess: ${guess}\n🎲 Dice: ${diceResult}\n💰 Reward: ${reward} coins`
+    : `${resultEmoji} **Better luck next time!**\n\n🎯 Your guess: ${guess}\n🎲 Dice: ${diceResult}\n💸 You lost ${stake} coins`;
 }
 
 /**
