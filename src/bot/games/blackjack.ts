@@ -363,7 +363,9 @@ export async function standGame(gameId: string): Promise<BlackjackGameResult> {
     reward,
     playerValue,
     dealerValue,
-    gameState.stake
+    gameState.stake,
+    gameState.playerHand,
+    gameState.dealerHand
   );
 
   return {
@@ -382,23 +384,35 @@ export function getBlackjackResultText(
   reward: number,
   playerValue: number,
   dealerValue: number,
-  stake: number
+  stake: number,
+  playerHand?: Card[],
+  dealerHand?: Card[]
 ): string {
   const resultEmoji = result === "win" ? "🎉" : result === "lose" ? "💔" : "🤝";
   const resultText =
     result === "win" ? "WIN!" : result === "lose" ? "LOSE!" : "PUSH!";
 
-  let message = `${resultEmoji} BLACKJACK ${resultText}\n\n`;
-  message += `💰 Stake: ${stake} Coins\n`;
-  message += `👤 Your Hand: ${playerValue}\n`;
-  message += `🎰 Dealer's Hand: ${dealerValue}\n\n`;
+  let message = `<b>${resultEmoji} BLACKJACK ${resultText}</b>\n\n`;
+  message += `<b>💰 Stake:</b> ${stake} Coins\n`;
+
+  if (playerHand && dealerHand) {
+    message += `<b>👤 Your Hand:</b> ${formatHand(
+      playerHand
+    )} <b>(Total: ${playerValue})</b>\n`;
+    message += `<b>🎰 Dealer's Hand:</b> ${formatHand(
+      dealerHand
+    )} <b>(Total: ${dealerValue})</b>\n\n`;
+  } else {
+    message += `<b>👤 Your Hand:</b> ${playerValue}\n`;
+    message += `<b>🎰 Dealer's Hand:</b> ${dealerValue}\n\n`;
+  }
 
   if (result === "win") {
-    message += `🎉 You won ${reward} Coins!`;
+    message += `🎉 <b>You won ${reward} Coins!</b>`;
   } else if (result === "lose") {
-    message += `💔 You lost ${stake} Coins`;
+    message += `💔 <b>You lost ${stake} Coins</b>`;
   } else {
-    message += `🤝 It's a push! Your stake is returned`;
+    message += `🤝 <b>It's a push! Your stake is returned</b>`;
   }
 
   return message;
@@ -466,4 +480,69 @@ export async function getRecentBlackjackGames(
   return games
     .sort((a, b) => (b.completedAt || 0) - (a.completedAt || 0))
     .slice(0, limit);
+}
+
+/**
+ * Format card for display with emoji
+ */
+export function formatCard(card: Card): string {
+  const suitEmojis = {
+    hearts: "♥️",
+    diamonds: "♦️",
+    clubs: "♣️",
+    spades: "♠️",
+  };
+
+  const cardEmojis: { [key: string]: string } = {
+    A: "🂡",
+    "2": "🂢",
+    "3": "🂣",
+    "4": "🂤",
+    "5": "🂥",
+    "6": "🂦",
+    "7": "🂧",
+    "8": "🂨",
+    "9": "🂩",
+    "10": "🂪",
+    J: "🂫",
+    Q: "🂭",
+    K: "🂮",
+  };
+
+  return `${suitEmojis[card.suit]}${card.displayValue}${
+    cardEmojis[card.displayValue] || ""
+  }`;
+}
+
+/**
+ * Format hand for display
+ */
+export function formatHand(hand: Card[], hideSecond?: boolean): string {
+  if (hideSecond && hand.length >= 2) {
+    return `${formatCard(hand[0])} ?🂠`;
+  }
+  return hand.map(formatCard).join(" ");
+}
+
+/**
+ * Get blackjack rules text
+ */
+export function getBlackjackRules(): string {
+  return `<b>🃏 Blackjack Rules:</b>
+
+🎯 <b>Goal:</b> Get as close to 21 as possible without going over
+
+💰 <b>Payouts:</b>
+• Win: 2× your stake (minus 5% fee)
+• Blackjack: 2.5× your stake (minus 5% fee)
+• Push: Return your stake
+• Bust: Lose your stake
+
+🎮 <b>Gameplay:</b>
+• Hit: Draw another card
+• Stand: End your turn
+• Dealer hits until 17 or higher
+• Aces count as 1 or 11
+
+🃏 <b>Blackjack:</b> Ace + 10-value card = automatic 2.5× payout`;
 }

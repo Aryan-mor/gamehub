@@ -29,6 +29,8 @@ import {
   standGame,
   getBlackjackResultText,
   calculateHandValue,
+  formatHand,
+  getBlackjackRules,
   BLACKJACK_STAKES,
   type BlackjackStake,
 } from "../../bot/games/blackjack";
@@ -1597,6 +1599,10 @@ export function registerXoTelegramHandlers(bot: TelegramBot) {
         );
         const gameState = await createBlackjackGame(userId.toString(), stake);
 
+        const playerValue = calculateHandValue(gameState.playerHand);
+        const playerHandFormatted = formatHand(gameState.playerHand);
+        const dealerHandFormatted = formatHand(gameState.dealerHand, true);
+
         const actionKeyboard = {
           inline_keyboard: [
             [
@@ -1609,32 +1615,36 @@ export function registerXoTelegramHandlers(bot: TelegramBot) {
                 callback_data: `blackjack_stand:${gameState.id}`,
               },
             ],
+            [
+              {
+                text: "❓ Rules",
+                callback_data: `blackjack_rules`,
+              },
+            ],
           ],
         };
-
-        const playerValue = calculateHandValue(gameState.playerHand);
 
         const chatId = callbackQuery.message?.chat.id;
         const messageId = callbackQuery.message?.message_id;
         const inlineMessageId = callbackQuery.inline_message_id;
         const text =
-          `🃏 Blackjack Game - Stake: ${stake} Coins\n\n` +
-          `👤 Your Hand: ${gameState.playerHand
-            .map((card) => card.displayValue)
-            .join(", ")} (${playerValue})\n` +
-          `🎰 Dealer's Hand: ${gameState.dealerHand[0].displayValue}, ?\n\n` +
-          `What would you like to do?`;
+          `<b>🃏 Blackjack Game - Stake: ${stake} Coins</b>\n\n` +
+          `<b>Your Hand:</b> ${playerHandFormatted} <b>(Total: ${playerValue})</b>\n` +
+          `<b>Dealer Shows:</b> ${dealerHandFormatted}\n\n` +
+          `<em>What do you want to do?</em>`;
 
         if (inlineMessageId) {
           await bot.editMessageText(text, {
             inline_message_id: inlineMessageId,
             reply_markup: actionKeyboard,
+            parse_mode: "HTML",
           });
         } else if (chatId && messageId) {
           await bot.editMessageText(text, {
             chat_id: chatId,
             message_id: messageId,
             reply_markup: actionKeyboard,
+            parse_mode: "HTML",
           });
         }
 
@@ -1682,7 +1692,9 @@ export function registerXoTelegramHandlers(bot: TelegramBot) {
             0,
             playerValue,
             0,
-            gameState.stake
+            gameState.stake,
+            gameState.playerHand,
+            gameState.dealerHand
           );
 
           const playAgainKeyboard = {
@@ -1720,6 +1732,9 @@ export function registerXoTelegramHandlers(bot: TelegramBot) {
           }
         } else {
           // Game continues
+          const playerHandFormatted = formatHand(gameState.playerHand);
+          const dealerHandFormatted = formatHand(gameState.dealerHand, true);
+
           const actionKeyboard = {
             inline_keyboard: [
               [
@@ -1729,16 +1744,20 @@ export function registerXoTelegramHandlers(bot: TelegramBot) {
                   callback_data: `blackjack_stand:${gameId}`,
                 },
               ],
+              [
+                {
+                  text: "❓ Rules",
+                  callback_data: `blackjack_rules`,
+                },
+              ],
             ],
           };
 
           const text =
-            `🃏 Blackjack Game - Stake: ${gameState.stake} Coins\n\n` +
-            `👤 Your Hand: ${gameState.playerHand
-              .map((card) => card.displayValue)
-              .join(", ")} (${playerValue})\n` +
-            `🎰 Dealer's Hand: ${gameState.dealerHand[0].displayValue}, ?\n\n` +
-            `What would you like to do?`;
+            `<b>🃏 Blackjack Game - Stake: ${gameState.stake} Coins</b>\n\n` +
+            `<b>Your Hand:</b> ${playerHandFormatted} <b>(Total: ${playerValue})</b>\n` +
+            `<b>Dealer Shows:</b> ${dealerHandFormatted}\n\n` +
+            `<em>What do you want to do?</em>`;
 
           const chatId = callbackQuery.message?.chat.id;
           const messageId = callbackQuery.message?.message_id;
@@ -1748,12 +1767,14 @@ export function registerXoTelegramHandlers(bot: TelegramBot) {
             await bot.editMessageText(text, {
               inline_message_id: inlineMessageId,
               reply_markup: actionKeyboard,
+              parse_mode: "HTML",
             });
           } else if (chatId && messageId) {
             await bot.editMessageText(text, {
               chat_id: chatId,
               message_id: messageId,
               reply_markup: actionKeyboard,
+              parse_mode: "HTML",
             });
           }
         }
@@ -1807,12 +1828,14 @@ export function registerXoTelegramHandlers(bot: TelegramBot) {
           await bot.editMessageText(result.message, {
             inline_message_id: inlineMessageId,
             reply_markup: playAgainKeyboard,
+            parse_mode: "HTML",
           });
         } else if (chatId && messageId) {
           await bot.editMessageText(result.message, {
             chat_id: chatId,
             message_id: messageId,
             reply_markup: playAgainKeyboard,
+            parse_mode: "HTML",
           });
         }
 
@@ -1826,6 +1849,50 @@ export function registerXoTelegramHandlers(bot: TelegramBot) {
         });
         return;
       }
+    }
+
+    // Handle blackjack rules
+    if (action === "blackjack_rules") {
+      const rulesText = getBlackjackRules();
+      const backKeyboard = {
+        inline_keyboard: [
+          [
+            {
+              text: "⬅️ Back to Game",
+              callback_data: `blackjack_back_to_game`,
+            },
+          ],
+        ],
+      };
+
+      const chatId = callbackQuery.message?.chat.id;
+      const messageId = callbackQuery.message?.message_id;
+      const inlineMessageId = callbackQuery.inline_message_id;
+
+      if (inlineMessageId) {
+        await bot.editMessageText(rulesText, {
+          inline_message_id: inlineMessageId,
+          reply_markup: backKeyboard,
+          parse_mode: "HTML",
+        });
+      } else if (chatId && messageId) {
+        await bot.editMessageText(rulesText, {
+          chat_id: chatId,
+          message_id: messageId,
+          reply_markup: backKeyboard,
+          parse_mode: "HTML",
+        });
+      }
+
+      await bot.answerCallbackQuery(callbackQuery.id);
+      return;
+    }
+
+    // Handle blackjack back to game
+    if (action === "blackjack_back_to_game") {
+      // This will be handled by the game state - for now just answer the callback
+      await bot.answerCallbackQuery(callbackQuery.id);
+      return;
     }
 
     // Handle blackjack play again (choose stake)
