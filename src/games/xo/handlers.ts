@@ -1086,12 +1086,15 @@ export function registerXoTelegramHandlers(bot: TelegramBot) {
       const guess = parts[2];
       console.log(`[DICE] Processing guess: gameId=${gameId}, guess=${guess}`);
 
+      // Set the guess and get game state (to get stake)
+      const gameState = await setDiceGuess(gameId, guess);
+      const stake = gameState.stake;
       // --- Game Running Status ---
       const diceLoadingMessages = [
-        "⏳ Rolling the dice... Please wait for the result.",
-        "🔄 Shaking the cup...",
-        "🎲 Tossing the dice...",
-        "⏳ Game is running... Please wait for the result.",
+        `⏳ Rolling the dice...\n\n💰 Stake: ${stake} coins\n🎯 Your guess: ${guess}`,
+        `🔄 Shaking the cup...\n\n💰 Stake: ${stake} coins\n🎯 Your guess: ${guess}`,
+        `🎲 Tossing the dice...\n\n💰 Stake: ${stake} coins\n🎯 Your guess: ${guess}`,
+        `⏳ Game is running... Please wait for the result.\n\n💰 Stake: ${stake} coins\n🎯 Your guess: ${guess}`,
       ];
       const loadingMsg =
         diceLoadingMessages[
@@ -1332,10 +1335,10 @@ export function registerXoTelegramHandlers(bot: TelegramBot) {
       const messageId = callbackQuery.message?.message_id;
       // --- Game Running Status ---
       const diceLoadingMessages = [
-        "⏳ Rolling the dice... Please wait for the result.",
-        "🔄 Shaking the cup...",
-        "🎲 Tossing the dice...",
-        "⏳ Game is running... Please wait for the result.",
+        `⏳ Rolling the dice...\n\n💰 Stake: ${stake} coins\n🎯 Your guess: ${guess}`,
+        `🔄 Shaking the cup...\n\n💰 Stake: ${stake} coins\n🎯 Your guess: ${guess}`,
+        `🎲 Tossing the dice...\n\n💰 Stake: ${stake} coins\n🎯 Your guess: ${guess}`,
+        `⏳ Game is running... Please wait for the result.\n\n💰 Stake: ${stake} coins\n🎯 Your guess: ${guess}`,
       ];
       const loadingMsg =
         diceLoadingMessages[
@@ -1627,12 +1630,17 @@ export function registerXoTelegramHandlers(bot: TelegramBot) {
         `[FOOTBALL] Processing guess: gameId=${gameId}, guess=${guess}`
       );
 
+      // Set the guess and get game state (to get stake)
+      const gameState = await setFootballGuess(gameId, guess);
+      const stake = gameState.stake;
       // --- Game Running Status ---
+      const guessDirection =
+        FOOTBALL_DIRECTIONS[guess as keyof typeof FOOTBALL_DIRECTIONS];
       const footballLoadingMessages = [
-        "⏳ Kicking the ball... Please wait for the result.",
-        "🔄 Preparing the shot...",
-        "⚽️ Shooting...",
-        "⏳ Game is running... Please wait for the result.",
+        `⏳ Kicking the ball...\n\n💰 Stake: ${stake} coins\n🎯 Your shot: ${guessDirection}`,
+        `🔄 Preparing the shot...\n\n💰 Stake: ${stake} coins\n🎯 Your shot: ${guessDirection}`,
+        `⚽️ Shooting...\n\n💰 Stake: ${stake} coins\n🎯 Your shot: ${guessDirection}`,
+        `⏳ Game is running... Please wait for the result.\n\n💰 Stake: ${stake} coins\n🎯 Your shot: ${guessDirection}`,
       ];
       const loadingMsg =
         footballLoadingMessages[
@@ -1883,11 +1891,13 @@ export function registerXoTelegramHandlers(bot: TelegramBot) {
       const inlineMessageId = callbackQuery.inline_message_id;
       const messageId = callbackQuery.message?.message_id;
       // --- Game Running Status ---
+      const guessDirection =
+        FOOTBALL_DIRECTIONS[guess as keyof typeof FOOTBALL_DIRECTIONS];
       const footballLoadingMessages = [
-        "⏳ Kicking the ball... Please wait for the result.",
-        "🔄 Preparing the shot...",
-        "⚽️ Shooting...",
-        "⏳ Game is running... Please wait for the result.",
+        `⏳ Kicking the ball...\n\n💰 Stake: ${stake} coins\n🎯 Your shot: ${guessDirection}`,
+        `🔄 Preparing the shot...\n\n💰 Stake: ${stake} coins\n🎯 Your shot: ${guessDirection}`,
+        `⚽️ Shooting...\n\n💰 Stake: ${stake} coins\n🎯 Your shot: ${guessDirection}`,
+        `⏳ Game is running... Please wait for the result.\n\n💰 Stake: ${stake} coins\n🎯 Your shot: ${guessDirection}`,
       ];
       const loadingMsg =
         footballLoadingMessages[
@@ -2168,12 +2178,16 @@ export function registerXoTelegramHandlers(bot: TelegramBot) {
         `[BASKETBALL] Processing guess: gameId=${gameId}, guess=${guess}`
       );
 
+      // Set the guess and get game state (to get stake)
+      const gameState = await setBasketballGuess(gameId, guess);
+      const stake = gameState.stake;
       // --- Game Running Status ---
+      const guessText = guess === "score" ? "🏀 Score" : "❌ Miss";
       const basketballLoadingMessages = [
-        "⏳ Shooting the hoop... Please wait for the result.",
-        "🔄 Aiming for the basket...",
-        "🏀 Throwing the ball...",
-        "⏳ Game is running... Please wait for the result.",
+        `⏳ Shooting the hoop...\n\n💰 Stake: ${stake} coins\n🎯 Your guess: ${guessText}`,
+        `🔄 Aiming for the basket...\n\n💰 Stake: ${stake} coins\n🎯 Your guess: ${guessText}`,
+        `🏀 Throwing the ball...\n\n💰 Stake: ${stake} coins\n🎯 Your guess: ${guessText}`,
+        `⏳ Game is running... Please wait for the result.\n\n💰 Stake: ${stake} coins\n🎯 Your guess: ${guessText}`,
       ];
       const loadingMsg =
         basketballLoadingMessages[
@@ -2410,11 +2424,12 @@ export function registerXoTelegramHandlers(bot: TelegramBot) {
       const inlineMessageId = callbackQuery.inline_message_id;
       const messageId = callbackQuery.message?.message_id;
       // --- Game Running Status ---
+      const guessText = guess === "score" ? "🏀 Score" : "❌ Miss";
       const basketballLoadingMessages = [
-        "⏳ Shooting the hoop... Please wait for the result.",
-        "🔄 Aiming for the basket...",
-        "🏀 Throwing the ball...",
-        "⏳ Game is running... Please wait for the result.",
+        `⏳ Shooting the hoop...\n\n💰 Stake: ${stake} coins\n🎯 Your guess: ${guessText}`,
+        `🔄 Aiming for the basket...\n\n💰 Stake: ${stake} coins\n🎯 Your guess: ${guessText}`,
+        `🏀 Throwing the ball...\n\n💰 Stake: ${stake} coins\n🎯 Your guess: ${guessText}`,
+        `⏳ Game is running... Please wait for the result.\n\n💰 Stake: ${stake} coins\n🎯 Your guess: ${guessText}`,
       ];
       const loadingMsg =
         basketballLoadingMessages[
