@@ -1,6 +1,6 @@
 #!/bin/bash
 set -e
-cd /home/aryan/Projects/gamehub
+cd /opt/gamehub
 git pull origin main
 yarn install --frozen-lockfile
 yarn build
