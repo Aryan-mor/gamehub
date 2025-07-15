@@ -5,6 +5,7 @@ import { registerXoHandlers } from "../games/xo";
 import { registerDiceHandlers } from "./games/diceHandlers";
 import { registerFootballHandlers } from "./games/footballHandlers";
 import { registerBasketballHandlers } from "./games/basketballHandlers";
+import { registerBlackjackHandlers } from "./games/blackjackHandlers";
 
 import {
   getUser,
@@ -51,6 +52,9 @@ registerFootballHandlers(bot);
 
 // Register basketball game handlers
 registerBasketballHandlers(bot);
+
+// Register blackjack game handlers
+registerBlackjackHandlers(bot);
 
 // Set bot commands (generic)
 bot.setMyCommands([
@@ -147,6 +151,7 @@ bot.onText(/\/startgame/, async (msg) => {
     const singlePlayerKeyboard = {
       inline_keyboard: [
         [{ text: "🎲 Dice Game", callback_data: "newgame:dice" }],
+        [{ text: "🃏 Blackjack Game", callback_data: "newgame:blackjack" }],
         [{ text: "⚽️ Football Game", callback_data: "newgame:football" }],
         [{ text: "🏀 Basketball Game", callback_data: "newgame:basketball" }],
       ],
@@ -169,9 +174,10 @@ bot.onText(/\/startgame/, async (msg) => {
           { text: "🎲 Dice Game", callback_data: "newgame:dice" },
         ],
         [
+          { text: "🃏 Blackjack Game", callback_data: "newgame:blackjack" },
           { text: "⚽️ Football Game", callback_data: "newgame:football" },
-          { text: "🏀 Basketball Game", callback_data: "newgame:basketball" },
         ],
+        [{ text: "🏀 Basketball Game", callback_data: "newgame:basketball" }],
       ],
     };
 

@@ -24,6 +24,15 @@ import {
   getDiceResultText,
 } from "../../bot/games/dice";
 import {
+  createBlackjackGame,
+  hitCard,
+  standGame,
+  getBlackjackResultText,
+  calculateHandValue,
+  BLACKJACK_STAKES,
+  type BlackjackStake,
+} from "../../bot/games/blackjack";
+import {
   createFootballGame,
   setFootballGuess,
   processFootballResult,
@@ -390,6 +399,42 @@ export function registerXoTelegramHandlers(bot: TelegramBot) {
         };
 
         const text = "🏀 Hoop Shot Game\n\nChoose your stake amount:";
+
+        // Update the message
+        const inlineMessageId = callbackQuery.inline_message_id;
+        if (inlineMessageId) {
+          await bot.editMessageText(text, {
+            inline_message_id: inlineMessageId,
+            reply_markup: stakeKeyboard,
+          });
+        } else if (chatId && callbackQuery.message?.message_id) {
+          await bot.editMessageText(text, {
+            chat_id: chatId,
+            message_id: callbackQuery.message.message_id,
+            reply_markup: stakeKeyboard,
+          });
+        }
+
+        await bot.answerCallbackQuery(callbackQuery.id);
+        return;
+      }
+
+      if (gameType === "blackjack") {
+        // Show blackjack stake selection
+        const stakeKeyboard = {
+          inline_keyboard: [
+            [
+              { text: "2 Coins", callback_data: `blackjack_stake:2` },
+              { text: "5 Coins", callback_data: `blackjack_stake:5` },
+            ],
+            [
+              { text: "10 Coins", callback_data: `blackjack_stake:10` },
+              { text: "20 Coins", callback_data: `blackjack_stake:20` },
+            ],
+          ],
+        };
+
+        const text = "🃏 Blackjack Game\n\nChoose your stake amount:";
 
         // Update the message
         const inlineMessageId = callbackQuery.inline_message_id;
@@ -1513,6 +1558,292 @@ export function registerXoTelegramHandlers(bot: TelegramBot) {
 
       await bot.answerCallbackQuery(callbackQuery.id);
       console.log(`[DICE] Play again new game: showing stake selection`);
+      return;
+    }
+
+    // --- Blackjack Game Handlers ---
+
+    // Handle blackjack stake selection
+    if (action === "blackjack_stake" && parts[1]) {
+      console.log(
+        `[BLACKJACK] blackjack_stake callback received: userId=${userId}, parts=`,
+        parts
+      );
+      const stake = parseInt(parts[1]) as BlackjackStake;
+      console.log(`[BLACKJACK] Parsed stake: ${stake}`);
+
+      if (!BLACKJACK_STAKES.includes(stake)) {
+        console.log(`[BLACKJACK] Invalid stake amount: ${stake}`);
+        await bot.answerCallbackQuery(callbackQuery.id, {
+          text: "Invalid stake amount",
+          show_alert: true,
+        });
+        return;
+      }
+
+      try {
+        console.log(
+          `[BLACKJACK] Creating blackjack game for userId=${userId}, stake=${stake}`
+        );
+        const gameState = await createBlackjackGame(userId.toString(), stake);
+
+        const actionKeyboard = {
+          inline_keyboard: [
+            [
+              {
+                text: "🃏 Hit",
+                callback_data: `blackjack_hit:${gameState.id}`,
+              },
+              {
+                text: "✋ Stand",
+                callback_data: `blackjack_stand:${gameState.id}`,
+              },
+            ],
+          ],
+        };
+
+        const playerValue = calculateHandValue(gameState.playerHand);
+
+        const chatId = callbackQuery.message?.chat.id;
+        const messageId = callbackQuery.message?.message_id;
+        const inlineMessageId = callbackQuery.inline_message_id;
+        const text =
+          `🃏 Blackjack Game - Stake: ${stake} Coins\n\n` +
+          `👤 Your Hand: ${gameState.playerHand
+            .map((card) => card.displayValue)
+            .join(", ")} (${playerValue})\n` +
+          `🎰 Dealer's Hand: ${gameState.dealerHand[0].displayValue}, ?\n\n` +
+          `What would you like to do?`;
+
+        if (inlineMessageId) {
+          await bot.editMessageText(text, {
+            inline_message_id: inlineMessageId,
+            reply_markup: actionKeyboard,
+          });
+        } else if (chatId && messageId) {
+          await bot.editMessageText(text, {
+            chat_id: chatId,
+            message_id: messageId,
+            reply_markup: actionKeyboard,
+          });
+        }
+
+        await bot.answerCallbackQuery(callbackQuery.id);
+        console.log(
+          `[BLACKJACK] Created game ${gameState.id} with stake ${stake} for user ${userId}`
+        );
+        return;
+      } catch (error: unknown) {
+        if (error instanceof Error && error.message === "Insufficient coins") {
+          await bot.answerCallbackQuery(callbackQuery.id, {
+            text: "Insufficient Coins.",
+            show_alert: true,
+          });
+        } else if (error instanceof Error) {
+          await bot.answerCallbackQuery(callbackQuery.id, {
+            text: error.message || "Failed to create blackjack game",
+            show_alert: true,
+          });
+        } else {
+          await bot.answerCallbackQuery(callbackQuery.id, {
+            text: "Failed to create blackjack game",
+            show_alert: true,
+          });
+        }
+        return;
+      }
+    }
+
+    // Handle blackjack hit action
+    if (action === "blackjack_hit" && parts[1]) {
+      console.log(
+        `[BLACKJACK] blackjack_hit callback received: userId=${userId}, gameId=${parts[1]}`
+      );
+      const gameId = parts[1];
+
+      try {
+        const gameState = await hitCard(gameId);
+        const playerValue = calculateHandValue(gameState.playerHand);
+
+        if (gameState.status === "completed") {
+          // Player busted
+          const resultText = getBlackjackResultText(
+            "lose",
+            0,
+            playerValue,
+            0,
+            gameState.stake
+          );
+
+          const playAgainKeyboard = {
+            inline_keyboard: [
+              [
+                {
+                  text: "🔄 Play Again (Same Stake)",
+                  callback_data: `blackjack_play_again:${gameState.stake}`,
+                },
+              ],
+            ],
+          };
+
+          const chatId = callbackQuery.message?.chat.id;
+          const messageId = callbackQuery.message?.message_id;
+          const inlineMessageId = callbackQuery.inline_message_id;
+
+          if (inlineMessageId) {
+            await bot.editMessageText(resultText, {
+              inline_message_id: inlineMessageId,
+              reply_markup: playAgainKeyboard,
+            });
+          } else if (chatId && messageId) {
+            await bot.editMessageText(resultText, {
+              chat_id: chatId,
+              message_id: messageId,
+              reply_markup: playAgainKeyboard,
+            });
+          }
+        } else {
+          // Game continues
+          const actionKeyboard = {
+            inline_keyboard: [
+              [
+                { text: "🃏 Hit", callback_data: `blackjack_hit:${gameId}` },
+                {
+                  text: "✋ Stand",
+                  callback_data: `blackjack_stand:${gameId}`,
+                },
+              ],
+            ],
+          };
+
+          const text =
+            `🃏 Blackjack Game - Stake: ${gameState.stake} Coins\n\n` +
+            `👤 Your Hand: ${gameState.playerHand
+              .map((card) => card.displayValue)
+              .join(", ")} (${playerValue})\n` +
+            `🎰 Dealer's Hand: ${gameState.dealerHand[0].displayValue}, ?\n\n` +
+            `What would you like to do?`;
+
+          const chatId = callbackQuery.message?.chat.id;
+          const messageId = callbackQuery.message?.message_id;
+          const inlineMessageId = callbackQuery.inline_message_id;
+
+          if (inlineMessageId) {
+            await bot.editMessageText(text, {
+              inline_message_id: inlineMessageId,
+              reply_markup: actionKeyboard,
+            });
+          } else if (chatId && messageId) {
+            await bot.editMessageText(text, {
+              chat_id: chatId,
+              message_id: messageId,
+              reply_markup: actionKeyboard,
+            });
+          }
+        }
+
+        await bot.answerCallbackQuery(callbackQuery.id);
+        return;
+      } catch (error: unknown) {
+        console.error(`[BLACKJACK] hitCard error:`, error);
+        await bot.answerCallbackQuery(callbackQuery.id, {
+          text: "Failed to hit card",
+          show_alert: true,
+        });
+        return;
+      }
+    }
+
+    // Handle blackjack stand action
+    if (action === "blackjack_stand" && parts[1]) {
+      console.log(
+        `[BLACKJACK] blackjack_stand callback received: userId=${userId}, gameId=${parts[1]}`
+      );
+      const gameId = parts[1];
+
+      try {
+        const result = await standGame(gameId);
+
+        const playAgainKeyboard = {
+          inline_keyboard: [
+            [
+              {
+                text: "🔄 Play Again (Same Stake)",
+                callback_data: `blackjack_play_again:${
+                  result.reward > 0 ? result.reward / 2 : 0
+                }`,
+              },
+            ],
+          ],
+        };
+
+        const chatId = callbackQuery.message?.chat.id;
+        const messageId = callbackQuery.message?.message_id;
+        const inlineMessageId = callbackQuery.inline_message_id;
+
+        if (inlineMessageId) {
+          await bot.editMessageText(result.message, {
+            inline_message_id: inlineMessageId,
+            reply_markup: playAgainKeyboard,
+          });
+        } else if (chatId && messageId) {
+          await bot.editMessageText(result.message, {
+            chat_id: chatId,
+            message_id: messageId,
+            reply_markup: playAgainKeyboard,
+          });
+        }
+
+        await bot.answerCallbackQuery(callbackQuery.id);
+        return;
+      } catch (error: unknown) {
+        console.error(`[BLACKJACK] standGame error:`, error);
+        await bot.answerCallbackQuery(callbackQuery.id, {
+          text: "Failed to stand",
+          show_alert: true,
+        });
+        return;
+      }
+    }
+
+    // Handle blackjack play again
+    if (action === "blackjack_play_again" && parts[1]) {
+      // const stake = parseInt(parts[1]); // Not used in this handler
+
+      const stakeKeyboard = {
+        inline_keyboard: [
+          [
+            { text: "2 Coins", callback_data: `blackjack_stake:2` },
+            { text: "5 Coins", callback_data: `blackjack_stake:5` },
+          ],
+          [
+            { text: "10 Coins", callback_data: `blackjack_stake:10` },
+            { text: "20 Coins", callback_data: `blackjack_stake:20` },
+          ],
+        ],
+      };
+
+      const text = "🃏 Blackjack Game\n\nChoose your stake amount:";
+
+      const chatId = callbackQuery.message?.chat.id;
+      const messageId = callbackQuery.message?.message_id;
+      const inlineMessageId = callbackQuery.inline_message_id;
+
+      if (inlineMessageId) {
+        await bot.editMessageText(text, {
+          inline_message_id: inlineMessageId,
+          reply_markup: stakeKeyboard,
+        });
+      } else if (chatId && messageId) {
+        await bot.editMessageText(text, {
+          chat_id: chatId,
+          message_id: messageId,
+          reply_markup: stakeKeyboard,
+        });
+      }
+
+      await bot.answerCallbackQuery(callbackQuery.id);
+      console.log(`[BLACKJACK] Play again: showing stake selection`);
       return;
     }
 
