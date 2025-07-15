@@ -1,6 +1,7 @@
 import { ref, set, get } from "firebase/database";
 import { database } from "../../lib/firebase";
 import { adjustCoins, requireBalance } from "../../lib/coinService";
+import publicConfig from "../publicConfig";
 
 export interface BasketballGameState {
   id: string;
@@ -245,7 +246,7 @@ function calculateBasketballWinnings(
 
   // User won - calculate reward (2x stake)
   const grossReward = stake * 2;
-  const fee = Math.floor(grossReward * 0.1); // 10% fee
+  const fee = Math.floor(grossReward * publicConfig.botFeePercent); // bot fee
   const netReward = grossReward - fee;
 
   console.log(

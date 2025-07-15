@@ -2,6 +2,7 @@ import { ref, set, get } from "firebase/database";
 import { database } from "../../lib/firebase";
 import { adjustCoins } from "../../lib/coinService";
 import { requireUserStartedAndBalance } from "../../lib/userMiddleware";
+import publicConfig from "../publicConfig";
 
 export interface BowlingGameState {
   id: string;
@@ -171,19 +172,19 @@ function calculateBowlingWinnings(
   let fee = 0;
 
   if (diceResult === 6) {
-    // Strike - Jackpot Win: 4× stake (minus 10% fee)
+    // Strike - Jackpot Win: 4× stake (minus botConfig.public.botFeePercent fee)
     won = true;
     const grossReward = stake * 4;
-    fee = Math.floor(grossReward * 0.1);
+    fee = Math.floor(grossReward * publicConfig.botFeePercent);
     reward = grossReward - fee;
     console.log(
       `[BOWLING] Strike! grossReward=${grossReward}, fee=${fee}, netReward=${reward}`
     );
   } else if (diceResult === 4 || diceResult === 5) {
-    // Great Roll - Win: 2× stake (minus 10% fee)
+    // Great Roll - Win: 2× stake (minus botConfig.public.botFeePercent fee)
     won = true;
     const grossReward = stake * 2;
-    fee = Math.floor(grossReward * 0.1);
+    fee = Math.floor(grossReward * publicConfig.botFeePercent);
     reward = grossReward - fee;
     console.log(
       `[BOWLING] Great roll! grossReward=${grossReward}, fee=${fee}, netReward=${reward}`

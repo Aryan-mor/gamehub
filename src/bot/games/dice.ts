@@ -1,6 +1,7 @@
 import { ref, set, get, push } from "firebase/database";
 import { database } from "../../lib/firebase";
 import { adjustCoins, requireBalance } from "../../lib/coinService";
+import publicConfig from "../publicConfig";
 
 export interface DiceGameState {
   id: string;
@@ -290,7 +291,7 @@ function calculateDiceWinnings(
   }
 
   const totalReward = stake * multiplier;
-  const fee = Math.floor(totalReward * 0.1);
+  const fee = Math.floor(totalReward * publicConfig.botFeePercent);
   const payout = totalReward - fee;
 
   console.log(
