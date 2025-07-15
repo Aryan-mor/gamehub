@@ -70,6 +70,7 @@ export function registerXoTelegramHandlers(bot: TelegramBot) {
       const singlePlayerKeyboard = {
         inline_keyboard: [
           [{ text: "🎲 Dice Game", callback_data: "newgame:dice" }],
+          [{ text: "🃏 Blackjack Game", callback_data: "newgame:blackjack" }],
           [{ text: "⚽️ Football Game", callback_data: "newgame:football" }],
           [{ text: "🏀 Basketball Game", callback_data: "newgame:basketball" }],
         ],
@@ -92,9 +93,10 @@ export function registerXoTelegramHandlers(bot: TelegramBot) {
             { text: "🎲 Dice Game", callback_data: "newgame:dice" },
           ],
           [
+            { text: "🃏 Blackjack Game", callback_data: "newgame:blackjack" },
             { text: "⚽️ Football Game", callback_data: "newgame:football" },
-            { text: "🏀 Basketball Game", callback_data: "newgame:basketball" },
           ],
+          [{ text: "🏀 Basketball Game", callback_data: "newgame:basketball" }],
         ],
       };
 
@@ -182,6 +184,7 @@ export function registerXoTelegramHandlers(bot: TelegramBot) {
         const singlePlayerKeyboard = {
           inline_keyboard: [
             [{ text: "🎲 Dice Game", callback_data: "newgame:dice" }],
+            [{ text: "🃏 Blackjack Game", callback_data: "newgame:blackjack" }],
             [{ text: "⚽️ Football Game", callback_data: "newgame:football" }],
             [
               {
@@ -210,7 +213,10 @@ export function registerXoTelegramHandlers(bot: TelegramBot) {
               { text: "🎲 Dice Game", callback_data: "newgame:dice" },
             ],
             [
+              { text: "🃏 Blackjack Game", callback_data: "newgame:blackjack" },
               { text: "⚽️ Football Game", callback_data: "newgame:football" },
+            ],
+            [
               {
                 text: "🏀 Basketball Game",
                 callback_data: "newgame:basketball",
