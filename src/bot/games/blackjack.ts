@@ -175,10 +175,14 @@ export async function createBlackjackGame(
     dealerHand,
     deck,
     status,
-    result,
-    reward,
     createdAt: Date.now(),
   };
+
+  // Only add result and reward if game is completed
+  if (status === "completed" && result) {
+    gameState.result = result;
+    gameState.reward = reward;
+  }
 
   console.log(
     `[BLACKJACK] Game state to save:`,
