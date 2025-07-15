@@ -29,6 +29,10 @@ export function registerBlackjackHandlers(bot: TelegramBot) {
           { text: "10 Coins", callback_data: `blackjack_stake:10` },
           { text: "20 Coins", callback_data: `blackjack_stake:20` },
         ],
+        [
+          { text: "30 Coins", callback_data: `blackjack_stake:30` },
+          { text: "50 Coins", callback_data: `blackjack_stake:50` },
+        ],
       ],
     };
 
@@ -100,6 +104,10 @@ export function registerBlackjackHandlers(bot: TelegramBot) {
               [
                 { text: "10 Coins", callback_data: `blackjack_stake:10` },
                 { text: "20 Coins", callback_data: `blackjack_stake:20` },
+              ],
+              [
+                { text: "30 Coins", callback_data: `blackjack_stake:30` },
+                { text: "50 Coins", callback_data: `blackjack_stake:50` },
               ],
             ],
           },

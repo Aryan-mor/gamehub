@@ -29,7 +29,7 @@ export interface BlackjackGameResult {
   message: string;
 }
 
-export const BLACKJACK_STAKES = [2, 5, 10, 20] as const;
+export const BLACKJACK_STAKES = [2, 5, 10, 20, 30, 50] as const;
 export type BlackjackStake = (typeof BLACKJACK_STAKES)[number];
 
 const GAMES_PATH = "blackjackGames";
@@ -137,6 +137,36 @@ export async function createBlackjackGame(
   const playerHand = [deck.pop()!, deck.pop()!];
   const dealerHand = [deck.pop()!, deck.pop()!];
 
+  // Check for automatic win conditions
+  const playerValue = calculateHandValue(playerHand);
+  const playerBlackjack = isBlackjack(playerHand);
+  const dealerBlackjack = isBlackjack(dealerHand);
+
+  let status: "pending" | "completed" = "pending";
+  let result: "win" | "lose" | "push" | undefined;
+  let reward: number | undefined;
+
+  // Check for automatic win/lose conditions
+  if (playerBlackjack && !dealerBlackjack) {
+    // Player blackjack pays 3:2
+    status = "completed";
+    result = "win";
+    reward = Math.floor(stake * 2.5);
+  } else if (dealerBlackjack && !playerBlackjack) {
+    status = "completed";
+    result = "lose";
+    reward = 0;
+  } else if (playerBlackjack && dealerBlackjack) {
+    status = "completed";
+    result = "push";
+    reward = stake;
+  } else if (playerValue === 21 && !playerBlackjack) {
+    // Player has 21 (not blackjack) - automatic win
+    status = "completed";
+    result = "win";
+    reward = stake * 2;
+  }
+
   const gameState: BlackjackGameState = {
     id: gameId,
     userId,
@@ -144,7 +174,9 @@ export async function createBlackjackGame(
     playerHand,
     dealerHand,
     deck,
-    status: "pending",
+    status,
+    result,
+    reward,
     createdAt: Date.now(),
   };
 
@@ -153,6 +185,32 @@ export async function createBlackjackGame(
     JSON.stringify(gameState, null, 2)
   );
   await set(ref(database, `${GAMES_PATH}/${gameId}`), gameState);
+
+  // Process payout if game is already completed
+  if (status === "completed" && result === "win" && reward && reward > 0) {
+    console.log(
+      `[BLACKJACK] Processing automatic win payout: userId=${userId}, reward=${reward}, gameId=${gameId}`
+    );
+    await adjustCoins(userId, reward, "blackjack_win", gameId);
+
+    // Log fee if applicable
+    if (reward > stake) {
+      const fee = Math.floor((reward - stake) * 0.05);
+      if (fee > 0) {
+        const feeTransfer = {
+          fromId: "system",
+          toId: "system_fee",
+          amount: fee,
+          type: "fee",
+          timestamp: Date.now(),
+          reason: "blackjack_fee",
+          gameId,
+        };
+        await push(ref(database, TRANSFERS_PATH), feeTransfer);
+      }
+    }
+  }
+
   console.log(
     `[BLACKJACK] Created game ${gameId} with stake ${stake} for user ${userId}`
   );
