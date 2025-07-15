@@ -18,6 +18,239 @@ export function isAdmin(userId: string): boolean {
 export function registerAdminCommands(bot: TelegramBot) {
   console.log("[ADMIN] Registering admin commands...");
 
+  // Admin panel command with glass buttons
+  bot.onText(/\/admin/, async (msg: TelegramBot.Message) => {
+    const userId = msg.from?.id?.toString();
+    if (!userId || !isAdmin(userId)) {
+      await bot.sendMessage(msg.chat.id, "❌ Access denied. Admin only.");
+      return;
+    }
+
+    const adminPanelMessage =
+      `🛡️ <b>Admin Panel</b>\n\n` + `Welcome, Admin! Choose an action:`;
+
+    const adminKeyboard = {
+      inline_keyboard: [
+        [
+          { text: "💰 Add Coins", callback_data: "admin_add_coins_panel" },
+          {
+            text: "➖ Remove Coins",
+            callback_data: "admin_remove_coins_panel",
+          },
+        ],
+        [
+          { text: "🎯 Set Coins", callback_data: "admin_set_coins_panel" },
+          { text: "👁️ View Balance", callback_data: "admin_view_coins_panel" },
+        ],
+        [
+          { text: "📊 View Stats", callback_data: "admin_view_stats_panel" },
+          { text: "❓ Help", callback_data: "admin_help_panel" },
+        ],
+      ],
+    };
+
+    await bot.sendMessage(msg.chat.id, adminPanelMessage, {
+      parse_mode: "HTML",
+      reply_markup: adminKeyboard,
+    });
+  });
+
+  // Handle admin panel callback queries
+  bot.on("callback_query", async (query) => {
+    const userId = query.from?.id?.toString();
+    if (!userId || !isAdmin(userId)) {
+      await bot.answerCallbackQuery(query.id, {
+        text: "❌ Access denied. Admin only.",
+      });
+      return;
+    }
+
+    const data = query.data;
+    if (!data) return;
+
+    if (data === "admin_add_coins_panel") {
+      await bot.editMessageText(
+        `💰 <b>Add Coins</b>\n\n` +
+          `Use the command:\n` +
+          `<code>/admin_add_coins &lt;user_id&gt; &lt;amount&gt;</code>\n\n` +
+          `Example: <code>/admin_add_coins 123456789 100</code>`,
+        {
+          chat_id: query.message?.chat.id,
+          message_id: query.message?.message_id,
+          parse_mode: "HTML",
+          reply_markup: {
+            inline_keyboard: [
+              [
+                {
+                  text: "🔙 Back to Admin Panel",
+                  callback_data: "admin_back_to_panel",
+                },
+              ],
+            ],
+          },
+        }
+      );
+    } else if (data === "admin_remove_coins_panel") {
+      await bot.editMessageText(
+        `➖ <b>Remove Coins</b>\n\n` +
+          `Use the command:\n` +
+          `<code>/admin_remove_coins &lt;user_id&gt; &lt;amount&gt;</code>\n\n` +
+          `Example: <code>/admin_remove_coins 123456789 50</code>`,
+        {
+          chat_id: query.message?.chat.id,
+          message_id: query.message?.message_id,
+          parse_mode: "HTML",
+          reply_markup: {
+            inline_keyboard: [
+              [
+                {
+                  text: "🔙 Back to Admin Panel",
+                  callback_data: "admin_back_to_panel",
+                },
+              ],
+            ],
+          },
+        }
+      );
+    } else if (data === "admin_set_coins_panel") {
+      await bot.editMessageText(
+        `🎯 <b>Set Coins</b>\n\n` +
+          `Use the command:\n` +
+          `<code>/admin_set_coins &lt;user_id&gt; &lt;amount&gt;</code>\n\n` +
+          `Example: <code>/admin_set_coins 123456789 200</code>`,
+        {
+          chat_id: query.message?.chat.id,
+          message_id: query.message?.message_id,
+          parse_mode: "HTML",
+          reply_markup: {
+            inline_keyboard: [
+              [
+                {
+                  text: "🔙 Back to Admin Panel",
+                  callback_data: "admin_back_to_panel",
+                },
+              ],
+            ],
+          },
+        }
+      );
+    } else if (data === "admin_view_coins_panel") {
+      await bot.editMessageText(
+        `👁️ <b>View Balance</b>\n\n` +
+          `Use the command:\n` +
+          `<code>/admin_view_coins &lt;user_id&gt;</code>\n\n` +
+          `Example: <code>/admin_view_coins 123456789</code>`,
+        {
+          chat_id: query.message?.chat.id,
+          message_id: query.message?.message_id,
+          parse_mode: "HTML",
+          reply_markup: {
+            inline_keyboard: [
+              [
+                {
+                  text: "🔙 Back to Admin Panel",
+                  callback_data: "admin_back_to_panel",
+                },
+              ],
+            ],
+          },
+        }
+      );
+    } else if (data === "admin_view_stats_panel") {
+      await bot.editMessageText(
+        `📊 <b>View Statistics</b>\n\n` +
+          `Use the command:\n` +
+          `<code>/admin_view_stats &lt;user_id&gt;</code>\n\n` +
+          `Example: <code>/admin_view_stats 123456789</code>\n\n` +
+          `Shows all game statistics including:\n` +
+          `• Dice games\n` +
+          `• Blackjack games\n` +
+          `• Football games\n` +
+          `• Basketball games`,
+        {
+          chat_id: query.message?.chat.id,
+          message_id: query.message?.message_id,
+          parse_mode: "HTML",
+          reply_markup: {
+            inline_keyboard: [
+              [
+                {
+                  text: "🔙 Back to Admin Panel",
+                  callback_data: "admin_back_to_panel",
+                },
+              ],
+            ],
+          },
+        }
+      );
+    } else if (data === "admin_help_panel") {
+      const helpMessage =
+        `❓ <b>Admin Help</b>\n\n` +
+        `💰 <b>Coin Management:</b>\n` +
+        `• /admin_add_coins &lt;user_id&gt; &lt;amount&gt; - Add coins\n` +
+        `• /admin_remove_coins &lt;user_id&gt; &lt;amount&gt; - Remove coins\n` +
+        `• /admin_set_coins &lt;user_id&gt; &lt;amount&gt; - Set exact amount\n` +
+        `• /admin_view_coins &lt;user_id&gt; - View balance\n\n` +
+        `📊 <b>Statistics:</b>\n` +
+        `• /admin_view_stats &lt;user_id&gt; - View all game stats\n\n` +
+        `📝 <b>Examples:</b>\n` +
+        `• /admin_add_coins 123456789 100\n` +
+        `• /admin_view_coins 123456789\n` +
+        `• /admin_view_stats 123456789`;
+
+      await bot.editMessageText(helpMessage, {
+        chat_id: query.message?.chat.id,
+        message_id: query.message?.message_id,
+        parse_mode: "HTML",
+        reply_markup: {
+          inline_keyboard: [
+            [
+              {
+                text: "🔙 Back to Admin Panel",
+                callback_data: "admin_back_to_panel",
+              },
+            ],
+          ],
+        },
+      });
+    } else if (data === "admin_back_to_panel") {
+      const adminPanelMessage =
+        `🛡️ <b>Admin Panel</b>\n\n` + `Welcome, Admin! Choose an action:`;
+
+      const adminKeyboard = {
+        inline_keyboard: [
+          [
+            { text: "💰 Add Coins", callback_data: "admin_add_coins_panel" },
+            {
+              text: "➖ Remove Coins",
+              callback_data: "admin_remove_coins_panel",
+            },
+          ],
+          [
+            { text: "🎯 Set Coins", callback_data: "admin_set_coins_panel" },
+            {
+              text: "👁️ View Balance",
+              callback_data: "admin_view_coins_panel",
+            },
+          ],
+          [
+            { text: "📊 View Stats", callback_data: "admin_view_stats_panel" },
+            { text: "❓ Help", callback_data: "admin_help_panel" },
+          ],
+        ],
+      };
+
+      await bot.editMessageText(adminPanelMessage, {
+        chat_id: query.message?.chat.id,
+        message_id: query.message?.message_id,
+        parse_mode: "HTML",
+        reply_markup: adminKeyboard,
+      });
+    }
+
+    await bot.answerCallbackQuery(query.id);
+  });
+
   // Admin add coins command
   bot.onText(
     /\/admin_add_coins (.+)/,
