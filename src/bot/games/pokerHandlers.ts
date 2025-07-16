@@ -405,7 +405,7 @@ export function registerPokerHandlers(bot: TelegramBot) {
       return;
     }
 
-    const stats = await getPokerStats(userId);
+    const stats = await getPokerStats();
     const message =
       `📊 <b>Poker Statistics</b>\n\n` +
       `🎮 Total Games: ${stats.totalGames}\n` +
