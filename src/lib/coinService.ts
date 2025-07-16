@@ -143,8 +143,8 @@ export async function processGamePayout(
   stakePool: number,
   gameId: string
 ): Promise<{ payout: number; fee: number }> {
-  const payout = Math.floor(stakePool * 0.9);
-  const fee = stakePool - payout;
+  const payout = stakePool;
+  const fee = 0;
 
   console.log(
     `[COIN] Processing payout: gameId=${gameId} winnerId=${winnerId} stakePool=${stakePool} payout=${payout} fee=${fee}`
@@ -153,17 +153,7 @@ export async function processGamePayout(
   // Transfer payout to winner
   await adjustCoins(winnerId, payout, "game_win", gameId);
 
-  // Log fee to system
-  const feeTransfer: Omit<Transfer, "id"> = {
-    fromId: "system",
-    toId: "system_fee",
-    amount: fee,
-    type: "fee",
-    gameId,
-    timestamp: Date.now(),
-    reason: "bot_fee",
-  };
-  await logTransfer(feeTransfer);
+  // No fee transfer
 
   return { payout, fee };
 }

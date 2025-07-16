@@ -165,14 +165,12 @@ export async function processBasketballResult(
   console.log(
     `[BASKETBALL] Calculating winnings: guess=${gameState.guess}, diceResult=${diceResult}, stake=${gameState.stake}`
   );
-  const { won, reward, fee } = calculateBasketballWinnings(
+  const { won, reward } = calculateBasketballWinnings(
     gameState.guess,
     diceResult,
     gameState.stake
   );
-  console.log(
-    `[BASKETBALL] Winnings calculated: won=${won}, reward=${reward}, fee=${fee}`
-  );
+  console.log(`[BASKETBALL] Winnings calculated: won=${won}, reward=${reward}`);
 
   // Update game state
   gameState.result = diceResult;
@@ -192,20 +190,13 @@ export async function processBasketballResult(
       `[BASKETBALL] User won, crediting ${reward} coins to userId=${gameState.userId}`
     );
     await adjustCoins(gameState.userId, reward, "basketball_win", gameId);
-
-    if (fee > 0) {
-      console.log(
-        `[BASKETBALL] Deducting fee ${fee} coins from reward for userId=${gameState.userId}`
-      );
-      await adjustCoins(gameState.userId, -fee, "basketball_fee", gameId);
-    }
   }
 
   // Create result message
   const resultText = diceResult >= 4 ? "🏀 SCORED" : "❌ MISSED";
   const guessText = gameState.guess === "score" ? "🏀 Score" : "❌ Miss";
   const resultMessage = won
-    ? `🏀 Shot result: ${diceResult} → ${resultText}\nYour guess: ${guessText}\nResult: ✅ WIN (+${reward} Coins)\n10% fee deducted from win`
+    ? `🏀 Shot result: ${diceResult} → ${resultText}\nYour guess: ${guessText}\nResult: ✅ WIN (+${reward} Coins)`
     : `🏀 Shot result: ${diceResult} → ${resultText}\nYour guess: ${guessText}\nResult: ❌ You lost`;
 
   console.log(
@@ -215,7 +206,7 @@ export async function processBasketballResult(
   return {
     won,
     reward,
-    fee,
+    fee: 0, // No fee in this version
     message: resultMessage,
   };
 }
@@ -228,7 +219,7 @@ function calculateBasketballWinnings(
   guess: "score" | "miss",
   diceResult: number,
   stake: number
-): { won: boolean; reward: number; fee: number } {
+): { won: boolean; reward: number } {
   console.log(
     `[BASKETBALL] calculateBasketballWinnings: guess=${guess}, diceResult=${diceResult}, stake=${stake}`
   );
@@ -241,19 +232,15 @@ function calculateBasketballWinnings(
     console.log(
       `[BASKETBALL] User lost: guess=${guess}, actual=${actualResult}`
     );
-    return { won: false, reward: 0, fee: 0 };
+    return { won: false, reward: 0 };
   }
 
   // User won - calculate reward (2x stake)
-  const grossReward = stake * 2;
-  const fee = Math.floor(grossReward * publicConfig.botFeePercent); // bot fee
-  const netReward = grossReward - fee;
+  const reward = stake * 2;
 
-  console.log(
-    `[BASKETBALL] User won: grossReward=${grossReward}, fee=${fee}, netReward=${netReward}`
-  );
+  console.log(`[BASKETBALL] User won: reward=${reward}`);
 
-  return { won: true, reward: netReward, fee };
+  return { won: true, reward };
 }
 
 /**

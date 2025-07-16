@@ -1,4 +1,4 @@
-import { ref, set, get, push } from "firebase/database";
+import { ref, set, get } from "firebase/database";
 import { database } from "../../lib/firebase";
 import { adjustCoins, requireBalance } from "../../lib/coinService";
 
@@ -33,7 +33,6 @@ export const BLACKJACK_STAKES = [2, 5, 10, 20, 30, 50] as const;
 export type BlackjackStake = (typeof BLACKJACK_STAKES)[number];
 
 const GAMES_PATH = "blackjackGames";
-const TRANSFERS_PATH = "transfers";
 
 /**
  * Create a new deck of cards
@@ -196,23 +195,6 @@ export async function createBlackjackGame(
       `[BLACKJACK] Processing automatic win payout: userId=${userId}, reward=${reward}, gameId=${gameId}`
     );
     await adjustCoins(userId, reward, "blackjack_win", gameId);
-
-    // Log fee if applicable
-    if (reward > stake) {
-      const fee = Math.floor((reward - stake) * 0.05);
-      if (fee > 0) {
-        const feeTransfer = {
-          fromId: "system",
-          toId: "system_fee",
-          amount: fee,
-          type: "fee",
-          timestamp: Date.now(),
-          reason: "blackjack_fee",
-          gameId,
-        };
-        await push(ref(database, TRANSFERS_PATH), feeTransfer);
-      }
-    }
   }
 
   console.log(
@@ -301,7 +283,6 @@ export async function standGame(gameId: string): Promise<BlackjackGameResult> {
 
   let result: "win" | "lose" | "push";
   let reward = 0;
-  let fee = 0;
 
   if (playerBlackjack && !dealerBlackjack) {
     // Player blackjack pays 3:2
@@ -330,12 +311,6 @@ export async function standGame(gameId: string): Promise<BlackjackGameResult> {
     reward = gameState.stake;
   }
 
-  // Calculate fee (5% of winnings)
-  if (reward > gameState.stake) {
-    fee = Math.floor((reward - gameState.stake) * 0.05);
-    reward -= fee;
-  }
-
   // Update game state
   gameState.status = "completed";
   gameState.result = result;
@@ -347,20 +322,6 @@ export async function standGame(gameId: string): Promise<BlackjackGameResult> {
   // Process payout if won
   if (result === "win" && reward > 0) {
     await adjustCoins(gameState.userId, reward, "blackjack_win", gameId);
-
-    // Log fee
-    if (fee > 0) {
-      const feeTransfer = {
-        fromId: "system",
-        toId: "system_fee",
-        amount: fee,
-        type: "fee",
-        timestamp: Date.now(),
-        reason: "blackjack_fee",
-        gameId,
-      };
-      await push(ref(database, TRANSFERS_PATH), feeTransfer);
-    }
   }
 
   const message = getBlackjackResultText(
@@ -376,7 +337,7 @@ export async function standGame(gameId: string): Promise<BlackjackGameResult> {
   return {
     won: result === "win",
     reward,
-    fee,
+    fee: 0, // No fee
     message,
   };
 }

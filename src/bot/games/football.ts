@@ -1,4 +1,4 @@
-import { ref, set, get, push } from "firebase/database";
+import { ref, set, get } from "firebase/database";
 import { database } from "../../lib/firebase";
 import { adjustCoins, requireBalance } from "../../lib/coinService";
 import publicConfig from "../publicConfig";
@@ -42,7 +42,6 @@ export const FOOTBALL_DIRECTION_KEYS = {
 } as const;
 
 const GAMES_PATH = "footballGames";
-const TRANSFERS_PATH = "transfers";
 
 /**
  * Create a new football game
@@ -180,14 +179,12 @@ export async function processFootballResult(
   console.log(
     `[FOOTBALL] Calculating winnings: guess=${gameState.guess}, diceResult=${diceResult}, stake=${gameState.stake}`
   );
-  const { won, reward, fee } = calculateFootballWinnings(
+  const { won, reward } = calculateFootballWinnings(
     gameState.guess,
     diceResult,
     gameState.stake
   );
-  console.log(
-    `[FOOTBALL] Winnings calculated: won=${won}, reward=${reward}, fee=${fee}`
-  );
+  console.log(`[FOOTBALL] Winnings calculated: won=${won}, reward=${reward}`);
 
   // Update game state
   gameState.result = diceResult;
@@ -207,31 +204,6 @@ export async function processFootballResult(
       `[FOOTBALL] Processing payout: userId=${gameState.userId}, reward=${reward}, gameId=${gameId}`
     );
     await adjustCoins(gameState.userId, reward, "football_win", gameId);
-
-    // Log fee
-    const feeTransfer: {
-      fromId: string;
-      toId: string;
-      amount: number;
-      type: "fee";
-      timestamp: number;
-      reason: string;
-      gameId?: string;
-    } = {
-      fromId: "system",
-      toId: "system_fee",
-      amount: fee,
-      type: "fee",
-      timestamp: Date.now(),
-      reason: "football_fee",
-      gameId,
-    };
-
-    console.log(
-      `[FOOTBALL] Logging fee transfer:`,
-      JSON.stringify(feeTransfer, null, 2)
-    );
-    await push(ref(database, TRANSFERS_PATH), feeTransfer);
   }
 
   const guessDirection =
@@ -240,13 +212,13 @@ export async function processFootballResult(
     FOOTBALL_DIRECTIONS[diceResult as keyof typeof FOOTBALL_DIRECTIONS];
 
   const message = won
-    ? `⚽️ You aimed for: ${guessDirection}\n📍 Ball landed: ${resultDirection}\n🎯 **WIN!**\n🏆 +${reward} Coins (10% fee deducted)`
+    ? `⚽️ You aimed for: ${guessDirection}\n📍 Ball landed: ${resultDirection}\n🎯 **WIN!**\n🏆 +${reward} Coins`
     : `⚽️ You aimed for: ${guessDirection}\n📍 Ball landed: ${resultDirection}\n🎯 **LOSE**\n💸 You lost ${gameState.stake} coins`;
 
   console.log(
     `[FOOTBALL] Game ${gameId} completed: won=${won}, reward=${reward}`
   );
-  return { won, reward, fee, message };
+  return { won, reward, fee: 0, message };
 }
 
 /**
@@ -256,26 +228,21 @@ function calculateFootballWinnings(
   guess: number,
   diceResult: number,
   stake: number
-): { won: boolean; reward: number; fee: number } {
+): { won: boolean; reward: number } {
   console.log(
     `[FOOTBALL] calculateFootballWinnings: guess=${guess}, diceResult=${diceResult}, stake=${stake}`
   );
 
   const won = guess === diceResult;
   let reward = 0;
-  let fee = 0;
 
   if (won) {
-    // Win = stake × 4, Fee = botConfig.public.botFeePercent of win
+    // Win = stake × 4
     reward = stake * 4;
-    fee = Math.floor(reward * publicConfig.botFeePercent);
-    reward = reward - fee; // Net reward after fee
   }
 
-  console.log(
-    `[FOOTBALL] Winnings calculated: won=${won}, reward=${reward}, fee=${fee}`
-  );
-  return { won, reward, fee };
+  console.log(`[FOOTBALL] Winnings calculated: won=${won}, reward=${reward}`);
+  return { won, reward };
 }
 
 /**

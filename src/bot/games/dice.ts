@@ -158,14 +158,12 @@ export async function processDiceResult(
   console.log(
     `[DICE] Calculating winnings: guess=${gameState.guess}, diceResult=${diceResult}, stake=${gameState.stake}`
   );
-  const { won, reward, fee } = calculateDiceWinnings(
+  const { won, reward } = calculateDiceWinnings(
     gameState.guess,
     diceResult,
     gameState.stake
   );
-  console.log(
-    `[DICE] Winnings calculated: won=${won}, reward=${reward}, fee=${fee}`
-  );
+  console.log(`[DICE] Winnings calculated: won=${won}, reward=${reward}`);
 
   // Update game state
   gameState.result = diceResult;
@@ -182,40 +180,6 @@ export async function processDiceResult(
       `[DICE] Processing payout: userId=${gameState.userId}, reward=${reward}, gameId=${gameId}`
     );
     await adjustCoins(gameState.userId, reward, "dice_win", gameId);
-
-    // Log fee
-    const feeTransfer: {
-      fromId: string;
-      toId: string;
-      amount: number;
-      type: "fee";
-      timestamp: number;
-      reason: string;
-      gameId?: string;
-    } = {
-      fromId: "system",
-      toId: "system_fee",
-      amount: fee,
-      type: "fee",
-      timestamp: Date.now(),
-      reason: "dice_fee",
-    };
-
-    // Only add gameId if it's not undefined
-    if (gameId !== undefined) {
-      feeTransfer.gameId = gameId;
-    }
-    console.log(
-      `[DICE] Fee transfer to log:`,
-      JSON.stringify(feeTransfer, null, 2)
-    );
-    console.log(
-      `[DICE] Fee transfer gameId type: ${typeof feeTransfer.gameId}, value: ${
-        feeTransfer.gameId
-      }`
-    );
-    await push(ref(database, TRANSFERS_PATH), feeTransfer);
-    console.log(`[DICE] Fee transfer logged successfully`);
   } else {
     console.log(`[DICE] No payout - game lost or no reward`);
   }
@@ -228,11 +192,9 @@ export async function processDiceResult(
     gameState.stake
   );
 
-  console.log(
-    `[DICE] Game ${gameId} completed: won=${won}, reward=${reward}, fee=${fee}`
-  );
+  console.log(`[DICE] Game ${gameId} completed: won=${won}, reward=${reward}`);
 
-  return { won, reward, fee, message };
+  return { won, reward, fee: 0, message };
 }
 
 /**
@@ -242,7 +204,7 @@ function calculateDiceWinnings(
   guess: string,
   diceResult: number,
   stake: number
-): { won: boolean; reward: number; fee: number } {
+): { won: boolean; reward: number } {
   console.log(
     `[DICE] calculateDiceWinnings called: guess=${guess}, diceResult=${diceResult}, stake=${stake}`
   );
@@ -291,18 +253,16 @@ function calculateDiceWinnings(
     console.log(
       `[DICE] No match found: guess=${guess}, diceResult=${diceResult}`
     );
-    return { won: false, reward: 0, fee: 0 };
+    return { won: false, reward: 0 };
   }
 
   const totalReward = stake * multiplier;
-  const fee = Math.floor(totalReward * publicConfig.botFeePercent);
-  const payout = totalReward - fee;
 
   console.log(
-    `[DICE] Winnings calculated: totalReward=${totalReward}, fee=${fee}, payout=${payout}, multiplier=${multiplier}`
+    `[DICE] Winnings calculated: totalReward=${totalReward}, multiplier=${multiplier}`
   );
 
-  return { won: true, reward: payout, fee };
+  return { won: true, reward: totalReward };
 }
 
 export function getDiceResultText(

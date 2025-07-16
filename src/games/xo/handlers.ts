@@ -390,10 +390,9 @@ export function registerXoTelegramHandlers(bot: TelegramBot) {
           stake
         );
 
-        const payout = Math.floor(stake * 0.9 * 2);
         const gameMessage = `🎮 X/O Game – Stake: ${stake} Coins\n\nCreated by ${
           callbackQuery.from?.first_name || "Player"
-        }. Waiting for player 2…\n\n(Winner gets ${payout} Coins – 10% fee)`;
+        }. Waiting for player 2…\n\n(Winner gets ${stake} Coins)`;
 
         const shareKeyboard = {
           inline_keyboard: [
@@ -581,10 +580,9 @@ export function registerXoTelegramHandlers(bot: TelegramBot) {
           stake
         );
 
-        const payout = Math.floor(stake * 0.9 * 2);
         const gameMessage = `🎮 X/O Game – Stake: ${stake} Coins\n\nCreated by ${
           callbackQuery.from?.first_name || "Player"
-        }. Waiting for player 2…\n\n(Winner gets ${payout} Coins – 10% fee)`;
+        }. Waiting for player 2…\n\n(Winner gets ${stake} Coins)`;
 
         const shareKeyboard = {
           inline_keyboard: [
@@ -652,7 +650,7 @@ export function registerXoTelegramHandlers(bot: TelegramBot) {
       const boardMessage = formatXoBoard(gameState.board);
       const stakeInfo = `X/O – Stake ${
         gameState.stake
-      } Coins • Winner takes ${Math.floor(gameState.stakePool! * 0.9)}\n\n`;
+      } Coins • Winner takes ${gameState.stakePool!}\n\n`;
 
       let statusMessage = "";
       if (gameState.winner) {
@@ -660,8 +658,8 @@ export function registerXoTelegramHandlers(bot: TelegramBot) {
           gameState.winner === "X"
             ? gameState.players.X?.name
             : gameState.players.O?.name;
-        const payout = Math.floor(gameState.stakePool! * 0.9);
-        statusMessage = `🏆 ${winnerName} wins ${payout} Coins! (10% fee kept by bot)`;
+        const payout = gameState.stakePool!;
+        statusMessage = `🏆 ${winnerName} wins ${payout} Coins!`;
 
         // Add winner stats and head-to-head record
         const winnerId =
@@ -754,7 +752,7 @@ export function registerXoTelegramHandlers(bot: TelegramBot) {
         const boardMessage = formatXoBoard(gameState.board);
         const stakeInfo = `X/O – Stake ${
           gameState.stake
-        } Coins • Winner takes ${Math.floor(gameState.stakePool! * 0.9)}\n\n`;
+        } Coins • Winner takes ${gameState.stakePool!}\n\n`;
         const statusMessage = `🎯 It's ${
           gameState.players[gameState.currentPlayer]?.name ||
           gameState.currentPlayer
@@ -820,9 +818,7 @@ export function registerXoTelegramHandlers(bot: TelegramBot) {
         const boardMessage = formatXoBoard(newGameState.board);
         const stakeInfo = `X/O – Stake ${
           newGameState.stake
-        } Coins • Winner takes ${Math.floor(
-          newGameState.stakePool! * 0.9
-        )}\n\n`;
+        } Coins • Winner takes ${newGameState.stakePool!}\n\n`;
         const statusMessage = `🎯 It's ${
           newGameState.players[newGameState.currentPlayer]?.name ||
           newGameState.currentPlayer

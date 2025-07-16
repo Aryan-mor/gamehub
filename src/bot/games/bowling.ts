@@ -111,18 +111,12 @@ export async function processBowlingResult(
   console.log(
     `[BOWLING] Calculating winnings: diceResult=${diceResult}, stake=${gameState.stake}`
   );
-  const { won, reward, fee } = calculateBowlingWinnings(
-    diceResult,
-    gameState.stake
-  );
-  console.log(
-    `[BOWLING] Winnings calculated: won=${won}, reward=${reward}, fee=${fee}`
-  );
+  const { won, reward } = calculateBowlingWinnings(diceResult, gameState.stake);
+  console.log(`[BOWLING] Winnings calculated: won=${won}, reward=${reward}`);
 
   // Update game state
   gameState.result = diceResult;
   gameState.reward = reward;
-  gameState.fee = fee;
   gameState.status = "completed";
   gameState.completedAt = Date.now();
 
@@ -148,12 +142,12 @@ export async function processBowlingResult(
 
   // Generate result message
   const outcome = getBowlingOutcome(diceResult);
-  const message = generateBowlingMessage(diceResult, outcome, reward, fee);
+  const message = generateBowlingMessage(diceResult, outcome, reward);
 
   console.log(
     `[BOWLING] Game ${gameId} completed: won=${won}, reward=${reward}`
   );
-  return { won, reward, fee, message };
+  return { won, reward, message };
 }
 
 /**
@@ -162,48 +156,43 @@ export async function processBowlingResult(
 function calculateBowlingWinnings(
   diceResult: number,
   stake: number
-): { won: boolean; reward: number; fee: number } {
+): { won: boolean; reward: number } {
   console.log(
     `[BOWLING] calculateBowlingWinnings: diceResult=${diceResult}, stake=${stake}`
   );
 
   let won = false;
   let reward = 0;
-  let fee = 0;
 
   if (diceResult === 6) {
     // Strike - Jackpot Win: 4× stake (minus botConfig.public.botFeePercent fee)
     won = true;
     const grossReward = stake * 4;
-    fee = Math.floor(grossReward * publicConfig.botFeePercent);
-    reward = grossReward - fee;
+    reward = grossReward;
     console.log(
-      `[BOWLING] Strike! grossReward=${grossReward}, fee=${fee}, netReward=${reward}`
+      `[BOWLING] Strike! grossReward=${grossReward}, netReward=${reward}`
     );
   } else if (diceResult === 4 || diceResult === 5) {
     // Great Roll - Win: 2× stake (minus botConfig.public.botFeePercent fee)
     won = true;
     const grossReward = stake * 2;
-    fee = Math.floor(grossReward * publicConfig.botFeePercent);
-    reward = grossReward - fee;
+    reward = grossReward;
     console.log(
-      `[BOWLING] Great roll! grossReward=${grossReward}, fee=${fee}, netReward=${reward}`
+      `[BOWLING] Great roll! grossReward=${grossReward}, netReward=${reward}`
     );
   } else if (diceResult === 2 || diceResult === 3) {
     // Moderate - Refund: Return stake
     won = false;
     reward = stake;
-    fee = 0;
     console.log(`[BOWLING] Moderate roll, refunding stake: ${stake}`);
   } else {
     // Weak Hit - Lose: No reward
     won = false;
     reward = 0;
-    fee = 0;
     console.log(`[BOWLING] Weak hit, no reward`);
   }
 
-  return { won, reward, fee };
+  return { won, reward };
 }
 
 /**
@@ -232,12 +221,10 @@ function getBowlingOutcome(diceResult: number): string {
 function generateBowlingMessage(
   diceResult: number,
   outcome: string,
-  reward: number,
-  fee: number
+  reward: number
 ): string {
   const pinsHit = diceResult;
-  const feeText = fee > 0 ? ` (after 10% fee)` : "";
-  const rewardText = reward > 0 ? `+${reward} Coins${feeText}` : "No reward";
+  const rewardText = reward > 0 ? `+${reward} Coins` : "No reward";
 
   return `🎳 You knocked down ${pinsHit} pins!\n🏆 Outcome: ${outcome}\n🎁 Reward: ${rewardText}`;
 }
