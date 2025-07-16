@@ -6,7 +6,6 @@ import { registerDiceHandlers } from "./games/diceHandlers";
 import { registerFootballHandlers } from "./games/footballHandlers";
 import { registerBasketballHandlers } from "./games/basketballHandlers";
 import { registerBlackjackHandlers } from "./games/blackjackHandlers";
-import { registerPokerHandlers } from "./games/pokerHandlers";
 import { registerAdminCommands } from "./admin/adminCommands";
 
 import {
@@ -69,9 +68,6 @@ async function initializeBot() {
 
   // Register blackjack game handlers
   registerBlackjackHandlers(bot);
-
-  // Register poker game handlers
-  registerPokerHandlers(bot);
 
   // Register admin commands
   registerAdminCommands(bot);
@@ -197,7 +193,6 @@ bot.onText(/\/startgame/, async (msg) => {
       inline_keyboard: [
         [{ text: "🎲 Dice Game", callback_data: "newgame:dice" }],
         [{ text: "🃏 Blackjack Game", callback_data: "newgame:blackjack" }],
-        [{ text: "🃏 Poker Game", callback_data: "newgame:poker" }],
         [{ text: "⚽️ Football Game", callback_data: "newgame:football" }],
         [{ text: "🏀 Basketball Game", callback_data: "newgame:basketball" }],
       ],
@@ -221,9 +216,6 @@ bot.onText(/\/startgame/, async (msg) => {
         ],
         [
           { text: "🃏 Blackjack Game", callback_data: "newgame:blackjack" },
-          { text: "🃏 Poker Game", callback_data: "newgame:poker" },
-        ],
-        [
           { text: "⚽️ Football Game", callback_data: "newgame:football" },
           { text: "🏀 Basketball Game", callback_data: "newgame:basketball" },
         ],
@@ -428,7 +420,6 @@ bot.on("callback_query", async (query) => {
           inline_keyboard: [
             [{ text: "🎲 Dice Game", callback_data: "newgame:dice" }],
             [{ text: "🃏 Blackjack Game", callback_data: "newgame:blackjack" }],
-            [{ text: "🃏 Poker Game", callback_data: "newgame:poker" }],
             [{ text: "⚽️ Football Game", callback_data: "newgame:football" }],
             [
               {

@@ -1595,13 +1595,13 @@ export function registerXoTelegramHandlers(bot: TelegramBot) {
         // Game is not completed, proceed as normal
         const gameState = await hitCard(gameId);
         const playerValue = calculateHandValue(gameState.playerHand);
-        if (gameState.status === "completed") {
-          // Player busted
+        if (gameState.status === "completed" || playerValue === 21) {
+          // Show result and play again buttons immediately
           const resultText = getBlackjackResultText(
-            "lose",
-            0,
+            gameState.result || "win",
+            gameState.reward || 0,
             playerValue,
-            0,
+            calculateHandValue(gameState.dealerHand),
             gameState.stake,
             gameState.playerHand,
             gameState.dealerHand
@@ -1639,6 +1639,8 @@ export function registerXoTelegramHandlers(bot: TelegramBot) {
               parse_mode: "HTML",
             });
           }
+          await bot.answerCallbackQuery(callbackQuery.id);
+          return;
         } else {
           // Game continues
           const playerHandFormatted = formatHand(gameState.playerHand);
