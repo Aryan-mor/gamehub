@@ -146,7 +146,7 @@ export function registerXoTelegramHandlers(bot: TelegramBot) {
         console.log(`[XO] /join: user ${userId} joined game ${gameId}`);
       } catch (error: unknown) {
         if (error instanceof Error && error.message === "Insufficient coins") {
-          await bot.sendMessage(chatId, "❌ Insufficient Coins.");
+          await handleInsufficientCoins(bot, chatId, msg.message_id);
         } else if (error instanceof Error) {
           await bot.sendMessage(chatId, `❌ Error: ${error.message}`);
         } else {
@@ -377,10 +377,11 @@ export function registerXoTelegramHandlers(bot: TelegramBot) {
         // Check balance
         const hasBalance = await requireBalance(userId.toString(), stake);
         if (!hasBalance) {
-          await bot.answerCallbackQuery(callbackQuery.id, {
-            text: "Insufficient Coins.",
-            show_alert: true,
-          });
+          await handleInsufficientCoins(
+            bot,
+            chatId,
+            callbackQuery.message?.message_id
+          );
           return;
         }
 
@@ -420,10 +421,11 @@ export function registerXoTelegramHandlers(bot: TelegramBot) {
         return;
       } catch (error: unknown) {
         if (error instanceof Error && error.message === "Insufficient coins") {
-          await bot.answerCallbackQuery(callbackQuery.id, {
-            text: "Insufficient Coins.",
-            show_alert: true,
-          });
+          await handleInsufficientCoins(
+            bot,
+            chatId,
+            callbackQuery.message?.message_id
+          );
         } else if (error instanceof Error) {
           await bot.answerCallbackQuery(callbackQuery.id, {
             text: error.message || "Failed to create game",
@@ -567,10 +569,11 @@ export function registerXoTelegramHandlers(bot: TelegramBot) {
         // Check balance
         const hasBalance = await requireBalance(userId.toString(), stake);
         if (!hasBalance) {
-          await bot.answerCallbackQuery(callbackQuery.id, {
-            text: "Insufficient Coins.",
-            show_alert: true,
-          });
+          await handleInsufficientCoins(
+            bot,
+            chatId,
+            callbackQuery.message?.message_id
+          );
           return;
         }
 
@@ -610,10 +613,11 @@ export function registerXoTelegramHandlers(bot: TelegramBot) {
         return;
       } catch (error: unknown) {
         if (error instanceof Error && error.message === "Insufficient coins") {
-          await bot.answerCallbackQuery(callbackQuery.id, {
-            text: "Insufficient Coins.",
-            show_alert: true,
-          });
+          await handleInsufficientCoins(
+            bot,
+            chatId,
+            callbackQuery.message?.message_id
+          );
         } else if (error instanceof Error) {
           await bot.answerCallbackQuery(callbackQuery.id, {
             text: error.message || "Failed to create game",
@@ -784,10 +788,11 @@ export function registerXoTelegramHandlers(bot: TelegramBot) {
         return;
       } catch (error: unknown) {
         if (error instanceof Error && error.message === "Insufficient coins") {
-          await bot.answerCallbackQuery(callbackQuery.id, {
-            text: "Insufficient Coins.",
-            show_alert: true,
-          });
+          await handleInsufficientCoins(
+            bot,
+            chatId,
+            callbackQuery.message?.message_id
+          );
         } else if (error instanceof Error) {
           await bot.answerCallbackQuery(callbackQuery.id, {
             text: error.message || "Failed to join game",
@@ -971,10 +976,11 @@ export function registerXoTelegramHandlers(bot: TelegramBot) {
         return;
       } catch (error: unknown) {
         if (error instanceof Error && error.message === "Insufficient coins") {
-          await bot.answerCallbackQuery(callbackQuery.id, {
-            text: "Insufficient Coins.",
-            show_alert: true,
-          });
+          await handleInsufficientCoins(
+            bot,
+            chatId,
+            callbackQuery.message?.message_id
+          );
         } else if (error instanceof Error) {
           await bot.answerCallbackQuery(callbackQuery.id, {
             text: error.message || "Failed to create dice game",
@@ -1119,10 +1125,11 @@ export function registerXoTelegramHandlers(bot: TelegramBot) {
         return;
       } catch (error: unknown) {
         if (error instanceof Error && error.message === "Insufficient coins") {
-          await bot.answerCallbackQuery(callbackQuery.id, {
-            text: "Insufficient Coins.",
-            show_alert: true,
-          });
+          await handleInsufficientCoins(
+            bot,
+            chatId,
+            callbackQuery.message?.message_id
+          );
         } else if (error instanceof Error) {
           await bot.answerCallbackQuery(callbackQuery.id, {
             text: error.message || "Failed to process dice game",
@@ -1149,10 +1156,11 @@ export function registerXoTelegramHandlers(bot: TelegramBot) {
         // Check balance
         const hasBalance = await requireBalance(userId.toString(), stake);
         if (!hasBalance) {
-          await bot.answerCallbackQuery(callbackQuery.id, {
-            text: "Insufficient Coins.",
-            show_alert: true,
-          });
+          await handleInsufficientCoins(
+            bot,
+            chatId,
+            callbackQuery.message?.message_id
+          );
           return;
         }
 
@@ -1222,10 +1230,11 @@ export function registerXoTelegramHandlers(bot: TelegramBot) {
         return;
       } catch (error: unknown) {
         if (error instanceof Error && error.message === "Insufficient coins") {
-          await bot.answerCallbackQuery(callbackQuery.id, {
-            text: "Insufficient Coins.",
-            show_alert: true,
-          });
+          await handleInsufficientCoins(
+            bot,
+            chatId,
+            callbackQuery.message?.message_id
+          );
         } else if (error instanceof Error) {
           await bot.answerCallbackQuery(callbackQuery.id, {
             text: error.message || "Failed to start new game",
@@ -1276,10 +1285,11 @@ export function registerXoTelegramHandlers(bot: TelegramBot) {
         // Check balance
         const hasBalance = await requireBalance(userId.toString(), stake);
         if (!hasBalance) {
-          await bot.answerCallbackQuery(callbackQuery.id, {
-            text: "Insufficient Coins.",
-            show_alert: true,
-          });
+          await handleInsufficientCoins(
+            bot,
+            chatId,
+            callbackQuery.message?.message_id
+          );
           return;
         }
 
@@ -1372,10 +1382,11 @@ export function registerXoTelegramHandlers(bot: TelegramBot) {
         return;
       } catch (error: unknown) {
         if (error instanceof Error && error.message === "Insufficient coins") {
-          await bot.answerCallbackQuery(callbackQuery.id, {
-            text: "Insufficient Coins.",
-            show_alert: true,
-          });
+          await handleInsufficientCoins(
+            bot,
+            chatId,
+            callbackQuery.message?.message_id
+          );
         } else if (error instanceof Error) {
           await bot.answerCallbackQuery(callbackQuery.id, {
             text: error.message || "Failed to start new game",
@@ -1510,23 +1521,12 @@ export function registerXoTelegramHandlers(bot: TelegramBot) {
           `[BLACKJACK] Created game ${gameState.id} with stake ${stake} for user ${userId}`
         );
         return;
-      } catch (error: unknown) {
-        if (error instanceof Error && error.message === "Insufficient coins") {
-          await bot.answerCallbackQuery(callbackQuery.id, {
-            text: "Insufficient Coins.",
-            show_alert: true,
-          });
-        } else if (error instanceof Error) {
-          await bot.answerCallbackQuery(callbackQuery.id, {
-            text: error.message || "Failed to create blackjack game",
-            show_alert: true,
-          });
-        } else {
-          await bot.answerCallbackQuery(callbackQuery.id, {
-            text: "Failed to create blackjack game",
-            show_alert: true,
-          });
-        }
+      } catch {
+        await handleInsufficientCoins(
+          bot,
+          chatId,
+          callbackQuery.message?.message_id
+        );
         return;
       }
     }
@@ -1888,12 +1888,12 @@ export function registerXoTelegramHandlers(bot: TelegramBot) {
         }
         await bot.answerCallbackQuery(callbackQuery.id);
         return;
-      } catch (error: unknown) {
-        await bot.answerCallbackQuery(callbackQuery.id, {
-          text:
-            error instanceof Error ? error.message : "Failed to start new game",
-          show_alert: true,
-        });
+      } catch {
+        await handleInsufficientCoins(
+          bot,
+          chatId,
+          callbackQuery.message?.message_id
+        );
         return;
       }
     }
@@ -1979,23 +1979,12 @@ export function registerXoTelegramHandlers(bot: TelegramBot) {
           `[FOOTBALL] Created game ${gameState.id} with stake ${stake} for user ${userId}`
         );
         return;
-      } catch (error: unknown) {
-        if (error instanceof Error && error.message === "Insufficient coins") {
-          await bot.answerCallbackQuery(callbackQuery.id, {
-            text: "Insufficient Coins.",
-            show_alert: true,
-          });
-        } else if (error instanceof Error) {
-          await bot.answerCallbackQuery(callbackQuery.id, {
-            text: error.message || "Failed to create football game",
-            show_alert: true,
-          });
-        } else {
-          await bot.answerCallbackQuery(callbackQuery.id, {
-            text: "Failed to create football game",
-            show_alert: true,
-          });
-        }
+      } catch {
+        await handleInsufficientCoins(
+          bot,
+          chatId,
+          callbackQuery.message?.message_id
+        );
         return;
       }
     }
@@ -2149,23 +2138,12 @@ export function registerXoTelegramHandlers(bot: TelegramBot) {
           `[FOOTBALL] Game ${gameId} completed: won=${result.won}, reward=${result.reward}`
         );
         return;
-      } catch (error: unknown) {
-        if (error instanceof Error && error.message === "Insufficient coins") {
-          await bot.answerCallbackQuery(callbackQuery.id, {
-            text: "Insufficient Coins.",
-            show_alert: true,
-          });
-        } else if (error instanceof Error) {
-          await bot.answerCallbackQuery(callbackQuery.id, {
-            text: error.message || "Failed to process football game",
-            show_alert: true,
-          });
-        } else {
-          await bot.answerCallbackQuery(callbackQuery.id, {
-            text: "Failed to process football game",
-            show_alert: true,
-          });
-        }
+      } catch {
+        await handleInsufficientCoins(
+          bot,
+          chatId,
+          callbackQuery.message?.message_id
+        );
         return;
       }
     }
@@ -2181,10 +2159,11 @@ export function registerXoTelegramHandlers(bot: TelegramBot) {
         // Check balance
         const hasBalance = await requireBalance(userId.toString(), stake);
         if (!hasBalance) {
-          await bot.answerCallbackQuery(callbackQuery.id, {
-            text: "Insufficient Coins.",
-            show_alert: true,
-          });
+          await handleInsufficientCoins(
+            bot,
+            chatId,
+            callbackQuery.message?.message_id
+          );
           return;
         }
 
@@ -2245,23 +2224,12 @@ export function registerXoTelegramHandlers(bot: TelegramBot) {
           `[FOOTBALL] Play again same stake: created game ${gameState.id}`
         );
         return;
-      } catch (error: unknown) {
-        if (error instanceof Error && error.message === "Insufficient coins") {
-          await bot.answerCallbackQuery(callbackQuery.id, {
-            text: "Insufficient Coins.",
-            show_alert: true,
-          });
-        } else if (error instanceof Error) {
-          await bot.answerCallbackQuery(callbackQuery.id, {
-            text: error.message || "Failed to start new game",
-            show_alert: true,
-          });
-        } else {
-          await bot.answerCallbackQuery(callbackQuery.id, {
-            text: "Failed to start new game",
-            show_alert: true,
-          });
-        }
+      } catch {
+        await handleInsufficientCoins(
+          bot,
+          chatId,
+          callbackQuery.message?.message_id
+        );
         return;
       }
     }
@@ -2303,10 +2271,11 @@ export function registerXoTelegramHandlers(bot: TelegramBot) {
         // Check balance
         const hasBalance = await requireBalance(userId.toString(), stake);
         if (!hasBalance) {
-          await bot.answerCallbackQuery(callbackQuery.id, {
-            text: "Insufficient Coins.",
-            show_alert: true,
-          });
+          await handleInsufficientCoins(
+            bot,
+            chatId,
+            callbackQuery.message?.message_id
+          );
           return;
         }
 
@@ -2402,23 +2371,12 @@ export function registerXoTelegramHandlers(bot: TelegramBot) {
           `[FOOTBALL] Play again exact: completed game ${gameState.id}`
         );
         return;
-      } catch (error: unknown) {
-        if (error instanceof Error && error.message === "Insufficient coins") {
-          await bot.answerCallbackQuery(callbackQuery.id, {
-            text: "Insufficient Coins.",
-            show_alert: true,
-          });
-        } else if (error instanceof Error) {
-          await bot.answerCallbackQuery(callbackQuery.id, {
-            text: error.message || "Failed to start new game",
-            show_alert: true,
-          });
-        } else {
-          await bot.answerCallbackQuery(callbackQuery.id, {
-            text: "Failed to start new game",
-            show_alert: true,
-          });
-        }
+      } catch {
+        await handleInsufficientCoins(
+          bot,
+          chatId,
+          callbackQuery.message?.message_id
+        );
         return;
       }
     }
@@ -2527,23 +2485,12 @@ export function registerXoTelegramHandlers(bot: TelegramBot) {
           `[BASKETBALL] Created game ${gameState.id} with stake ${stake} for user ${userId}`
         );
         return;
-      } catch (error: unknown) {
-        if (error instanceof Error && error.message === "Insufficient coins") {
-          await bot.answerCallbackQuery(callbackQuery.id, {
-            text: "Insufficient Coins.",
-            show_alert: true,
-          });
-        } else if (error instanceof Error) {
-          await bot.answerCallbackQuery(callbackQuery.id, {
-            text: error.message || "Failed to create basketball game",
-            show_alert: true,
-          });
-        } else {
-          await bot.answerCallbackQuery(callbackQuery.id, {
-            text: "Failed to create basketball game",
-            show_alert: true,
-          });
-        }
+      } catch {
+        await handleInsufficientCoins(
+          bot,
+          chatId,
+          callbackQuery.message?.message_id
+        );
         return;
       }
     }
@@ -2698,23 +2645,12 @@ export function registerXoTelegramHandlers(bot: TelegramBot) {
           `[BASKETBALL] Game ${gameId} completed: won=${result.won}, reward=${result.reward}`
         );
         return;
-      } catch (error: unknown) {
-        if (error instanceof Error && error.message === "Insufficient coins") {
-          await bot.answerCallbackQuery(callbackQuery.id, {
-            text: "Insufficient Coins.",
-            show_alert: true,
-          });
-        } else if (error instanceof Error) {
-          await bot.answerCallbackQuery(callbackQuery.id, {
-            text: error.message || "Failed to process basketball game",
-            show_alert: true,
-          });
-        } else {
-          await bot.answerCallbackQuery(callbackQuery.id, {
-            text: "Failed to process basketball game",
-            show_alert: true,
-          });
-        }
+      } catch {
+        await handleInsufficientCoins(
+          bot,
+          chatId,
+          callbackQuery.message?.message_id
+        );
         return;
       }
     }
@@ -2730,10 +2666,11 @@ export function registerXoTelegramHandlers(bot: TelegramBot) {
         // Check balance
         const hasBalance = await requireBalance(userId.toString(), stake);
         if (!hasBalance) {
-          await bot.answerCallbackQuery(callbackQuery.id, {
-            text: "Insufficient Coins.",
-            show_alert: true,
-          });
+          await handleInsufficientCoins(
+            bot,
+            chatId,
+            callbackQuery.message?.message_id
+          );
           return;
         }
 
@@ -2778,23 +2715,12 @@ export function registerXoTelegramHandlers(bot: TelegramBot) {
           `[BASKETBALL] Play again same stake: created game ${gameState.id}`
         );
         return;
-      } catch (error: unknown) {
-        if (error instanceof Error && error.message === "Insufficient coins") {
-          await bot.answerCallbackQuery(callbackQuery.id, {
-            text: "Insufficient Coins.",
-            show_alert: true,
-          });
-        } else if (error instanceof Error) {
-          await bot.answerCallbackQuery(callbackQuery.id, {
-            text: error.message || "Failed to start new game",
-            show_alert: true,
-          });
-        } else {
-          await bot.answerCallbackQuery(callbackQuery.id, {
-            text: "Failed to start new game",
-            show_alert: true,
-          });
-        }
+      } catch {
+        await handleInsufficientCoins(
+          bot,
+          chatId,
+          callbackQuery.message?.message_id
+        );
         return;
       }
     }
@@ -2835,10 +2761,11 @@ export function registerXoTelegramHandlers(bot: TelegramBot) {
         // Check balance
         const hasBalance = await requireBalance(userId.toString(), stake);
         if (!hasBalance) {
-          await bot.answerCallbackQuery(callbackQuery.id, {
-            text: "Insufficient Coins.",
-            show_alert: true,
-          });
+          await handleInsufficientCoins(
+            bot,
+            chatId,
+            callbackQuery.message?.message_id
+          );
           return;
         }
 
@@ -2936,23 +2863,12 @@ export function registerXoTelegramHandlers(bot: TelegramBot) {
           `[BASKETBALL] Play again exact: completed game ${gameState.id}`
         );
         return;
-      } catch (error: unknown) {
-        if (error instanceof Error && error.message === "Insufficient coins") {
-          await bot.answerCallbackQuery(callbackQuery.id, {
-            text: "Insufficient Coins.",
-            show_alert: true,
-          });
-        } else if (error instanceof Error) {
-          await bot.answerCallbackQuery(callbackQuery.id, {
-            text: error.message || "Failed to start new game",
-            show_alert: true,
-          });
-        } else {
-          await bot.answerCallbackQuery(callbackQuery.id, {
-            text: "Failed to start new game",
-            show_alert: true,
-          });
-        }
+      } catch {
+        await handleInsufficientCoins(
+          bot,
+          chatId,
+          callbackQuery.message?.message_id
+        );
         return;
       }
     }
@@ -3125,5 +3041,30 @@ export function registerXoTelegramHandlers(bot: TelegramBot) {
     ];
 
     await bot.answerInlineQuery(inlineQuery.id, results);
+  });
+}
+
+// Centralized function to handle insufficient coins
+async function handleInsufficientCoins(
+  bot: TelegramBot,
+  chatId: number,
+  replyToMessageId?: number
+) {
+  const sponsorChannelUrl = "https://t.me/sponsor_channel"; // TODO: Replace with your actual sponsor channel URL
+  const buyCoinsUrl = "https://t.me/buy_coins_bot"; // TODO: Replace with your actual buy coins bot URL
+  const text =
+    "❌ <b>Insufficient Coins</b>\n\n" +
+    "You need more coins to join this game.\n" +
+    "<b>How to get more coins?</b>\n" +
+    "1. <a href='" +
+    buyCoinsUrl +
+    "'>Buy Coins</a>\n" +
+    "2. <a href='" +
+    sponsorChannelUrl +
+    "'>Join our sponsor channel for free coins</a>";
+  await bot.sendMessage(chatId, text, {
+    parse_mode: "HTML",
+    disable_web_page_preview: true,
+    reply_to_message_id: replyToMessageId,
   });
 }
