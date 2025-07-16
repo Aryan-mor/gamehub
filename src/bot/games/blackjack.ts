@@ -546,3 +546,15 @@ export function getBlackjackRules(): string {
 
 🃏 <b>Blackjack:</b> Ace + 10-value card = automatic 2.5× payout`;
 }
+
+export async function getBlackjackGame(
+  gameId: string
+): Promise<BlackjackGameState> {
+  if (!database) throw new Error("Firebase not initialized");
+  const gameRef = ref(database, `${GAMES_PATH}/${gameId}`);
+  const snapshot = await get(gameRef);
+  if (!snapshot.exists()) {
+    throw new Error("Game not found");
+  }
+  return snapshot.val();
+}

@@ -27,6 +27,7 @@ import {
   getBlackjackRules,
   BLACKJACK_STAKES,
   type BlackjackStake,
+  getBlackjackGame,
 } from "../../bot/games/blackjack";
 import {
   createFootballGame,
@@ -88,10 +89,7 @@ export function registerXoTelegramHandlers(bot: TelegramBot) {
             { text: "🎮 X/O Game", callback_data: "newgame:xo" },
             { text: "🎲 Dice Game", callback_data: "newgame:dice" },
           ],
-          [
-            { text: "🃏 Blackjack Game", callback_data: "newgame:blackjack" },
-            { text: "🃏 Poker Game", callback_data: "newgame:poker" },
-          ],
+          [{ text: "🃏 Blackjack Game", callback_data: "newgame:blackjack" }],
           [
             { text: "⚽️ Football Game", callback_data: "newgame:football" },
             { text: "🏀 Basketball Game", callback_data: "newgame:basketball" },
@@ -323,42 +321,6 @@ export function registerXoTelegramHandlers(bot: TelegramBot) {
             chat_id: chatId,
             message_id: callbackQuery.message.message_id,
             reply_markup: stakeKeyboard,
-          });
-        }
-
-        await bot.answerCallbackQuery(callbackQuery.id);
-        return;
-      }
-
-      if (gameType === "poker") {
-        // Show poker game info
-        const text =
-          "🃏 Poker Game\n\nPoker is a multiplayer game. Use /poker to create or join a game.\n\nFeatures:\n• Up to 6 players\n• Texas Hold'em rules\n• 30-second timeouts\n• Automatic blinds\n• All-in and raise options";
-
-        const pokerKeyboard = {
-          inline_keyboard: [
-            [
-              {
-                text: "🃏 Create/Join Poker Game",
-                callback_data: "poker_create",
-              },
-            ],
-            [{ text: "📊 Poker Stats", callback_data: "poker_stats" }],
-          ],
-        };
-
-        // Update the message
-        const inlineMessageId = callbackQuery.inline_message_id;
-        if (inlineMessageId) {
-          await bot.editMessageText(text, {
-            inline_message_id: inlineMessageId,
-            reply_markup: pokerKeyboard,
-          });
-        } else if (chatId && callbackQuery.message?.message_id) {
-          await bot.editMessageText(text, {
-            chat_id: chatId,
-            message_id: callbackQuery.message.message_id,
-            reply_markup: pokerKeyboard,
           });
         }
 
@@ -1596,12 +1558,13 @@ export function registerXoTelegramHandlers(bot: TelegramBot) {
             gameState.dealerHand
           );
 
+          const originalGameState = await getBlackjackGame(gameId);
           const playAgainKeyboard = {
             inline_keyboard: [
               [
                 {
                   text: "🔄 Play Again (Same Stake)",
-                  callback_data: `blackjack_play_again:${gameState.stake}`,
+                  callback_data: `blackjack_play_again:${originalGameState.stake}`,
                 },
               ],
               [
@@ -1700,14 +1663,13 @@ export function registerXoTelegramHandlers(bot: TelegramBot) {
       try {
         const result = await standGame(gameId);
 
+        const originalGameState = await getBlackjackGame(gameId);
         const playAgainKeyboard = {
           inline_keyboard: [
             [
               {
                 text: "🔄 Play Again (Same Stake)",
-                callback_data: `blackjack_play_again:${
-                  result.reward > 0 ? result.reward / 2 : 0
-                }`,
+                callback_data: `blackjack_play_again:${originalGameState.stake}`,
               },
             ],
             [
@@ -1830,6 +1792,70 @@ export function registerXoTelegramHandlers(bot: TelegramBot) {
       }
       await bot.answerCallbackQuery(callbackQuery.id);
       return;
+    }
+
+    // Handle blackjack play again (same stake)
+    if (action === "blackjack_play_again" && parts[1]) {
+      const stake = parseInt(parts[1]) as BlackjackStake;
+      if (!BLACKJACK_STAKES.includes(stake)) {
+        await bot.answerCallbackQuery(callbackQuery.id, {
+          text: "Invalid stake amount",
+          show_alert: true,
+        });
+        return;
+      }
+      try {
+        const gameState = await createBlackjackGame(userId.toString(), stake);
+        const playerHandFormatted = formatHand(gameState.playerHand);
+        const dealerHandFormatted = formatHand(gameState.dealerHand, true);
+        const playerValue = calculateHandValue(gameState.playerHand);
+        const actionKeyboard = {
+          inline_keyboard: [
+            [
+              {
+                text: "🃏 Hit",
+                callback_data: `blackjack_hit:${gameState.id}`,
+              },
+              {
+                text: "✋ Stand",
+                callback_data: `blackjack_stand:${gameState.id}`,
+              },
+            ],
+            [{ text: "❓ Rules", callback_data: `blackjack_rules` }],
+          ],
+        };
+        const text =
+          `<b>🃏 Blackjack Game - Stake: ${stake} Coins</b>\n\n` +
+          `<b>Your Hand:</b> ${playerHandFormatted} <b>(Total: ${playerValue})</b>\n` +
+          `<b>Dealer Shows:</b> ${dealerHandFormatted}\n\n` +
+          `<em>What do you want to do?</em>`;
+        const chatId = callbackQuery.message?.chat.id;
+        const messageId = callbackQuery.message?.message_id;
+        const inlineMessageId = callbackQuery.inline_message_id;
+        if (inlineMessageId) {
+          await bot.editMessageText(text, {
+            inline_message_id: inlineMessageId,
+            reply_markup: actionKeyboard,
+            parse_mode: "HTML",
+          });
+        } else if (chatId && messageId) {
+          await bot.editMessageText(text, {
+            chat_id: chatId,
+            message_id: messageId,
+            reply_markup: actionKeyboard,
+            parse_mode: "HTML",
+          });
+        }
+        await bot.answerCallbackQuery(callbackQuery.id);
+        return;
+      } catch (error: unknown) {
+        await bot.answerCallbackQuery(callbackQuery.id, {
+          text:
+            error instanceof Error ? error.message : "Failed to start new game",
+          show_alert: true,
+        });
+        return;
+      }
     }
 
     // --- Football Game Handlers ---
@@ -2893,44 +2919,18 @@ export function registerXoTelegramHandlers(bot: TelegramBot) {
 
     // --- Poker Game Handlers ---
     if (action === "poker_create") {
-      console.log(`[POKER] poker_create callback received: userId=${userId}`);
-
-      try {
-        const text =
-          "🃏 Poker Game\n\nUse /poker to create or join a poker game.\n\nCommands:\n• /poker - Create or join a game\n• /join_poker &lt;game_id&gt; - Join specific game\n• /start_poker &lt;game_id&gt; - Start game\n• /leave_poker - Leave current game\n• /poker_stats - View statistics";
-
-        await bot.answerCallbackQuery(callbackQuery.id, {
-          text: "Redirecting to poker...",
-        });
-
-        // Send the poker command to the user
-        await bot.sendMessage(chatId, text, { parse_mode: "HTML" });
-      } catch (error) {
-        console.error("[POKER] Error handling poker_create callback:", error);
-        // Silently ignore old/invalid callback queries
-        try {
-          await bot.answerCallbackQuery(callbackQuery.id, {
-            text: "Processing...",
-          });
-        } catch {
-          // Ignore any errors from answering callback queries
-        }
-      }
+      await bot.answerCallbackQuery(callbackQuery.id, {
+        text: "Poker is currently unavailable.",
+        show_alert: true,
+      });
       return;
     }
 
     if (action === "poker_stats") {
-      console.log(`[POKER] poker_stats callback received: userId=${userId}`);
-
-      const text =
-        "📊 Poker Statistics\n\nUse /poker_stats to view your poker statistics.";
-
       await bot.answerCallbackQuery(callbackQuery.id, {
-        text: "Redirecting to stats...",
+        text: "Poker is currently unavailable.",
+        show_alert: true,
       });
-
-      // Send the poker stats command to the user
-      await bot.sendMessage(chatId, text, { parse_mode: "HTML" });
       return;
     }
 
