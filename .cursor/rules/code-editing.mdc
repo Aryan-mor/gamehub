@@ -1,0 +1,8 @@
+---
+description: Code Editing Preferences for GameHub project
+rules:
+  - Always edit files directly without asking for confirmation
+  - Keep explanations minimal and only explain when specifically asked
+  - Focus on implementing solutions rather than discussing ideas unless requested
+  - Apply changes automatically without lengthy explanations
+---

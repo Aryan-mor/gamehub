@@ -1,0 +1,8 @@
+---
+description: Git Flow and Branch Management rules for GameHub project
+rules:
+  - NEVER add code directly to main branch
+  - ALWAYS create a branch using git flow structure (feature/, hotfix/, release/, etc.)
+  - NEVER merge code directly to main without user approval
+  - Always use descriptive branch names following git flow conventions
+---
