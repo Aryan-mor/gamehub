@@ -23,6 +23,13 @@ if (!token) {
   throw new Error("TELEGRAM_BOT_TOKEN is required");
 }
 
+// Validate token format
+if (!token.match(/^\d+:[A-Za-z0-9_-]+$/)) {
+  throw new Error(
+    "Invalid TELEGRAM_BOT_TOKEN format. Expected format: <bot_id>:<bot_token>"
+  );
+}
+
 const bot = new TelegramBot(token, { polling: true });
 
 // Add error handlers for debugging
@@ -43,38 +50,61 @@ bot.on("message", (msg) => {
   });
 });
 
-// Register all X/O handlers (and future games)
-registerXoHandlers(bot);
+// Initialize bot with async function
+async function initializeBot() {
+  console.log("🚀 Initializing GameHub bot...");
 
-// Register dice game handlers
-registerDiceHandlers(bot);
+  // Register all X/O handlers (and future games)
+  registerXoHandlers(bot);
 
-// Register football game handlers
-registerFootballHandlers(bot);
+  // Register dice game handlers
+  registerDiceHandlers(bot);
 
-// Register basketball game handlers
-registerBasketballHandlers(bot);
+  // Register football game handlers
+  registerFootballHandlers(bot);
 
-// Register blackjack game handlers
-registerBlackjackHandlers(bot);
+  // Register basketball game handlers
+  registerBasketballHandlers(bot);
 
-// Register poker game handlers
-registerPokerHandlers(bot);
+  // Register blackjack game handlers
+  registerBlackjackHandlers(bot);
 
-// Register admin commands
-registerAdminCommands(bot);
+  // Register poker game handlers
+  registerPokerHandlers(bot);
 
-// Set bot commands (generic)
-bot.setMyCommands([
-  { command: "/start", description: "Start the bot" },
-  { command: "/startgame", description: "Start a new game" },
-  { command: "/freecoin", description: "Claim your daily free coins" },
-  { command: "/help", description: "Show help information" },
-  { command: "/newgame", description: "Create a new game" },
-  { command: "/games", description: "Show your unfinished games" },
-  { command: "/stats", description: "Show your game statistics" },
-  { command: "/balance", description: "Show your coin balance" },
-]);
+  // Register admin commands
+  registerAdminCommands(bot);
+
+  // Wait a moment for bot to fully initialize
+  console.log("⏳ Waiting for bot to initialize...");
+  await new Promise((resolve) => setTimeout(resolve, 5000));
+
+  // Set bot commands (generic) with error handling
+  try {
+    console.log("📝 Setting bot commands...");
+    await bot.setMyCommands([
+      { command: "/start", description: "Start the bot" },
+      { command: "/startgame", description: "Start a new game" },
+      { command: "/freecoin", description: "Claim your daily free coins" },
+      { command: "/help", description: "Show help information" },
+      { command: "/newgame", description: "Create a new game" },
+      { command: "/games", description: "Show your unfinished games" },
+      { command: "/stats", description: "Show your game statistics" },
+      { command: "/balance", description: "Show your coin balance" },
+    ]);
+    console.log("✅ Bot commands set successfully");
+  } catch (error) {
+    console.error("❌ Failed to set bot commands:", error);
+    console.log("⚠️ Bot will continue without setting commands");
+  }
+
+  console.log("🎮 GameHub bot is ready!");
+}
+
+// Start the bot initialization
+initializeBot().catch((error) => {
+  console.error("❌ Failed to initialize bot:", error);
+});
 
 // Add generic /start and /help handlers
 bot.onText(/\/start/, async (msg) => {
@@ -369,69 +399,115 @@ bot.on("callback_query", async (query) => {
 
     if (!chatId || !userId) return;
 
+    // Check if callback query is too old (more than 1 hour)
+    const now = Date.now();
+    const queryTime = query.message?.date ? query.message.date * 1000 : now;
+    if (now - queryTime > 3600000) {
+      // 1 hour in milliseconds
+      console.log(
+        `[BOT] Ignoring old callback query: ${data} from userId=${userId}`
+      );
+      return;
+    }
+
     console.log(`[BOT] Callback query: ${data} from userId=${userId}`);
 
     // Handle main bot callbacks
     if (data === "startgame") {
-      await bot.answerCallbackQuery(query.id, { text: "Opening games..." });
-      // Send the startgame menu
-      const singlePlayerKeyboard = {
-        inline_keyboard: [
-          [{ text: "🎲 Dice Game", callback_data: "newgame:dice" }],
-          [{ text: "🃏 Blackjack Game", callback_data: "newgame:blackjack" }],
-          [{ text: "🃏 Poker Game", callback_data: "newgame:poker" }],
-          [{ text: "⚽️ Football Game", callback_data: "newgame:football" }],
-          [{ text: "🏀 Basketball Game", callback_data: "newgame:basketball" }],
-        ],
-      };
-      await bot.sendMessage(chatId, "🎮 Choose a game to play:", {
-        reply_markup: singlePlayerKeyboard,
-      });
+      try {
+        await bot.answerCallbackQuery(query.id, { text: "Opening games..." });
+        // Send the startgame menu
+        const singlePlayerKeyboard = {
+          inline_keyboard: [
+            [{ text: "🎲 Dice Game", callback_data: "newgame:dice" }],
+            [{ text: "🃏 Blackjack Game", callback_data: "newgame:blackjack" }],
+            [{ text: "🃏 Poker Game", callback_data: "newgame:poker" }],
+            [{ text: "⚽️ Football Game", callback_data: "newgame:football" }],
+            [
+              {
+                text: "🏀 Basketball Game",
+                callback_data: "newgame:basketball",
+              },
+            ],
+          ],
+        };
+        await bot.sendMessage(chatId, "🎮 Choose a game to play:", {
+          reply_markup: singlePlayerKeyboard,
+        });
+      } catch (error) {
+        console.error("[BOT] Error handling startgame callback:", error);
+      }
     } else if (data === "freecoin") {
-      await bot.answerCallbackQuery(query.id, { text: "Claiming coins..." });
-      const fakeMsg = {
-        chat: { id: chatId },
-        from: query.from,
-      } as TelegramBot.Message;
-      await freeCoinHandler(fakeMsg);
+      try {
+        await bot.answerCallbackQuery(query.id, { text: "Claiming coins..." });
+        const fakeMsg = {
+          chat: { id: chatId },
+          from: query.from,
+        } as TelegramBot.Message;
+        await freeCoinHandler(fakeMsg);
+      } catch (error) {
+        console.error("[BOT] Error handling freecoin callback:", error);
+      }
     } else if (data === "help") {
-      await bot.answerCallbackQuery(query.id, { text: "Showing help..." });
-      await bot.sendMessage(
-        chatId,
-        `Available commands:\n` +
-          `/start - Start the bot\n` +
-          `/startgame - Start a new game\n` +
-          `/freecoin - Claim your daily free coins\n` +
-          `/help - Show this help message\n` +
-          `/newgame - Create a new game\n` +
-          `/games - Show your unfinished games\n` +
-          `/stats - Show your game statistics\n` +
-          `/balance - Show your coin balance`
-      );
+      try {
+        await bot.answerCallbackQuery(query.id, { text: "Showing help..." });
+        await bot.sendMessage(
+          chatId,
+          `Available commands:\n` +
+            `/start - Start the bot\n` +
+            `/startgame - Start a new game\n` +
+            `/freecoin - Claim your daily free coins\n` +
+            `/help - Show this help message\n` +
+            `/newgame - Create a new game\n` +
+            `/games - Show your unfinished games\n` +
+            `/stats - Show your game statistics\n` +
+            `/balance - Show your coin balance`
+        );
+      } catch (error) {
+        console.error("[BOT] Error handling help callback:", error);
+      }
     } else if (data === "balance") {
-      await bot.answerCallbackQuery(query.id, { text: "Checking balance..." });
-      const user = await getUser(userId);
-      await bot.sendMessage(
-        chatId,
-        `💰 Your balance: <b>${user.coins}</b> Coins`,
-        {
-          parse_mode: "HTML",
-        }
-      );
+      try {
+        await bot.answerCallbackQuery(query.id, {
+          text: "Checking balance...",
+        });
+        const user = await getUser(userId);
+        await bot.sendMessage(
+          chatId,
+          `💰 Your balance: <b>${user.coins}</b> Coins`,
+          {
+            parse_mode: "HTML",
+          }
+        );
+      } catch (error) {
+        console.error("[BOT] Error handling balance callback:", error);
+      }
     } else if (data.startsWith("newgame:")) {
-      const gameType = data.split(":")[1];
-      await bot.answerCallbackQuery(query.id, {
-        text: `Starting ${gameType}...`,
-      });
-      // Handle game-specific logic here
+      try {
+        const gameType = data.split(":")[1];
+        await bot.answerCallbackQuery(query.id, {
+          text: `Starting ${gameType}...`,
+        });
+        // Handle game-specific logic here
+      } catch (error) {
+        console.error("[BOT] Error handling newgame callback:", error);
+      }
     } else if (data.startsWith("dice_stake:")) {
-      await bot.answerCallbackQuery(query.id, {
-        text: "Setting dice stake...",
-      });
-      // Handle dice stake selection
+      try {
+        await bot.answerCallbackQuery(query.id, {
+          text: "Setting dice stake...",
+        });
+        // Handle dice stake selection
+      } catch (error) {
+        console.error("[BOT] Error handling dice_stake callback:", error);
+      }
     } else {
       // For any other unhandled callbacks, just acknowledge
-      await bot.answerCallbackQuery(query.id, { text: "Processing..." });
+      try {
+        await bot.answerCallbackQuery(query.id, { text: "Processing..." });
+      } catch (error) {
+        console.error("[BOT] Error acknowledging callback:", error);
+      }
     }
   } catch (error) {
     console.error("❌ Callback query error:", error);

@@ -2895,15 +2895,27 @@ export function registerXoTelegramHandlers(bot: TelegramBot) {
     if (action === "poker_create") {
       console.log(`[POKER] poker_create callback received: userId=${userId}`);
 
-      const text =
-        "🃏 Poker Game\n\nUse /poker to create or join a poker game.\n\nCommands:\n• /poker - Create or join a game\n• /join_poker &lt;game_id&gt; - Join specific game\n• /start_poker &lt;game_id&gt; - Start game\n• /leave_poker - Leave current game\n• /poker_stats - View statistics";
+      try {
+        const text =
+          "🃏 Poker Game\n\nUse /poker to create or join a poker game.\n\nCommands:\n• /poker - Create or join a game\n• /join_poker &lt;game_id&gt; - Join specific game\n• /start_poker &lt;game_id&gt; - Start game\n• /leave_poker - Leave current game\n• /poker_stats - View statistics";
 
-      await bot.answerCallbackQuery(callbackQuery.id, {
-        text: "Redirecting to poker...",
-      });
+        await bot.answerCallbackQuery(callbackQuery.id, {
+          text: "Redirecting to poker...",
+        });
 
-      // Send the poker command to the user
-      await bot.sendMessage(chatId, text, { parse_mode: "HTML" });
+        // Send the poker command to the user
+        await bot.sendMessage(chatId, text, { parse_mode: "HTML" });
+      } catch (error) {
+        console.error("[POKER] Error handling poker_create callback:", error);
+        // Silently ignore old/invalid callback queries
+        try {
+          await bot.answerCallbackQuery(callbackQuery.id, {
+            text: "Processing...",
+          });
+        } catch {
+          // Ignore any errors from answering callback queries
+        }
+      }
       return;
     }
 
