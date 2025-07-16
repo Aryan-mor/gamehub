@@ -51,6 +51,28 @@ bot.on("message", (msg) => {
   });
 });
 
+// Listen for possible TON transaction hash after 'I Paid'
+bot.on("message", async (msg) => {
+  const chatId = msg.chat.id;
+  const userId = msg.from?.id;
+  const username = msg.from?.username || msg.from?.first_name || "Unknown";
+  const text = msg.text?.trim();
+  // Only handle if the message is a likely TON hash (64 hex chars)
+  if (text && /^[a-fA-F0-9]{64}$/.test(text)) {
+    // Respond to user
+    await bot.sendMessage(
+      chatId,
+      "We received your transaction. Admin will check and credit your account as soon as possible."
+    );
+    // Forward details to admin chat
+    const adminChatId = process.env.ADMIN_CHAT_ID;
+    if (adminChatId) {
+      const adminMsg = `TON Payment Request\nUser: ${username} (ID: ${userId})\nHash: <code>${text}</code>`;
+      await bot.sendMessage(adminChatId, adminMsg, { parse_mode: "HTML" });
+    }
+  }
+});
+
 // Initialize bot with async function
 async function initializeBot() {
   console.log("🚀 Initializing GameHub bot...");
@@ -529,11 +551,11 @@ bot.on("callback_query", async (query) => {
     } else if (data === "ton_paid") {
       try {
         await bot.answerCallbackQuery(query.id, {
-          text: "Transaction hash received. Thank you!",
+          text: "Please send your TON transaction hash.",
         });
         await bot.sendMessage(
           chatId,
-          "Your TON transaction hash has been received. Thank you for your payment!"
+          "Please copy and paste your TON transaction hash (TxID) here. Example: 2e3f...a1b9\nAfter we verify your payment, your coins will be credited!"
         );
       } catch (error) {
         console.error("[BOT] Error handling ton_paid callback:", error);
