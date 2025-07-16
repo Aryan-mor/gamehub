@@ -438,14 +438,21 @@ bot.onText(/\/buycoin/, async (msg) => {
 
 // Handle main bot callback queries
 bot.on("callback_query", async (query) => {
+  let answered = false;
   try {
     const data = query.data;
-    if (!data) return;
+    if (!data) {
+      await bot.answerCallbackQuery(query.id, { text: "Processing..." });
+      return;
+    }
 
     const chatId = query.message?.chat.id;
     const userId = query.from?.id?.toString();
 
-    if (!chatId || !userId) return;
+    if (!chatId || !userId) {
+      await bot.answerCallbackQuery(query.id, { text: "Processing..." });
+      return;
+    }
 
     // Check if callback query is too old (more than 1 hour)
     const now = Date.now();
@@ -455,6 +462,7 @@ bot.on("callback_query", async (query) => {
       console.log(
         `[BOT] Ignoring old callback query: ${data} from userId=${userId}`
       );
+      await bot.answerCallbackQuery(query.id, { text: "Processing..." });
       return;
     }
 
@@ -463,7 +471,8 @@ bot.on("callback_query", async (query) => {
     // Handle main bot callbacks
     if (data === "startgame") {
       try {
-        await bot.answerCallbackQuery(query.id, { text: "Opening games..." });
+        await bot.answerCallbackQuery(query.id); // No toast
+        answered = true;
         // Send the startgame menu
         const singlePlayerKeyboard = {
           inline_keyboard: [
@@ -486,7 +495,8 @@ bot.on("callback_query", async (query) => {
       }
     } else if (data === "freecoin") {
       try {
-        await bot.answerCallbackQuery(query.id, { text: "Claiming coins..." });
+        await bot.answerCallbackQuery(query.id); // No toast
+        answered = true;
         const fakeMsg = {
           chat: { id: chatId },
           from: query.from,
@@ -497,7 +507,8 @@ bot.on("callback_query", async (query) => {
       }
     } else if (data === "help") {
       try {
-        await bot.answerCallbackQuery(query.id, { text: "Showing help..." });
+        await bot.answerCallbackQuery(query.id); // No toast
+        answered = true;
         await bot.sendMessage(
           chatId,
           `Available commands:\n` +
@@ -515,9 +526,8 @@ bot.on("callback_query", async (query) => {
       }
     } else if (data === "balance") {
       try {
-        await bot.answerCallbackQuery(query.id, {
-          text: "Checking balance...",
-        });
+        await bot.answerCallbackQuery(query.id); // No toast
+        answered = true;
         const user = await getUser(userId);
         await bot.sendMessage(
           chatId,
@@ -529,30 +539,54 @@ bot.on("callback_query", async (query) => {
       } catch (error) {
         console.error("[BOT] Error handling balance callback:", error);
       }
+    } else if (data === "buycoin") {
+      try {
+        await bot.answerCallbackQuery(query.id); // No toast
+        answered = true;
+        const tonWallet = publicConfig.tonWallet;
+        const rate = 1000; // 1 TON = 1000 Coins
+        if (!tonWallet) {
+          await bot.sendMessage(
+            chatId,
+            "TON wallet address is not set. Please contact admin."
+          );
+          return;
+        }
+        const text =
+          `💸 <b>Buy Coins with TON</b>\n\n` +
+          `1 TON = <b>${rate}</b> Coins\n` +
+          `Send TON to this address:\n<code>${tonWallet}</code>\n\n` +
+          `After payment, click <b>I Paid</b> and send your transaction hash.`;
+        const keyboard = {
+          inline_keyboard: [[{ text: "I Paid", callback_data: `ton_paid` }]],
+        };
+        await bot.sendMessage(chatId, text, {
+          parse_mode: "HTML",
+          reply_markup: keyboard,
+        });
+      } catch (error) {
+        console.error("[BOT] Error handling buycoin callback:", error);
+      }
     } else if (data.startsWith("newgame:")) {
       try {
-        const gameType = data.split(":")[1];
-        await bot.answerCallbackQuery(query.id, {
-          text: `Starting ${gameType}...`,
-        });
+        await bot.answerCallbackQuery(query.id); // No toast
+        answered = true;
         // Handle game-specific logic here
       } catch (error) {
         console.error("[BOT] Error handling newgame callback:", error);
       }
     } else if (data.startsWith("dice_stake:")) {
       try {
-        await bot.answerCallbackQuery(query.id, {
-          text: "Setting dice stake...",
-        });
+        await bot.answerCallbackQuery(query.id); // No toast
+        answered = true;
         // Handle dice stake selection
       } catch (error) {
         console.error("[BOT] Error handling dice_stake callback:", error);
       }
     } else if (data === "ton_paid") {
       try {
-        await bot.answerCallbackQuery(query.id, {
-          text: "Please send your TON transaction hash.",
-        });
+        await bot.answerCallbackQuery(query.id); // No toast
+        answered = true;
         await bot.sendMessage(
           chatId,
           "Please copy and paste your TON transaction hash (TxID) here. Example: 2e3f...a1b9\nAfter we verify your payment, your coins will be credited!"
@@ -560,10 +594,70 @@ bot.on("callback_query", async (query) => {
       } catch (error) {
         console.error("[BOT] Error handling ton_paid callback:", error);
       }
+    } else if (data.startsWith("sponsor_joined:")) {
+      try {
+        await bot.answerCallbackQuery(query.id); // No toast
+        answered = true;
+        const sponsorId = data.split(":")[1];
+        // Get sponsor channel info
+        const { getAllSponsorChannels, markSponsorJoined } = await import(
+          "../lib/gameService"
+        );
+        const sponsors = await getAllSponsorChannels();
+        const sponsor = sponsors.find((s) => s.id === sponsorId);
+        if (!sponsor) {
+          await bot.sendMessage(chatId, "Sponsor channel not found.");
+          return;
+        }
+
+        // Use the helper function to verify membership
+        const verification = await verifySponsorMembership(
+          bot,
+          sponsor.link,
+          userId
+        );
+
+        if (verification.success) {
+          // Mark as joined in DB
+          await markSponsorJoined(userId, sponsorId);
+
+          // Add 100 coins to user's wallet
+          const { adjustCoins } = await import("../lib/coinService");
+          await adjustCoins(userId, 100, "sponsor_join", sponsor.name);
+
+          await bot.sendMessage(
+            chatId,
+            `✅ You have successfully joined <b>${sponsor.name}</b>!\n\n💰 <b>+100 Coins</b> added to your wallet!`,
+            { parse_mode: "HTML" }
+          );
+        } else {
+          // Handle different error cases
+          if (verification.error?.includes("Bot is not an admin")) {
+            await bot.sendMessage(
+              chatId,
+              `❌ Unable to verify membership.\n\nPlease make sure:\n1. You have joined <b>${sponsor.name}</b>\n2. The bot is an admin in the channel\n\nIf you have joined, please contact an admin.`,
+              { parse_mode: "HTML" }
+            );
+          } else if (
+            verification.error?.includes("Invalid sponsor channel link")
+          ) {
+            await bot.sendMessage(chatId, "Invalid sponsor channel link.");
+          } else {
+            await bot.sendMessage(
+              chatId,
+              `❌ You must join <b>${sponsor.name}</b> first!\n\nPlease join the channel and try again.`,
+              { parse_mode: "HTML" }
+            );
+          }
+        }
+      } catch (error) {
+        console.error("[BOT] Error handling sponsor_joined callback:", error);
+      }
     } else {
       // For any other unhandled callbacks, just acknowledge
       try {
-        await bot.answerCallbackQuery(query.id, { text: "Processing..." });
+        await bot.answerCallbackQuery(query.id); // No toast
+        answered = true;
       } catch (error) {
         console.error("[BOT] Error acknowledging callback:", error);
       }
@@ -573,10 +667,88 @@ bot.on("callback_query", async (query) => {
     // Silently ignore old/invalid callback queries
     try {
       await bot.answerCallbackQuery(query.id, { text: "Processing..." });
+      answered = true;
     } catch {
       // Ignore any errors from answering callback queries
     }
+  } finally {
+    // Ensure callback is always answered
+    if (!answered) {
+      try {
+        await bot.answerCallbackQuery(query.id, { text: "Processing..." });
+      } catch {}
+    }
   }
 });
+
+/**
+ * Helper function to verify if a user is a member of a sponsor channel
+ */
+async function verifySponsorMembership(
+  bot: TelegramBot,
+  sponsorLink: string,
+  userId: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    // Extract channel identifier from sponsor link
+    let chatIdForCheck: string | null = null;
+
+    if (sponsorLink.includes("t.me/+")) {
+      // Private channel invite link
+      const match = sponsorLink.match(/t\.me\/(\+.+)$/);
+      chatIdForCheck = match ? match[1] : null;
+    } else {
+      // Public channel username
+      const match = sponsorLink.match(/t\.me\/([A-Za-z0-9_]+)/);
+      if (match) {
+        chatIdForCheck = "@" + match[1];
+      }
+    }
+
+    if (!chatIdForCheck) {
+      return { success: false, error: "Invalid sponsor channel link format" };
+    }
+
+    console.log(
+      `[BOT] Verifying membership for user ${userId} in channel ${chatIdForCheck}`
+    );
+
+    const member = await bot.getChatMember(chatIdForCheck, Number(userId));
+
+    console.log(`[BOT] Member status for user ${userId}: ${member.status}`);
+
+    if (
+      member &&
+      ["member", "administrator", "creator"].includes(member.status)
+    ) {
+      return { success: true };
+    } else {
+      return { success: false, error: "User is not a member of the channel" };
+    }
+  } catch (error) {
+    console.error(
+      `[BOT] Error verifying membership for user ${userId}:`,
+      error
+    );
+
+    // Check if it's a permission error (bot not admin)
+    if (error && typeof error === "object" && "response" in error) {
+      const response = (error as { response?: { statusCode?: number } })
+        .response;
+      if (response && response.statusCode === 403) {
+        return {
+          success: false,
+          error:
+            "Bot is not an admin in the channel. Please contact an admin to add the bot as an administrator.",
+        };
+      }
+    }
+
+    return {
+      success: false,
+      error: "Unable to verify membership. Please try again.",
+    };
+  }
+}
 
 export default bot;

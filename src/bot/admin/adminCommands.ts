@@ -4,7 +4,12 @@ import { getBlackjackStats } from "../games/blackjack";
 import { getDiceStats } from "../games/dice";
 import { getFootballStats } from "../games/football";
 import { getBasketballStats } from "../games/basketball";
-import { getDatabase, ref as dbRef, get as dbGet } from "firebase/database";
+import {
+  getAllSponsorChannels,
+  addSponsorChannel,
+  updateSponsorChannel,
+  removeSponsorChannel,
+} from "../../lib/gameService";
 
 // Admin user IDs - add your admin user IDs here
 const ADMIN_USER_IDS = [
@@ -15,6 +20,12 @@ const ADMIN_USER_IDS = [
 export function isAdmin(userId: string): boolean {
   return ADMIN_USER_IDS.includes(userId);
 }
+
+// In-memory state for sponsor add flow per admin
+const sponsorAddState: Record<
+  string,
+  { step: number; name?: string; link?: string; editId?: string }
+> = {};
 
 export function registerAdminCommands(bot: TelegramBot) {
   console.log("[ADMIN] Registering admin commands...");
@@ -50,6 +61,18 @@ export function registerAdminCommands(bot: TelegramBot) {
             callback_data: "admin_find_user_id_panel",
           },
         ],
+        [
+          {
+            text: "🏷️ Sponsor Channels",
+            callback_data: "admin_sponsors_panel",
+          },
+        ],
+        [
+          {
+            text: "🔍 Check Bot Permissions",
+            callback_data: "admin_check_bot_permissions",
+          },
+        ],
         [{ text: "❓ Help", callback_data: "admin_help_panel" }],
       ],
     };
@@ -64,9 +87,7 @@ export function registerAdminCommands(bot: TelegramBot) {
   bot.on("callback_query", async (query) => {
     const userId = query.from?.id?.toString();
     if (!userId || !isAdmin(userId)) {
-      await bot.answerCallbackQuery(query.id, {
-        text: "❌ Access denied. Admin only.",
-      });
+      await bot.answerCallbackQuery(query.id); // No toast
       return;
     }
 
@@ -245,6 +266,18 @@ export function registerAdminCommands(bot: TelegramBot) {
               callback_data: "admin_find_user_id_panel",
             },
           ],
+          [
+            {
+              text: "🏷️ Sponsor Channels",
+              callback_data: "admin_sponsors_panel",
+            },
+          ],
+          [
+            {
+              text: "🔍 Check Bot Permissions",
+              callback_data: "admin_check_bot_permissions",
+            },
+          ],
           [{ text: "❓ Help", callback_data: "admin_help_panel" }],
         ],
       };
@@ -300,9 +333,337 @@ export function registerAdminCommands(bot: TelegramBot) {
           }
         }
       }
+    } else if (data === "admin_sponsors_panel") {
+      // Show sponsor management panel (names only)
+      const sponsors = await getAllSponsorChannels();
+      let text = "<b>Manage Sponsor Channels</b>\n\n";
+      if (sponsors.length === 0) {
+        text += "No sponsor channels found.";
+      } else {
+        text += "Click a sponsor name to manage it.";
+      }
+      const keyboard: TelegramBot.InlineKeyboardMarkup = {
+        inline_keyboard: [] as unknown as TelegramBot.InlineKeyboardButton[][],
+      };
+      for (const sponsor of sponsors) {
+        keyboard.inline_keyboard.push([
+          {
+            text: sponsor.name,
+            callback_data: `admin_sponsor_details:${sponsor.id}`,
+          },
+        ]);
+      }
+      keyboard.inline_keyboard.push([
+        { text: "➕ Add Sponsor", callback_data: "admin_add_sponsor" },
+        {
+          text: "🔙 Back to Admin Panel",
+          callback_data: "admin_back_to_panel",
+        },
+      ]);
+      await bot.sendMessage(query.message!.chat.id, text, {
+        parse_mode: "HTML",
+        reply_markup: keyboard,
+      });
+    } else if (data === "admin_add_sponsor") {
+      sponsorAddState[userId] = { step: 1 };
+      await bot.sendMessage(
+        query.message!.chat.id,
+        "Please send the sponsor <b>name</b> as a message.",
+        { parse_mode: "HTML" }
+      );
+      return;
+    } else if (data.startsWith("admin_sponsor_details:")) {
+      const sponsorId = data.split(":")[1];
+      const sponsors = await getAllSponsorChannels();
+      const sponsor = sponsors.find((s) => s.id === sponsorId);
+      if (!sponsor) {
+        await bot.answerCallbackQuery(query.id, { text: "Sponsor not found." });
+        return;
+      }
+      let text = `<b>${sponsor.name}</b>\n\n`;
+      text += `<b>Link:</b> <a href='${sponsor.link}'>${sponsor.link}</a>\n`;
+      text += `<b>Preview:</b> ${sponsor.previewText}`;
+      const keyboard: TelegramBot.InlineKeyboardMarkup = {
+        inline_keyboard: [] as unknown as TelegramBot.InlineKeyboardButton[][],
+      };
+      keyboard.inline_keyboard.push([
+        { text: "✏️ Edit", callback_data: `admin_edit_sponsor:${sponsor.id}` },
+        {
+          text: "❌ Remove",
+          callback_data: `admin_remove_sponsor:${sponsor.id}`,
+        },
+        { text: "🔗 Open Link", url: sponsor.link },
+      ]);
+      keyboard.inline_keyboard.push([
+        { text: "🔙 Back", callback_data: "admin_sponsors_panel" },
+      ]);
+      await bot.editMessageText(text, {
+        chat_id: query.message?.chat.id,
+        message_id: query.message?.message_id,
+        parse_mode: "HTML",
+        disable_web_page_preview: false,
+        reply_markup: keyboard,
+      });
+      return;
+    } else if (data.startsWith("admin_edit_sponsor:")) {
+      const sponsorId = data.split(":")[1];
+      const sponsors = await getAllSponsorChannels();
+      const sponsor = sponsors.find((s) => s.id === sponsorId);
+      if (!sponsor) {
+        await bot.answerCallbackQuery(query.id, { text: "Sponsor not found." });
+        return;
+      }
+      sponsorAddState[userId] = {
+        step: 10,
+        editId: sponsor.id,
+        name: sponsor.name,
+        link: sponsor.link,
+      };
+      await bot.sendMessage(
+        query.message!.chat.id,
+        `Editing sponsor: <b>${sponsor.name}</b>\n\nSend new name (or send the same name to keep unchanged):`,
+        { parse_mode: "HTML" }
+      );
+      return;
+    } else if (data.startsWith("admin_remove_sponsor:")) {
+      const sponsorId = data.split(":")[1];
+      const sponsors = await getAllSponsorChannels();
+      const sponsor = sponsors.find((s) => s.id === sponsorId);
+      if (!sponsor) {
+        await bot.answerCallbackQuery(query.id, { text: "Sponsor not found." });
+        return;
+      }
+      const keyboard: TelegramBot.InlineKeyboardMarkup = {
+        inline_keyboard: [
+          [
+            {
+              text: "❌ Confirm Remove",
+              callback_data: `admin_remove_sponsor_confirm:${sponsor.id}`,
+            },
+            {
+              text: "🔙 Cancel",
+              callback_data: "admin_sponsor_details:" + sponsor.id,
+            },
+          ],
+        ],
+      };
+      await bot.editMessageText(
+        `Are you sure you want to remove sponsor <b>${sponsor.name}</b>?`,
+        {
+          chat_id: query.message?.chat.id,
+          message_id: query.message?.message_id,
+          parse_mode: "HTML",
+          reply_markup: keyboard,
+        }
+      );
+      return;
+    } else if (data.startsWith("admin_remove_sponsor_confirm:")) {
+      const sponsorId = data.split(":")[1];
+      await removeSponsorChannel(sponsorId);
+      await bot.editMessageText("✅ Sponsor removed.", {
+        chat_id: query.message?.chat.id,
+        message_id: query.message?.message_id,
+      });
+      // Refresh panel
+      const sponsors = await getAllSponsorChannels();
+      let text = "<b>Manage Sponsor Channels</b>\n\n";
+      if (sponsors.length === 0) {
+        text += "No sponsor channels found.";
+      } else {
+        text += "Click a sponsor name to manage it.";
+      }
+      const keyboard: TelegramBot.InlineKeyboardMarkup = {
+        inline_keyboard: [] as unknown as TelegramBot.InlineKeyboardButton[][],
+      };
+      for (const sponsor of sponsors) {
+        keyboard.inline_keyboard.push([
+          {
+            text: sponsor.name,
+            callback_data: `admin_sponsor_details:${sponsor.id}`,
+          },
+        ]);
+      }
+      keyboard.inline_keyboard.push([
+        { text: "➕ Add Sponsor", callback_data: "admin_add_sponsor" },
+        {
+          text: "🔙 Back to Admin Panel",
+          callback_data: "admin_back_to_panel",
+        },
+      ]);
+      await bot.sendMessage(query.message!.chat.id, text, {
+        parse_mode: "HTML",
+        reply_markup: keyboard,
+      });
+      return;
+    } else if (data === "admin_check_bot_permissions") {
+      // Check bot's admin status in all sponsor channels
+      const sponsors = await getAllSponsorChannels();
+      if (sponsors.length === 0) {
+        await bot.sendMessage(
+          query.message!.chat.id,
+          "No sponsor channels found."
+        );
+        return;
+      }
+      let text = "<b>Bot Permissions in Sponsor Channels</b>\n\n";
+      for (const sponsor of sponsors) {
+        try {
+          // Try to get chat member info for the bot itself
+          const me = await bot.getMe();
+          const member = await bot.getChatMember(
+            sponsor.link.includes("t.me/+")
+              ? sponsor.link.match(/t\.me\/(\+.+)$/)?.[1] || ""
+              : "@" + (sponsor.link.match(/t\.me\/([A-Za-z0-9_]+)/)?.[1] || ""),
+            Number(me.id)
+          );
+          if (["administrator", "creator"].includes(member.status)) {
+            text += `✅ <b>${sponsor.name}</b>: Bot is admin\n`;
+          } else {
+            text += `⚠️ <b>${sponsor.name}</b>: Bot is NOT admin (status: ${member.status})\n`;
+          }
+        } catch {
+          text += `❌ <b>${sponsor.name}</b>: Unable to check (bot may not be in channel)\n`;
+        }
+      }
+      await bot.sendMessage(query.message!.chat.id, text, {
+        parse_mode: "HTML",
+      });
+      return;
     }
 
     await bot.answerCallbackQuery(query.id);
+  });
+
+  // Listen for admin sponsor add flow messages
+  bot.on("message", async (msg) => {
+    const userId = msg.from?.id?.toString();
+    if (!userId || !isAdmin(userId)) return;
+    if (!sponsorAddState[userId]) return;
+    const state = sponsorAddState[userId];
+    if (state.step === 1) {
+      // Got name, ask for link
+      sponsorAddState[userId] = { step: 2, name: msg.text };
+      await bot.sendMessage(
+        msg.chat.id,
+        "Now send the sponsor channel link (https://t.me/...) as a message."
+      );
+      return;
+    } else if (state.step === 2 && state.name) {
+      // Got link, ask for preview text
+      sponsorAddState[userId] = { step: 3, name: state.name, link: msg.text };
+      await bot.sendMessage(
+        msg.chat.id,
+        "Now send the preview text for this sponsor channel."
+      );
+      return;
+    } else if (state.step === 3 && state.name && state.link) {
+      // Got preview text, confirm and save
+      const name = state.name;
+      const link = state.link;
+      const previewText = msg.text || "";
+      await addSponsorChannel(name, link, previewText);
+      delete sponsorAddState[userId];
+      await bot.sendMessage(
+        msg.chat.id,
+        `✅ Sponsor channel added!\nName: ${name}\nLink: ${link}\nPreview: ${previewText}`
+      );
+      // Refresh the sponsor panel
+      const sponsors = await getAllSponsorChannels();
+      let text = "<b>Manage Sponsor Channels</b>\n\n";
+      if (sponsors.length === 0) {
+        text += "No sponsor channels found.";
+      } else {
+        text += "Click a sponsor name to manage it.";
+      }
+      const keyboard: TelegramBot.InlineKeyboardMarkup = {
+        inline_keyboard: [] as unknown as TelegramBot.InlineKeyboardButton[][],
+      };
+      for (const sponsor of sponsors) {
+        keyboard.inline_keyboard.push([
+          {
+            text: sponsor.name,
+            callback_data: `admin_sponsor_details:${sponsor.id}`,
+          },
+        ]);
+      }
+      keyboard.inline_keyboard.push([
+        { text: "➕ Add Sponsor", callback_data: "admin_add_sponsor" },
+        {
+          text: "🔙 Back to Admin Panel",
+          callback_data: "admin_back_to_panel",
+        },
+      ]);
+      await bot.sendMessage(msg.chat.id, text, {
+        parse_mode: "HTML",
+        reply_markup: keyboard,
+      });
+      return;
+    } else if (state.step === 10 && state.editId) {
+      // Editing: got new name, ask for new link
+      sponsorAddState[userId] = {
+        step: 11,
+        editId: state.editId,
+        name: msg.text,
+      };
+      await bot.sendMessage(
+        msg.chat.id,
+        "Now send the new sponsor channel link (or send the same link to keep unchanged)."
+      );
+      return;
+    } else if (state.step === 11 && state.editId && state.name) {
+      // Editing: got new link, ask for new preview text
+      sponsorAddState[userId] = {
+        step: 12,
+        editId: state.editId,
+        name: state.name,
+        link: msg.text,
+      };
+      await bot.sendMessage(
+        msg.chat.id,
+        "Now send the new preview text (or send the same to keep unchanged)."
+      );
+      return;
+    } else if (state.step === 12 && state.editId && state.name && state.link) {
+      // Editing: got new preview text, update sponsor
+      const sponsors = await getAllSponsorChannels();
+      const sponsor = sponsors.find((s) => s.id === state.editId);
+      const link = state.link || sponsor?.link || "";
+      const previewText = msg.text || sponsor?.previewText || "";
+      await updateSponsorChannel(state.editId, state.name, link, previewText);
+      delete sponsorAddState[userId];
+      await bot.sendMessage(
+        msg.chat.id,
+        `✅ Sponsor updated!\nName: ${state.name}\nLink: ${link}\nPreview: ${previewText}`
+      );
+      // Refresh panel
+      const allSponsors = await getAllSponsorChannels();
+      let text = "<b>Manage Sponsor Channels</b>\n\n";
+      if (allSponsors.length === 0) {
+        text += "No sponsor channels found.";
+      } else {
+        text += "Click a sponsor name to manage it.";
+      }
+      const keyboard: TelegramBot.InlineKeyboardMarkup = {
+        inline_keyboard: [] as unknown as TelegramBot.InlineKeyboardButton[][],
+      };
+      for (const s of allSponsors) {
+        keyboard.inline_keyboard.push([
+          { text: s.name, callback_data: `admin_sponsor_details:${s.id}` },
+        ]);
+      }
+      keyboard.inline_keyboard.push([
+        { text: "➕ Add Sponsor", callback_data: "admin_add_sponsor" },
+        {
+          text: "🔙 Back to Admin Panel",
+          callback_data: "admin_back_to_panel",
+        },
+      ]);
+      await bot.sendMessage(msg.chat.id, text, {
+        parse_mode: "HTML",
+        reply_markup: keyboard,
+      });
+      return;
+    }
   });
 
   // Admin add coins command
@@ -617,79 +978,4 @@ export function registerAdminCommands(bot: TelegramBot) {
 
     await bot.sendMessage(msg.chat.id, helpMessage, { parse_mode: "HTML" });
   });
-
-  // Add a /myid command for users to get their own user ID
-  bot.onText(/\/myid/, async (msg: TelegramBot.Message) => {
-    const userId = msg.from?.id?.toString();
-    if (!userId) {
-      await bot.sendMessage(msg.chat.id, "❌ Unable to identify your user ID.");
-      return;
-    }
-    await bot.sendMessage(
-      msg.chat.id,
-      `🆔 Your User ID: <code>${userId}</code>`,
-      { parse_mode: "HTML" }
-    );
-  });
-
-  // Add /find_user <username|name> command for admins
-  bot.onText(
-    /\/find_user (.+)/,
-    async (msg: TelegramBot.Message, match: RegExpExecArray | null) => {
-      const userId = msg.from?.id?.toString();
-      if (!userId || !isAdmin(userId)) {
-        await bot.sendMessage(msg.chat.id, "❌ Access denied. Admin only.");
-        return;
-      }
-      if (!match || !match[1]) {
-        await bot.sendMessage(
-          msg.chat.id,
-          "❌ Usage: /find_user <username|name>"
-        );
-        return;
-      }
-      const query = match[1].trim().toLowerCase();
-      // Search all users in the database
-      try {
-        const db = getDatabase();
-        const usersRef = dbRef(db, "users");
-        const snap = await dbGet(usersRef);
-        if (!snap.exists()) {
-          await bot.sendMessage(msg.chat.id, "❌ No users found.");
-          return;
-        }
-        const users = snap.val();
-        let found: { id: string; username?: string; name?: string } | null =
-          null;
-        for (const [id, user] of Object.entries(users)) {
-          if (typeof user === "object" && user !== null) {
-            const u = user as { username?: string; name?: string };
-            if (
-              (u.username && u.username.toLowerCase() === query) ||
-              (u.name && u.name.toLowerCase() === query)
-            ) {
-              found = { id, ...u };
-              break;
-            }
-          }
-        }
-        if (found) {
-          await bot.sendMessage(
-            msg.chat.id,
-            `🆔 User Found\n\nID: ${found.id}\nUsername: ${
-              found.username || "-"
-            }\nName: ${found.name || "-"}`
-          );
-        } else {
-          await bot.sendMessage(
-            msg.chat.id,
-            "❌ User not found by username or name."
-          );
-        }
-      } catch (err) {
-        console.error("[ADMIN] Error finding user:", err);
-        await bot.sendMessage(msg.chat.id, "❌ Error searching for user.");
-      }
-    }
-  );
 }
