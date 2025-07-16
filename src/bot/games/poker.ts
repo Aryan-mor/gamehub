@@ -553,7 +553,7 @@ export function checkTimeout(game: PokerGame): PokerPlayer[] {
   return timedOutPlayers;
 }
 
-export function getPokerStats(_userId: string): Promise<PokerStats> {
+export function getPokerStats(): Promise<PokerStats> {
   // This would be implemented with database queries
   // For now, return default stats
   return Promise.resolve({
