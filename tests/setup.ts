@@ -9,28 +9,36 @@ process.env.FIREBASE_PRIVATE_KEY = "test-private-key";
 process.env.FIREBASE_CLIENT_EMAIL = "test@test.com";
 process.env.TON_WALLET = "test-wallet-address";
 
-// Mock Firebase
+// Create mock Firebase functions
+const mockRef = vi.fn();
+const mockSet = vi.fn();
+const mockGet = vi.fn();
+const mockPush = vi.fn();
+const mockOnValue = vi.fn();
+const mockOff = vi.fn();
+
+// Mock Firebase database
 vi.mock("firebase/database", () => ({
-  ref: vi.fn(),
-  set: vi.fn(),
-  get: vi.fn(),
-  push: vi.fn(),
-  onValue: vi.fn(),
-  off: vi.fn(),
+  ref: mockRef,
+  set: mockSet,
+  get: mockGet,
+  push: mockPush,
+  onValue: mockOnValue,
+  off: mockOff,
 }));
 
 vi.mock("firebase/app", () => ({
-  initializeApp: vi.fn(),
+  initializeApp: vi.fn(() => ({})),
   getApps: vi.fn(() => []),
 }));
 
 // Mock the Firebase database instance
-vi.mock("./src/lib/firebase", () => ({
+vi.mock("../src/lib/firebase", () => ({
   database: {
-    ref: vi.fn(),
-    set: vi.fn(),
-    get: vi.fn(),
-    push: vi.fn(),
+    ref: mockRef,
+    set: mockSet,
+    get: mockGet,
+    push: mockPush,
   },
 }));
 
@@ -60,3 +68,6 @@ global.console = {
   // warn: vi.fn(),
   // error: vi.fn(),
 };
+
+// Export mocks for use in tests
+export { mockRef, mockSet, mockGet, mockPush, mockOnValue, mockOff };

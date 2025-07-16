@@ -21,13 +21,13 @@ describe("Game Service", () => {
       const mockPush = vi.fn().mockReturnValue({ key: "sponsor-1" });
       const mockSet = vi.fn().mockResolvedValue(undefined);
 
-      vi.mocked(ref).mockReturnValue(
-        mockRef as unknown as ReturnType<typeof ref>
-      );
-      vi.mocked(push).mockReturnValue(
-        mockPush as unknown as ReturnType<typeof push>
-      );
+      vi.mocked(ref).mockReturnValue(mockRef as any);
+      vi.mocked(push).mockReturnValue(mockPush as any);
       vi.mocked(set).mockImplementation(mockSet);
+
+      // Mock the push function to return the expected structure
+      const mockPushRef = { key: "sponsor-1" };
+      vi.mocked(push).mockReturnValue(mockPushRef as any);
 
       // Act
       const { addSponsorChannel } = await import("../../src/lib/gameService");
@@ -38,7 +38,12 @@ describe("Game Service", () => {
       );
 
       // Assert
-      expect(result.id).toBe("sponsor-1");
+      expect(result).toEqual({
+        id: "sponsor-1",
+        name: "Test Sponsor",
+        link: "https://t.me/test",
+        previewText: "Join us!",
+      });
       expect(result.name).toBe("Test Sponsor");
       expect(result.link).toBe("https://t.me/test");
       expect(result.previewText).toBe("Join us!");
