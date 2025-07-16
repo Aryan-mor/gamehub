@@ -3057,7 +3057,7 @@ async function handleInsufficientCoins(
     "❌ <b>Insufficient Coins</b>\n\n" +
     "You need more coins to join this game.\n" +
     "<b>How to get more coins?</b>";
-  const keyboard = {
+  const keyboard: TelegramBot.InlineKeyboardMarkup = {
     inline_keyboard: [
       [{ text: "Buy Coins (with TON)", callback_data: "buycoin" }],
     ],
@@ -3068,7 +3068,7 @@ async function handleInsufficientCoins(
       {
         text: "Join Sponsor Channel",
         url: sponsor.link,
-      } as TelegramBot.InlineKeyboardButton,
+      },
     ]);
     keyboard.inline_keyboard.push([
       { text: "I Joined", callback_data: `sponsor_joined:${sponsor.id}` },
@@ -3080,6 +3080,6 @@ async function handleInsufficientCoins(
     parse_mode: "HTML",
     disable_web_page_preview: true,
     reply_to_message_id: replyToMessageId,
-    reply_markup: keyboard as any,
+    reply_markup: keyboard,
   });
 }
