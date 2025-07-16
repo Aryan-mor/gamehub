@@ -44,6 +44,7 @@ import {
   BASKETBALL_STAKES,
   type BasketballStake,
 } from "../../bot/games/basketball";
+import { getUnjoinedSponsorChannel } from "../../lib/gameService";
 
 /**
  * Registers all XO-specific Telegram bot handlers (move, join, restart, etc.).
@@ -3050,21 +3051,35 @@ async function handleInsufficientCoins(
   chatId: number,
   replyToMessageId?: number
 ) {
-  const sponsorChannelUrl = "https://t.me/sponsor_channel"; // TODO: Replace with your actual sponsor channel URL
-  const buyCoinsUrl = "https://t.me/buy_coins_bot"; // TODO: Replace with your actual buy coins bot URL
-  const text =
+  const userId = chatId.toString();
+  const sponsor = await getUnjoinedSponsorChannel(userId);
+  let text =
     "❌ <b>Insufficient Coins</b>\n\n" +
     "You need more coins to join this game.\n" +
-    "<b>How to get more coins?</b>\n" +
-    "1. <a href='" +
-    buyCoinsUrl +
-    "'>Buy Coins</a>\n" +
-    "2. <a href='" +
-    sponsorChannelUrl +
-    "'>Join our sponsor channel for free coins</a>";
+    "<b>How to get more coins?</b>";
+  const keyboard = {
+    inline_keyboard: [
+      [{ text: "Buy Coins (with TON)", callback_data: "buycoin" }],
+    ],
+  };
+  if (sponsor) {
+    text += `\n\n<b>Sponsor Offer:</b>\n${sponsor.previewText}`;
+    keyboard.inline_keyboard.push([
+      {
+        text: "Join Sponsor Channel",
+        url: sponsor.link,
+      } as TelegramBot.InlineKeyboardButton,
+    ]);
+    keyboard.inline_keyboard.push([
+      { text: "I Joined", callback_data: `sponsor_joined:${sponsor.id}` },
+    ]);
+  } else {
+    text += "\n\nNo sponsor available for now.";
+  }
   await bot.sendMessage(chatId, text, {
     parse_mode: "HTML",
     disable_web_page_preview: true,
     reply_to_message_id: replyToMessageId,
+    reply_markup: keyboard as any,
   });
 }

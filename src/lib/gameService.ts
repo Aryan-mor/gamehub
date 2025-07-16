@@ -10,6 +10,77 @@ import {
   getNextPlayer,
 } from "./game";
 import { recordWin, recordDraw } from "../bot/games/userStats";
+import { push } from "firebase/database";
+
+export interface SponsorChannel {
+  id: string;
+  name: string;
+  link: string;
+  previewText: string;
+}
+
+const SPONSOR_CHANNELS_PATH = "sponsorChannels";
+
+export async function addSponsorChannel(
+  name: string,
+  link: string,
+  previewText: string
+): Promise<SponsorChannel> {
+  if (!database) throw new Error("Firebase not initialized");
+  const newRef = push(ref(database, SPONSOR_CHANNELS_PATH));
+  const id = newRef.key!;
+  const channel: SponsorChannel = { id, name, link, previewText };
+  await set(newRef, channel);
+  return channel;
+}
+
+export async function getAllSponsorChannels(): Promise<SponsorChannel[]> {
+  if (!database) throw new Error("Firebase not initialized");
+  const snap = await get(ref(database, SPONSOR_CHANNELS_PATH));
+  if (!snap.exists()) return [];
+  return Object.values(snap.val());
+}
+
+export async function getUnjoinedSponsorChannel(
+  userId: string
+): Promise<SponsorChannel | null> {
+  if (!database) throw new Error("Firebase not initialized");
+  const channels = await getAllSponsorChannels();
+  const joinedSnap = await get(ref(database, `users/${userId}/joinedSponsors`));
+  const joined = joinedSnap.exists() ? Object.keys(joinedSnap.val()) : [];
+  const unjoined = channels.filter((c) => !joined.includes(c.id));
+  if (unjoined.length === 0) return null;
+  // Return a random unjoined channel
+  return unjoined[Math.floor(Math.random() * unjoined.length)];
+}
+
+export async function markSponsorJoined(
+  userId: string,
+  channelId: string
+): Promise<void> {
+  if (!database) throw new Error("Firebase not initialized");
+  await set(ref(database, `users/${userId}/joinedSponsors/${channelId}`), true);
+}
+
+export async function updateSponsorChannel(
+  id: string,
+  name: string,
+  link: string,
+  previewText: string
+): Promise<void> {
+  if (!database) throw new Error("Firebase not initialized");
+  await set(ref(database, `${SPONSOR_CHANNELS_PATH}/${id}`), {
+    id,
+    name,
+    link,
+    previewText,
+  });
+}
+
+export async function removeSponsorChannel(id: string): Promise<void> {
+  if (!database) throw new Error("Firebase not initialized");
+  await set(ref(database, `${SPONSOR_CHANNELS_PATH}/${id}`), null);
+}
 
 // Check if Firebase is properly initialized
 const checkFirebaseConnection = () => {
