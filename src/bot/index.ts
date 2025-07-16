@@ -358,4 +358,90 @@ bot.onText(/\/dice/, async (msg) => {
   );
 });
 
+// Handle main bot callback queries
+bot.on("callback_query", async (query) => {
+  try {
+    const data = query.data;
+    if (!data) return;
+
+    const chatId = query.message?.chat.id;
+    const userId = query.from?.id?.toString();
+
+    if (!chatId || !userId) return;
+
+    console.log(`[BOT] Callback query: ${data} from userId=${userId}`);
+
+    // Handle main bot callbacks
+    if (data === "startgame") {
+      await bot.answerCallbackQuery(query.id, { text: "Opening games..." });
+      // Send the startgame menu
+      const singlePlayerKeyboard = {
+        inline_keyboard: [
+          [{ text: "🎲 Dice Game", callback_data: "newgame:dice" }],
+          [{ text: "🃏 Blackjack Game", callback_data: "newgame:blackjack" }],
+          [{ text: "🃏 Poker Game", callback_data: "newgame:poker" }],
+          [{ text: "⚽️ Football Game", callback_data: "newgame:football" }],
+          [{ text: "🏀 Basketball Game", callback_data: "newgame:basketball" }],
+        ],
+      };
+      await bot.sendMessage(chatId, "🎮 Choose a game to play:", {
+        reply_markup: singlePlayerKeyboard,
+      });
+    } else if (data === "freecoin") {
+      await bot.answerCallbackQuery(query.id, { text: "Claiming coins..." });
+      const fakeMsg = {
+        chat: { id: chatId },
+        from: query.from,
+      } as TelegramBot.Message;
+      await freeCoinHandler(fakeMsg);
+    } else if (data === "help") {
+      await bot.answerCallbackQuery(query.id, { text: "Showing help..." });
+      await bot.sendMessage(
+        chatId,
+        `Available commands:\n` +
+          `/start - Start the bot\n` +
+          `/startgame - Start a new game\n` +
+          `/freecoin - Claim your daily free coins\n` +
+          `/help - Show this help message\n` +
+          `/newgame - Create a new game\n` +
+          `/games - Show your unfinished games\n` +
+          `/stats - Show your game statistics\n` +
+          `/balance - Show your coin balance`
+      );
+    } else if (data === "balance") {
+      await bot.answerCallbackQuery(query.id, { text: "Checking balance..." });
+      const user = await getUser(userId);
+      await bot.sendMessage(
+        chatId,
+        `💰 Your balance: <b>${user.coins}</b> Coins`,
+        {
+          parse_mode: "HTML",
+        }
+      );
+    } else if (data.startsWith("newgame:")) {
+      const gameType = data.split(":")[1];
+      await bot.answerCallbackQuery(query.id, {
+        text: `Starting ${gameType}...`,
+      });
+      // Handle game-specific logic here
+    } else if (data.startsWith("dice_stake:")) {
+      await bot.answerCallbackQuery(query.id, {
+        text: "Setting dice stake...",
+      });
+      // Handle dice stake selection
+    } else {
+      // For any other unhandled callbacks, just acknowledge
+      await bot.answerCallbackQuery(query.id, { text: "Processing..." });
+    }
+  } catch (error) {
+    console.error("❌ Callback query error:", error);
+    // Silently ignore old/invalid callback queries
+    try {
+      await bot.answerCallbackQuery(query.id, { text: "Processing..." });
+    } catch {
+      // Ignore any errors from answering callback queries
+    }
+  }
+});
+
 export default bot;

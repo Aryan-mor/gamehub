@@ -264,7 +264,7 @@ export function registerAdminCommands(bot: TelegramBot) {
       if (!match || !match[1]) {
         await bot.sendMessage(
           msg.chat.id,
-          "❌ Usage: /admin_add_coins <user_id> <amount>"
+          "❌ Usage: /admin_add_coins &lt;user_id&gt; &lt;amount&gt;"
         );
         return;
       }
@@ -273,7 +273,7 @@ export function registerAdminCommands(bot: TelegramBot) {
       if (args.length !== 2) {
         await bot.sendMessage(
           msg.chat.id,
-          "❌ Usage: /admin_add_coins <user_id> <amount>"
+          "❌ Usage: /admin_add_coins &lt;user_id&gt; &lt;amount&gt;"
         );
         return;
       }
@@ -319,7 +319,7 @@ export function registerAdminCommands(bot: TelegramBot) {
       if (!match || !match[1]) {
         await bot.sendMessage(
           msg.chat.id,
-          "❌ Usage: /admin_remove_coins <user_id> <amount>"
+          "❌ Usage: /admin_remove_coins &lt;user_id&gt; &lt;amount&gt;"
         );
         return;
       }
@@ -328,7 +328,7 @@ export function registerAdminCommands(bot: TelegramBot) {
       if (args.length !== 2) {
         await bot.sendMessage(
           msg.chat.id,
-          "❌ Usage: /admin_remove_coins <user_id> <amount>"
+          "❌ Usage: /admin_remove_coins &lt;user_id&gt; &lt;amount&gt;"
         );
         return;
       }
@@ -374,7 +374,7 @@ export function registerAdminCommands(bot: TelegramBot) {
       if (!match || !match[1]) {
         await bot.sendMessage(
           msg.chat.id,
-          "❌ Usage: /admin_set_coins <user_id> <amount>"
+          "❌ Usage: /admin_set_coins &lt;user_id&gt; &lt;amount&gt;"
         );
         return;
       }
@@ -383,7 +383,7 @@ export function registerAdminCommands(bot: TelegramBot) {
       if (args.length !== 2) {
         await bot.sendMessage(
           msg.chat.id,
-          "❌ Usage: /admin_set_coins <user_id> <amount>"
+          "❌ Usage: /admin_set_coins &lt;user_id&gt; &lt;amount&gt;"
         );
         return;
       }
@@ -436,7 +436,7 @@ export function registerAdminCommands(bot: TelegramBot) {
       if (!match || !match[1]) {
         await bot.sendMessage(
           msg.chat.id,
-          "❌ Usage: /admin_view_coins <user_id>"
+          "❌ Usage: /admin_view_coins &lt;user_id&gt;"
         );
         return;
       }
@@ -481,7 +481,7 @@ export function registerAdminCommands(bot: TelegramBot) {
       if (!match || !match[1]) {
         await bot.sendMessage(
           msg.chat.id,
-          "❌ Usage: /admin_view_stats <user_id>"
+          "❌ Usage: /admin_view_stats &lt;user_id&gt;"
         );
         return;
       }
@@ -550,12 +550,12 @@ export function registerAdminCommands(bot: TelegramBot) {
     const helpMessage =
       `🛡️ <b>Admin Commands</b>\n\n` +
       `💰 <b>Coin Management:</b>\n` +
-      `• /admin_add_coins <user_id> <amount> - Add coins\n` +
-      `• /admin_remove_coins <user_id> <amount> - Remove coins\n` +
-      `• /admin_set_coins <user_id> <amount> - Set exact amount\n` +
-      `• /admin_view_coins <user_id> - View balance\n\n` +
+      `• /admin_add_coins &lt;user_id&gt; &lt;amount&gt; - Add coins\n` +
+      `• /admin_remove_coins &lt;user_id&gt; &lt;amount&gt; - Remove coins\n` +
+      `• /admin_set_coins &lt;user_id&gt; &lt;amount&gt; - Set exact amount\n` +
+      `• /admin_view_coins &lt;user_id&gt; - View balance\n\n` +
       `📊 <b>Statistics:</b>\n` +
-      `• /admin_view_stats <user_id> - View all game stats\n\n` +
+      `• /admin_view_stats &lt;user_id&gt; - View all game stats\n\n` +
       `📝 <b>Examples:</b>\n` +
       `• /admin_add_coins 123456789 100\n` +
       `• /admin_view_coins 123456789\n` +
