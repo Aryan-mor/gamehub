@@ -96,9 +96,12 @@ export function registerXoTelegramHandlers(bot: TelegramBot) {
           ],
           [
             { text: "🃏 Blackjack Game", callback_data: "newgame:blackjack" },
-            { text: "⚽️ Football Game", callback_data: "newgame:football" },
+            { text: "🃏 Poker Game", callback_data: "newgame:poker" },
           ],
-          [{ text: "🏀 Basketball Game", callback_data: "newgame:basketball" }],
+          [
+            { text: "⚽️ Football Game", callback_data: "newgame:football" },
+            { text: "🏀 Basketball Game", callback_data: "newgame:basketball" },
+          ],
         ],
       };
 
@@ -187,6 +190,7 @@ export function registerXoTelegramHandlers(bot: TelegramBot) {
           inline_keyboard: [
             [{ text: "🎲 Dice Game", callback_data: "newgame:dice" }],
             [{ text: "🃏 Blackjack Game", callback_data: "newgame:blackjack" }],
+            [{ text: "🃏 Poker Game", callback_data: "newgame:poker" }],
             [{ text: "⚽️ Football Game", callback_data: "newgame:football" }],
             [
               {
@@ -460,6 +464,42 @@ export function registerXoTelegramHandlers(bot: TelegramBot) {
             chat_id: chatId,
             message_id: callbackQuery.message.message_id,
             reply_markup: stakeKeyboard,
+          });
+        }
+
+        await bot.answerCallbackQuery(callbackQuery.id);
+        return;
+      }
+
+      if (gameType === "poker") {
+        // Show poker game info
+        const text =
+          "🃏 Poker Game\n\nPoker is a multiplayer game. Use /poker to create or join a game.\n\nFeatures:\n• Up to 6 players\n• Texas Hold'em rules\n• 30-second timeouts\n• Automatic blinds\n• All-in and raise options";
+
+        const pokerKeyboard = {
+          inline_keyboard: [
+            [
+              {
+                text: "🃏 Create/Join Poker Game",
+                callback_data: "poker_create",
+              },
+            ],
+            [{ text: "📊 Poker Stats", callback_data: "poker_stats" }],
+          ],
+        };
+
+        // Update the message
+        const inlineMessageId = callbackQuery.inline_message_id;
+        if (inlineMessageId) {
+          await bot.editMessageText(text, {
+            inline_message_id: inlineMessageId,
+            reply_markup: pokerKeyboard,
+          });
+        } else if (chatId && callbackQuery.message?.message_id) {
+          await bot.editMessageText(text, {
+            chat_id: chatId,
+            message_id: callbackQuery.message.message_id,
+            reply_markup: pokerKeyboard,
           });
         }
 
@@ -2990,6 +3030,37 @@ export function registerXoTelegramHandlers(bot: TelegramBot) {
         }
         return;
       }
+    }
+
+    // --- Poker Game Handlers ---
+    if (action === "poker_create") {
+      console.log(`[POKER] poker_create callback received: userId=${userId}`);
+
+      const text =
+        "🃏 Poker Game\n\nUse /poker to create or join a poker game.\n\nCommands:\n• /poker - Create or join a game\n• /join_poker <game_id> - Join specific game\n• /start_poker <game_id> - Start game\n• /leave_poker - Leave current game\n• /poker_stats - View statistics";
+
+      await bot.answerCallbackQuery(callbackQuery.id, {
+        text: "Redirecting to poker...",
+      });
+
+      // Send the poker command to the user
+      await bot.sendMessage(chatId, text, { parse_mode: "HTML" });
+      return;
+    }
+
+    if (action === "poker_stats") {
+      console.log(`[POKER] poker_stats callback received: userId=${userId}`);
+
+      const text =
+        "📊 Poker Statistics\n\nUse /poker_stats to view your poker statistics.";
+
+      await bot.answerCallbackQuery(callbackQuery.id, {
+        text: "Redirecting to stats...",
+      });
+
+      // Send the poker stats command to the user
+      await bot.sendMessage(chatId, text, { parse_mode: "HTML" });
+      return;
     }
 
     // Handle new basketball game
