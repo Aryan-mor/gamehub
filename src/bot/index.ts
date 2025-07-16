@@ -15,6 +15,7 @@ import {
   canClaimDaily,
   setLastFreeCoinAt,
   getUserStatistics,
+  setUserProfile,
 } from "./games/userStats";
 import { getUnfinishedGamesForUser } from "../games/xo/game";
 
@@ -110,12 +111,18 @@ initializeBot().catch((error) => {
 bot.onText(/\/start/, async (msg) => {
   const chatId = msg.chat.id;
   const userId = String(msg.from?.id);
-  const username = msg.from?.username || "unknown";
+  const username = msg.from?.username || undefined;
+  const name =
+    msg.from?.first_name || msg.from?.last_name
+      ? `${msg.from?.first_name || ""} ${msg.from?.last_name || ""}`.trim()
+      : undefined;
   console.log(
     `[BOT] /start received from userId=${userId}, username=${username}`
   );
 
   try {
+    // Save username and name to user profile
+    await setUserProfile(userId, username, name);
     const user = await getUser(userId);
     let welcome = `🎮 Welcome to GameHub!\n\n💰 Earn and claim daily Coins with /freecoin!\n\n🎯 Choose an action below:`;
     if (user.coins === 0 && !user.lastFreeCoinAt) {

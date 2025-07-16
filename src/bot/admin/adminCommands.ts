@@ -4,6 +4,7 @@ import { getBlackjackStats } from "../games/blackjack";
 import { getDiceStats } from "../games/dice";
 import { getFootballStats } from "../games/football";
 import { getBasketballStats } from "../games/basketball";
+import { getDatabase, ref as dbRef, get as dbGet } from "firebase/database";
 
 // Admin user IDs - add your admin user IDs here
 const ADMIN_USER_IDS = [
@@ -44,8 +45,12 @@ export function registerAdminCommands(bot: TelegramBot) {
         ],
         [
           { text: "📊 View Stats", callback_data: "admin_view_stats_panel" },
-          { text: "❓ Help", callback_data: "admin_help_panel" },
+          {
+            text: "🔍 Find User ID",
+            callback_data: "admin_find_user_id_panel",
+          },
         ],
+        [{ text: "❓ Help", callback_data: "admin_help_panel" }],
       ],
     };
 
@@ -235,8 +240,12 @@ export function registerAdminCommands(bot: TelegramBot) {
           ],
           [
             { text: "📊 View Stats", callback_data: "admin_view_stats_panel" },
-            { text: "❓ Help", callback_data: "admin_help_panel" },
+            {
+              text: "🔍 Find User ID",
+              callback_data: "admin_find_user_id_panel",
+            },
           ],
+          [{ text: "❓ Help", callback_data: "admin_help_panel" }],
         ],
       };
 
@@ -246,6 +255,51 @@ export function registerAdminCommands(bot: TelegramBot) {
         parse_mode: "HTML",
         reply_markup: adminKeyboard,
       });
+    } else if (data === "admin_find_user_id_panel") {
+      const newText = `🔍 Find User ID\n\nSend /find_user <username|name> to find a user's ID.\nOr ask the user to send /myid to the bot.`;
+      // Always answer callback query first
+      await bot.answerCallbackQuery(query.id);
+      // Only edit if the text is different to avoid Telegram 'message is not modified' error
+      if (query.message && query.message.text !== newText) {
+        try {
+          await bot.editMessageText(newText, {
+            chat_id: query.message?.chat.id,
+            message_id: query.message?.message_id,
+            reply_markup: {
+              inline_keyboard: [
+                [
+                  {
+                    text: "🔙 Back to Admin Panel",
+                    callback_data: "admin_back_to_panel",
+                  },
+                ],
+              ],
+            },
+          });
+        } catch (err: unknown) {
+          // Helper to check for Telegram 'message is not modified' error
+          function isTelegramNotModifiedError(e: unknown): boolean {
+            if (
+              typeof e === "object" &&
+              e !== null &&
+              "response" in e &&
+              typeof (e as { response?: { body?: { description?: string } } })
+                .response?.body?.description === "string" &&
+              (
+                e as { response: { body: { description: string } } }
+              ).response.body.description.includes("message is not modified")
+            ) {
+              return true;
+            }
+            return false;
+          }
+          if (isTelegramNotModifiedError(err)) {
+            // ignore
+          } else {
+            throw err;
+          }
+        }
+      }
     }
 
     await bot.answerCallbackQuery(query.id);
@@ -563,4 +617,79 @@ export function registerAdminCommands(bot: TelegramBot) {
 
     await bot.sendMessage(msg.chat.id, helpMessage, { parse_mode: "HTML" });
   });
+
+  // Add a /myid command for users to get their own user ID
+  bot.onText(/\/myid/, async (msg: TelegramBot.Message) => {
+    const userId = msg.from?.id?.toString();
+    if (!userId) {
+      await bot.sendMessage(msg.chat.id, "❌ Unable to identify your user ID.");
+      return;
+    }
+    await bot.sendMessage(
+      msg.chat.id,
+      `🆔 Your User ID: <code>${userId}</code>`,
+      { parse_mode: "HTML" }
+    );
+  });
+
+  // Add /find_user <username|name> command for admins
+  bot.onText(
+    /\/find_user (.+)/,
+    async (msg: TelegramBot.Message, match: RegExpExecArray | null) => {
+      const userId = msg.from?.id?.toString();
+      if (!userId || !isAdmin(userId)) {
+        await bot.sendMessage(msg.chat.id, "❌ Access denied. Admin only.");
+        return;
+      }
+      if (!match || !match[1]) {
+        await bot.sendMessage(
+          msg.chat.id,
+          "❌ Usage: /find_user <username|name>"
+        );
+        return;
+      }
+      const query = match[1].trim().toLowerCase();
+      // Search all users in the database
+      try {
+        const db = getDatabase();
+        const usersRef = dbRef(db, "users");
+        const snap = await dbGet(usersRef);
+        if (!snap.exists()) {
+          await bot.sendMessage(msg.chat.id, "❌ No users found.");
+          return;
+        }
+        const users = snap.val();
+        let found: { id: string; username?: string; name?: string } | null =
+          null;
+        for (const [id, user] of Object.entries(users)) {
+          if (typeof user === "object" && user !== null) {
+            const u = user as { username?: string; name?: string };
+            if (
+              (u.username && u.username.toLowerCase() === query) ||
+              (u.name && u.name.toLowerCase() === query)
+            ) {
+              found = { id, ...u };
+              break;
+            }
+          }
+        }
+        if (found) {
+          await bot.sendMessage(
+            msg.chat.id,
+            `🆔 User Found\n\nID: ${found.id}\nUsername: ${
+              found.username || "-"
+            }\nName: ${found.name || "-"}`
+          );
+        } else {
+          await bot.sendMessage(
+            msg.chat.id,
+            "❌ User not found by username or name."
+          );
+        }
+      } catch (err) {
+        console.error("[ADMIN] Error finding user:", err);
+        await bot.sendMessage(msg.chat.id, "❌ Error searching for user.");
+      }
+    }
+  );
 }

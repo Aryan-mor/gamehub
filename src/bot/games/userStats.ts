@@ -135,6 +135,8 @@ export async function formatStatsMessage(
 export interface UserCoinData {
   coins: number;
   lastFreeCoinAt?: number; // ms timestamp
+  username?: string;
+  name?: string;
 }
 
 const USER_COIN_PATH = "users";
@@ -198,4 +200,16 @@ export async function canClaimDaily(
   const DAY = 24 * 60 * 60 * 1000;
   if (elapsed >= DAY) return { canClaim: true, nextClaimIn: 0 };
   return { canClaim: false, nextClaimIn: DAY - elapsed };
+}
+
+export async function setUserProfile(
+  id: string,
+  username?: string,
+  name?: string
+): Promise<void> {
+  if (!database) throw new Error("Firebase not initialized");
+  const user = await getUser(id);
+  if (username) user.username = username;
+  if (name) user.name = name;
+  await set(ref(database, `${USER_COIN_PATH}/${id}`), user);
 }
