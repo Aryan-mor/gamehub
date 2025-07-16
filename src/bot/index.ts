@@ -17,6 +17,7 @@ import {
   setUserProfile,
 } from "./games/userStats";
 import { getUnfinishedGamesForUser } from "../games/xo/game";
+import { publicConfig } from "./publicConfig";
 
 const token = process.env.TELEGRAM_BOT_TOKEN;
 if (!token) {
@@ -387,6 +388,32 @@ bot.onText(/\/dice/, async (msg) => {
   );
 });
 
+// /buycoin: show TON wallet and instructions
+bot.onText(/\/buycoin/, async (msg) => {
+  const chatId = msg.chat.id;
+  const tonWallet = publicConfig.tonWallet;
+  const rate = 1000; // 1 TON = 1000 Coins
+  if (!tonWallet) {
+    await bot.sendMessage(
+      chatId,
+      "TON wallet address is not set. Please contact admin."
+    );
+    return;
+  }
+  const text =
+    `💸 <b>Buy Coins with TON</b>\n\n` +
+    `1 TON = <b>${rate}</b> Coins\n` +
+    `Send TON to this address:\n<code>${tonWallet}</code>\n\n` +
+    `After payment, click <b>I Paid</b> and send your transaction hash.`;
+  const keyboard = {
+    inline_keyboard: [[{ text: "I Paid", callback_data: `ton_paid` }]],
+  };
+  await bot.sendMessage(chatId, text, {
+    parse_mode: "HTML",
+    reply_markup: keyboard,
+  });
+});
+
 // Handle main bot callback queries
 bot.on("callback_query", async (query) => {
   try {
@@ -498,6 +525,18 @@ bot.on("callback_query", async (query) => {
         // Handle dice stake selection
       } catch (error) {
         console.error("[BOT] Error handling dice_stake callback:", error);
+      }
+    } else if (data === "ton_paid") {
+      try {
+        await bot.answerCallbackQuery(query.id, {
+          text: "Transaction hash received. Thank you!",
+        });
+        await bot.sendMessage(
+          chatId,
+          "Your TON transaction hash has been received. Thank you for your payment!"
+        );
+      } catch (error) {
+        console.error("[BOT] Error handling ton_paid callback:", error);
       }
     } else {
       // For any other unhandled callbacks, just acknowledge
