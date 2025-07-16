@@ -1,0 +1,18 @@
+# Cursor Rules for GameHub Project
+
+## Git Flow and Branch Management
+- NEVER add code directly to main branch
+- ALWAYS create a branch using git flow structure (feature/, hotfix/, release/, etc.)
+- NEVER merge code directly to main without user approval
+- Always use descriptive branch names following git flow conventions
+
+## Code Editing Preferences
+- Always edit files directly without asking for confirmation
+- Keep explanations minimal and only explain when specifically asked
+- Focus on implementing solutions rather than discussing ideas unless requested
+- Apply changes automatically without lengthy explanations
+
+## Project-Specific Rules
+- Follow existing code patterns and conventions in the project
+- Maintain consistency with the current codebase structure
+- Prioritize functionality over verbose explanations 

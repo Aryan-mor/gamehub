@@ -14,6 +14,11 @@ import {
 } from "./poker";
 import { getUserCoins, adjustCoins } from "../../lib/coinService";
 
+// Helper function to safely escape gameId for HTML
+function escapeGameId(gameId: string): string {
+  return gameId.replace(/[<>]/g, "");
+}
+
 // Store active poker games
 const activePokerGames = new Map<string, PokerGame>();
 
@@ -73,7 +78,13 @@ export function registerPokerHandlers(bot: TelegramBot) {
     }
 
     if (!game) {
-      gameId = `poker_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      // Generate a safe gameId using only alphanumeric characters
+      const timestamp = Date.now();
+      const randomPart = Math.random()
+        .toString(36)
+        .substr(2, 9)
+        .replace(/[^a-zA-Z0-9]/g, "");
+      gameId = `poker_${timestamp}_${randomPart}`;
       game = createPokerGame(gameId);
       activePokerGames.set(gameId, game);
     }
@@ -87,14 +98,14 @@ export function registerPokerHandlers(bot: TelegramBot) {
 
       const message =
         `🃏 <b>Poker Game</b>\n\n` +
-        `Game ID: <code>${gameId}</code>\n` +
+        `Game ID: <code>${escapeGameId(gameId)}</code>\n` +
         `Players: ${game.players.length}/${game.maxPlayers}\n` +
         `Buy-in: ${buyIn} coins\n\n` +
         `Players:\n${game.players
           .map((p) => `• ${p.username} (${p.chips} chips)`)
           .join("\n")}\n\n` +
-        `Use /join_poker ${gameId} to join this game\n` +
-        `Use /start_poker ${gameId} to start when ready`;
+        `Use /join_poker ${escapeGameId(gameId)} to join this game\n` +
+        `Use /start_poker ${escapeGameId(gameId)} to start when ready`;
 
       await bot.sendMessage(msg.chat.id, message, { parse_mode: "HTML" });
     } else {
@@ -113,7 +124,10 @@ export function registerPokerHandlers(bot: TelegramBot) {
       const username = msg.from?.username || msg.from?.first_name || "Unknown";
 
       if (!userId || !match) {
-        await bot.sendMessage(msg.chat.id, "❌ Usage: /join_poker <game_id>");
+        await bot.sendMessage(
+          msg.chat.id,
+          "❌ Usage: /join_poker &lt;game_id&gt;"
+        );
         return;
       }
 
@@ -158,7 +172,7 @@ export function registerPokerHandlers(bot: TelegramBot) {
 
         const message =
           `✅ <b>Joined Poker Game</b>\n\n` +
-          `Game ID: <code>${gameId}</code>\n` +
+          `Game ID: <code>${escapeGameId(gameId)}</code>\n` +
           `Players: ${game.players.length}/${game.maxPlayers}\n` +
           `Your buy-in: ${buyIn} coins\n\n` +
           `Players:\n${game.players
@@ -179,7 +193,10 @@ export function registerPokerHandlers(bot: TelegramBot) {
       const userId = msg.from?.id?.toString();
 
       if (!userId || !match) {
-        await bot.sendMessage(msg.chat.id, "❌ Usage: /start_poker <game_id>");
+        await bot.sendMessage(
+          msg.chat.id,
+          "❌ Usage: /start_poker &lt;game_id&gt;"
+        );
         return;
       }
 
@@ -214,7 +231,7 @@ export function registerPokerHandlers(bot: TelegramBot) {
       if (startPokerGame(game)) {
         const message =
           `🎰 <b>Poker Game Started!</b>\n\n` +
-          `Game ID: <code>${gameId}</code>\n` +
+          `Game ID: <code>${escapeGameId(gameId)}</code>\n` +
           `Players: ${game.players.length}\n` +
           `Small Blind: ${game.smallBlind}\n` +
           `Big Blind: ${game.bigBlind}\n\n` +
