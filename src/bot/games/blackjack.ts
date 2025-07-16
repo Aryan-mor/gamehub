@@ -247,12 +247,17 @@ export async function hitCard(gameId: string): Promise<BlackjackGameState> {
   const drawnCard = gameState.deck.pop()!;
   gameState.playerHand.push(drawnCard);
 
-  // Check if player busted
+  // Check if player busted or hit 21
   const playerValue = calculateHandValue(gameState.playerHand);
   if (playerValue > 21) {
     gameState.status = "completed";
     gameState.result = "lose";
     gameState.reward = 0;
+    gameState.completedAt = Date.now();
+  } else if (playerValue === 21) {
+    gameState.status = "completed";
+    gameState.result = "win";
+    gameState.reward = gameState.stake * 2;
     gameState.completedAt = Date.now();
   }
 
