@@ -1543,9 +1543,58 @@ export function registerXoTelegramHandlers(bot: TelegramBot) {
       const gameId = parts[1];
 
       try {
+        const currentGameState = await getBlackjackGame(gameId);
+        if (currentGameState.status === "completed") {
+          // Game already completed, show result and play again buttons
+          const playerValue = calculateHandValue(currentGameState.playerHand);
+          const resultText = getBlackjackResultText(
+            currentGameState.result || "lose",
+            currentGameState.reward || 0,
+            playerValue,
+            calculateHandValue(currentGameState.dealerHand),
+            currentGameState.stake,
+            currentGameState.playerHand,
+            currentGameState.dealerHand
+          );
+          const playAgainKeyboard = {
+            inline_keyboard: [
+              [
+                {
+                  text: "🔄 Play Again (Same Stake)",
+                  callback_data: `blackjack_play_again:${currentGameState.stake}`,
+                },
+              ],
+              [
+                {
+                  text: "➕ Play Again (Choose Stake)",
+                  callback_data: `blackjack_play_again_choose`,
+                },
+              ],
+            ],
+          };
+          const chatId = callbackQuery.message?.chat.id;
+          const messageId = callbackQuery.message?.message_id;
+          const inlineMessageId = callbackQuery.inline_message_id;
+          if (inlineMessageId) {
+            await bot.editMessageText(resultText, {
+              inline_message_id: inlineMessageId,
+              reply_markup: playAgainKeyboard,
+              parse_mode: "HTML",
+            });
+          } else if (chatId && messageId) {
+            await bot.editMessageText(resultText, {
+              chat_id: chatId,
+              message_id: messageId,
+              reply_markup: playAgainKeyboard,
+              parse_mode: "HTML",
+            });
+          }
+          await bot.answerCallbackQuery(callbackQuery.id);
+          return;
+        }
+        // Game is not completed, proceed as normal
         const gameState = await hitCard(gameId);
         const playerValue = calculateHandValue(gameState.playerHand);
-
         if (gameState.status === "completed") {
           // Player busted
           const resultText = getBlackjackResultText(
@@ -1557,14 +1606,12 @@ export function registerXoTelegramHandlers(bot: TelegramBot) {
             gameState.playerHand,
             gameState.dealerHand
           );
-
-          const originalGameState = await getBlackjackGame(gameId);
           const playAgainKeyboard = {
             inline_keyboard: [
               [
                 {
                   text: "🔄 Play Again (Same Stake)",
-                  callback_data: `blackjack_play_again:${originalGameState.stake}`,
+                  callback_data: `blackjack_play_again:${gameState.stake}`,
                 },
               ],
               [
@@ -1575,28 +1622,27 @@ export function registerXoTelegramHandlers(bot: TelegramBot) {
               ],
             ],
           };
-
           const chatId = callbackQuery.message?.chat.id;
           const messageId = callbackQuery.message?.message_id;
           const inlineMessageId = callbackQuery.inline_message_id;
-
           if (inlineMessageId) {
             await bot.editMessageText(resultText, {
               inline_message_id: inlineMessageId,
               reply_markup: playAgainKeyboard,
+              parse_mode: "HTML",
             });
           } else if (chatId && messageId) {
             await bot.editMessageText(resultText, {
               chat_id: chatId,
               message_id: messageId,
               reply_markup: playAgainKeyboard,
+              parse_mode: "HTML",
             });
           }
         } else {
           // Game continues
           const playerHandFormatted = formatHand(gameState.playerHand);
           const dealerHandFormatted = formatHand(gameState.dealerHand, true);
-
           const actionKeyboard = {
             inline_keyboard: [
               [
@@ -1614,17 +1660,14 @@ export function registerXoTelegramHandlers(bot: TelegramBot) {
               ],
             ],
           };
-
           const text =
             `<b>🃏 Blackjack Game - Stake: ${gameState.stake} Coins</b>\n\n` +
             `<b>Your Hand:</b> ${playerHandFormatted} <b>(Total: ${playerValue})</b>\n` +
             `<b>Dealer Shows:</b> ${dealerHandFormatted}\n\n` +
             `<em>What do you want to do?</em>`;
-
           const chatId = callbackQuery.message?.chat.id;
           const messageId = callbackQuery.message?.message_id;
           const inlineMessageId = callbackQuery.inline_message_id;
-
           if (inlineMessageId) {
             await bot.editMessageText(text, {
               inline_message_id: inlineMessageId,
@@ -1640,7 +1683,6 @@ export function registerXoTelegramHandlers(bot: TelegramBot) {
             });
           }
         }
-
         await bot.answerCallbackQuery(callbackQuery.id);
         return;
       } catch (error: unknown) {
