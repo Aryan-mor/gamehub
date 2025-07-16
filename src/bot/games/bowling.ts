@@ -2,7 +2,6 @@ import { ref, set, get } from "firebase/database";
 import { database } from "../../lib/firebase";
 import { adjustCoins } from "../../lib/coinService";
 import { requireUserStartedAndBalance } from "../../lib/userMiddleware";
-import publicConfig from "../publicConfig";
 
 export interface BowlingGameState {
   id: string;
@@ -19,7 +18,6 @@ export interface BowlingGameState {
 export interface BowlingGameResult {
   won: boolean;
   reward: number;
-  fee: number;
   message: string;
 }
 

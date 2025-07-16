@@ -1,7 +1,6 @@
 import { ref, set, get } from "firebase/database";
 import { database } from "../../lib/firebase";
 import { adjustCoins, requireBalance } from "../../lib/coinService";
-import publicConfig from "../publicConfig";
 
 export interface FootballGameState {
   id: string;

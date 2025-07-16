@@ -1,7 +1,6 @@
-import { ref, set, get, push } from "firebase/database";
+import { ref, set, get } from "firebase/database";
 import { database } from "../../lib/firebase";
 import { adjustCoins, requireBalance } from "../../lib/coinService";
-import publicConfig from "../publicConfig";
 
 export interface DiceGameState {
   id: string;
@@ -31,7 +30,6 @@ export const DICE_GUESSES = {
 } as const;
 
 const GAMES_PATH = "diceGames";
-const TRANSFERS_PATH = "transfers";
 
 /**
  * Create a new dice game
