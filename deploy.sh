@@ -6,7 +6,15 @@ cd /opt/gamehub
 echo "Node.js version: $(node --version)"
 echo "NPM version: $(npm --version)"
 
+# Stash any local changes to avoid conflicts
+git stash || true
+
+# Pull latest changes
 git pull origin main
+
+# Remove yarn.lock if it exists (since we're using npm now)
+rm -f yarn.lock
+
 npm ci
 npm run build
 pm2 restart all || true 
