@@ -1,5 +1,5 @@
-## alwaysApply: true
-
+---
+alwaysApply: true
 Always implement the fix automatically if a problem is found, without asking for confirmation.
 description: Code Editing Preferences for GameHub project
 rules:
