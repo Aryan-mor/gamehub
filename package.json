@@ -21,7 +21,8 @@
     "bot:manage": "tsx src/scripts/botManager.ts",
     "bot:control": "./scripts/bot-control.sh",
     "export:bot-config": "ts-node src/scripts/exportBotConfig.ts",
-    "set:bot-commands": "ts-node src/scripts/setBotCommands.ts"
+    "set:bot-commands": "ts-node src/scripts/setBotCommands.ts",
+    "type-check": "tsc --noEmit"
   },
   "dependencies": {
     "@headlessui/react": "^2.2.4",
