@@ -55,7 +55,7 @@ fi
 
 # Run linting
 print_status "Running ESLint..."
-if npm run lint; then
+if pnpm run lint; then
     print_success "Linting passed"
 else
     print_error "Linting failed"
@@ -64,7 +64,7 @@ fi
 
 # Run tests
 print_status "Running tests..."
-if npm run test:ci; then
+if pnpm run test:ci; then
     print_success "All tests passed"
 else
     print_error "Tests failed"
@@ -74,7 +74,7 @@ fi
 # Check test coverage (optional)
 if [ "$1" = "--coverage" ]; then
     print_status "Running test coverage..."
-    if npm run test:coverage; then
+    if pnpm run test:coverage; then
         print_success "Test coverage check passed"
     else
         print_error "Test coverage check failed"
