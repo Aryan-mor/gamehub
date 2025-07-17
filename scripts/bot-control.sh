@@ -13,13 +13,13 @@ cd "$PROJECT_DIR"
 case "$1" in
   "stop")
     echo "🛑 Stopping all bot processes..."
-    pkill -f "yarn bot" || true
+    pkill -f "pnpm bot" || true
     pkill -f "tsx src/bot/index.ts" || true
     echo "✅ Bot processes stopped"
     ;;
   "start")
     echo "🚀 Starting bot..."
-    yarn bot
+    pnpm run bot
     ;;
   "restart")
     echo "🔄 Restarting bot..."
@@ -29,9 +29,9 @@ case "$1" in
     ;;
   "status")
     echo "🔍 Checking bot status..."
-    if pgrep -f "yarn bot" > /dev/null || pgrep -f "tsx src/bot/index.ts" > /dev/null; then
+    if pgrep -f "pnpm bot" > /dev/null || pgrep -f "tsx src/bot/index.ts" > /dev/null; then
       echo "🟢 Bot is running:"
-      ps aux | grep -E "(yarn bot|tsx src/bot/index.ts)" | grep -v grep
+      ps aux | grep -E "(pnpm bot|tsx src/bot/index.ts)" | grep -v grep
     else
       echo "🔴 Bot is not running"
     fi

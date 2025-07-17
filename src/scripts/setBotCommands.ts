@@ -4,7 +4,7 @@ import { readFileSync } from "fs";
 const [, , targetToken] = process.argv;
 
 if (!targetToken) {
-  console.error("Usage: yarn set:bot-commands <TELEGRAM_BOT_TOKEN>");
+  console.error("Usage: pnpm run set:bot-commands <TELEGRAM_BOT_TOKEN>");
   process.exit(1);
 }
 

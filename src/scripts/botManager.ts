@@ -8,7 +8,7 @@ const execAsync = promisify(exec);
 async function findBotProcesses(): Promise<string[]> {
   try {
     const { stdout } = await execAsync(
-      "ps aux | grep -E '(yarn bot|tsx src/bot/index.ts)' | grep -v grep"
+      "ps aux | grep -E '(pnpm bot|tsx src/bot/index.ts)' | grep -v grep"
     );
     return stdout
       .trim()
@@ -35,9 +35,9 @@ async function killBotProcesses(): Promise<void> {
   });
 
   try {
-    // Kill yarn bot processes
-    await execAsync("pkill -f 'yarn bot'");
-    console.log("✅ Killed yarn bot processes");
+    // Kill pnpm bot processes
+    await execAsync("pkill -f 'pnpm bot'");
+    console.log("✅ Killed pnpm bot processes");
   } catch {
     // Ignore if no processes found
   }
@@ -58,7 +58,7 @@ async function killBotProcesses(): Promise<void> {
   if (remainingProcesses.length > 0) {
     console.log("⚠️  Some processes may still be running. Force killing...");
     try {
-      await execAsync("pkill -9 -f 'yarn bot'");
+      await execAsync("pkill -9 -f 'pnpm bot'");
       await execAsync("pkill -9 -f 'tsx src/bot/index.ts'");
       console.log("✅ Force killed remaining processes");
     } catch {
@@ -72,7 +72,7 @@ async function killBotProcesses(): Promise<void> {
 async function startBot(): Promise<void> {
   console.log("🚀 Starting bot...");
   try {
-    await execAsync("yarn bot");
+    await execAsync("pnpm run bot");
   } catch (error) {
     console.error("❌ Failed to start bot:", error);
   }
@@ -111,7 +111,7 @@ async function main(): Promise<void> {
       }
       break;
     default:
-      console.log("Usage: yarn bot:manage <command>");
+      console.log("Usage: pnpm run bot:manage <command>");
       console.log("Commands:");
       console.log("  stop     - Stop all bot processes");
       console.log("  start    - Start the bot");
