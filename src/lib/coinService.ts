@@ -141,7 +141,8 @@ export async function logTransfer(
 export async function processGamePayout(
   winnerId: string,
   stakePool: number,
-  gameId: string
+  gameId: string,
+  adjustCoinsFn: typeof adjustCoins = adjustCoins
 ): Promise<{ payout: number; fee: number }> {
   const payout = stakePool;
   const fee = 0;
@@ -151,7 +152,7 @@ export async function processGamePayout(
   );
 
   // Transfer payout to winner
-  await adjustCoins(winnerId, payout, "game_win", gameId);
+  await adjustCoinsFn(winnerId, payout, "game_win", gameId);
 
   // No fee transfer
 
@@ -165,15 +166,16 @@ export async function processGameRefund(
   player1Id: string,
   player2Id: string,
   stakeAmount: number,
-  gameId: string
+  gameId: string,
+  adjustCoinsFn: typeof adjustCoins = adjustCoins
 ): Promise<void> {
   console.log(
     `[COIN] Processing refund: gameId=${gameId} player1Id=${player1Id} player2Id=${player2Id} stakeAmount=${stakeAmount}`
   );
 
   // Refund both players
-  await adjustCoins(player1Id, stakeAmount, "game_draw_refund", gameId);
-  await adjustCoins(player2Id, stakeAmount, "game_draw_refund", gameId);
+  await adjustCoinsFn(player1Id, stakeAmount, "game_draw_refund", gameId);
+  await adjustCoinsFn(player2Id, stakeAmount, "game_draw_refund", gameId);
 }
 
 /**
@@ -182,10 +184,11 @@ export async function processGameRefund(
 export async function deductStake(
   userId: string,
   amount: number,
-  gameId: string
+  gameId: string,
+  adjustCoinsFn: typeof adjustCoins = adjustCoins
 ): Promise<void> {
   console.log(
     `[COIN] Deducting stake: userId=${userId} amount=${amount} gameId=${gameId}`
   );
-  await adjustCoins(userId, -amount, "game_stake", gameId);
+  await adjustCoinsFn(userId, -amount, "game_stake", gameId);
 }
