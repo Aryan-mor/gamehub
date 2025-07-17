@@ -15,6 +15,6 @@ git pull origin main
 # Remove yarn.lock if it exists (since we're using npm now)
 rm -f yarn.lock
 
-npm ci
+pnpm install --frozen-lockfile
 npm run build
 pm2 restart all || true 
