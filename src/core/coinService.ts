@@ -1,5 +1,5 @@
 import { logFunctionStart, logFunctionEnd, logError } from './logger';
-import { ref, get, set, update, push } from 'firebase/database';
+import { ref, get, update, push } from 'firebase/database';
 import { database } from './firebase';
 
 export const adjustCoins = async (
