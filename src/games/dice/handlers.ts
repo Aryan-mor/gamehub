@@ -161,19 +161,55 @@ export const registerDiceHandlers = (bot: Bot): void => {
           return;
         }
         
-        const guessKeyboard = createInlineKeyboard([
-          { text: '1', callbackData: { action: 'dice_guess', g: result.gameId, n: 1 } },
-          { text: '2', callbackData: { action: 'dice_guess', g: result.gameId, n: 2 } },
-          { text: '3', callbackData: { action: 'dice_guess', g: result.gameId, n: 3 } },
-          { text: '4', callbackData: { action: 'dice_guess', g: result.gameId, n: 4 } },
-          { text: '5', callbackData: { action: 'dice_guess', g: result.gameId, n: 5 } },
-          { text: '6', callbackData: { action: 'dice_guess', g: result.gameId, n: 6 } },
-        ]);
+        if (!result.gameId) {
+          await sendMessage(bot, userInfo.chatId, `❌ Failed to create game`);
+          return;
+        }
         
-        await sendMessage(bot, userInfo.chatId,
-          `🎲 Dice Game Started!\n\n💰 Stake: ${stake} Coins\n\nGuess the dice number (1-6):`,
-          { replyMarkup: guessKeyboard }
-        );
+        if (type === 'same' && guess !== null) {
+          // Same stake & guess - automatically use the same guess
+          const turnResult = await handleDiceTurn(result.gameId, guess);
+          
+          if (!turnResult.success) {
+            await sendMessage(bot, userInfo.chatId, `❌ ${turnResult.error}`);
+            return;
+          }
+          
+          const diceResult = turnResult.result!;
+          const emoji = diceResult.isWon ? '🎉' : '😔';
+          const message = diceResult.isWon
+            ? `${emoji} <b>You Won!</b>\n\n🎲 Your guess: ${diceResult.playerGuess}\n🎲 Dice result: ${diceResult.diceResult}\n💰 Winnings: +${diceResult.coinsWon} Coins`
+            : `${emoji} <b>You Lost!</b>\n\n🎲 Your guess: ${diceResult.playerGuess}\n🎲 Dice result: ${diceResult.diceResult}\n💰 Lost: ${diceResult.coinsLost} Coins`;
+          
+          // Create play again keyboard for the new result
+          const playAgainKeyboard = {
+            inline_keyboard: [
+              [{ text: '🔄 Same Stake & Guess', callback_data: `dice_play_again_same_${result.gameId}_${diceResult.coinsLost || diceResult.coinsWon}_${guess}` }],
+              [{ text: '🎲 New Guess', callback_data: `dice_play_again_new_guess_${result.gameId}_${diceResult.coinsLost || diceResult.coinsWon}` }],
+              [{ text: '🔄 Start Over', callback_data: 'dice_play_again_restart' }]
+            ]
+          };
+          
+          await sendMessage(bot, userInfo.chatId, message, { 
+            parseMode: 'HTML',
+            replyMarkup: playAgainKeyboard
+          });
+        } else {
+          // New guess - show guess selection keyboard
+          const guessKeyboard = createInlineKeyboard([
+            { text: '1', callbackData: { action: 'dice_guess', g: result.gameId, n: 1 } },
+            { text: '2', callbackData: { action: 'dice_guess', g: result.gameId, n: 2 } },
+            { text: '3', callbackData: { action: 'dice_guess', g: result.gameId, n: 3 } },
+            { text: '4', callbackData: { action: 'dice_guess', g: result.gameId, n: 4 } },
+            { text: '5', callbackData: { action: 'dice_guess', g: result.gameId, n: 5 } },
+            { text: '6', callbackData: { action: 'dice_guess', g: result.gameId, n: 6 } },
+          ]);
+          
+          await sendMessage(bot, userInfo.chatId,
+            `🎲 Dice Game Started!\n\n💰 Stake: ${stake} Coins\n\nGuess the dice number (1-6):`,
+            { replyMarkup: guessKeyboard }
+          );
+        }
       }
       
       logFunctionEnd('dicePlayAgainCallback', { success: true }, { userId: userInfo.userId });
