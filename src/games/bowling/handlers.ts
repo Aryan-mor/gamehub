@@ -111,12 +111,87 @@ export const registerBowlingHandlers = (bot: Bot): void => {
         `🎳 You knocked down ${pinsHit} pins!\n\n` +
         `${bowlingResult.isWon ? `💰 Winnings: +${bowlingResult.coinsWon} Coins` : `💰 Lost: ${bowlingResult.coinsLost} Coins`}`;
       
-      await sendMessage(bot, userInfo.chatId, message, { parseMode: 'HTML' });
+      // Create play again keyboard
+      const playAgainKeyboard = {
+        inline_keyboard: [
+          [{ text: '🔄 Same Stake', callback_data: `bowling_play_again_same_${gameId}_${bowlingResult.coinsLost || bowlingResult.coinsWon}` }],
+          [{ text: '🎳 New Game', callback_data: `bowling_play_again_new_${gameId}_${bowlingResult.coinsLost || bowlingResult.coinsWon}` }],
+          [{ text: '🔄 Start Over', callback_data: 'bowling_play_again_restart' }]
+        ]
+      };
+      
+      await sendMessage(bot, userInfo.chatId, message, { 
+        parseMode: 'HTML',
+        replyMarkup: playAgainKeyboard
+      });
       
       logFunctionEnd('bowlingRollCallback', { success: true }, { userId: userInfo.userId, gameId });
     } catch (error) {
       logError('bowlingRollCallback', error as Error, {});
       await answerCallbackQuery(bot, ctx.callbackQuery.id, '❌ Failed to process roll');
+    }
+  });
+  
+  // Handle bowling play again
+  bot.callbackQuery(/^bowling_play_again_.*/, async (ctx) => {
+    try {
+      const userInfo = extractUserInfo(ctx);
+      const callbackData = ctx.callbackQuery.data || '';
+      
+      logFunctionStart('bowlingPlayAgainCallback', { userId: userInfo.userId, callbackData });
+      
+      await answerCallbackQuery(bot, ctx.callbackQuery.id);
+      
+      if (callbackData === 'bowling_play_again_restart') {
+        // Start over - show stake selection
+        const stakeKeyboard = {
+          inline_keyboard: [
+            [{ text: '2 Coins', callback_data: 'bowling_stake_2' }],
+            [{ text: '5 Coins', callback_data: 'bowling_stake_5' }],
+            [{ text: '10 Coins', callback_data: 'bowling_stake_10' }],
+            [{ text: '20 Coins', callback_data: 'bowling_stake_20' }]
+          ]
+        };
+        
+        await sendMessage(bot, userInfo.chatId, 
+          '🎳 Bowling Game\n\nKnock down pins with your dice roll!\n\nChoose your stake amount:',
+          { replyMarkup: stakeKeyboard }
+        );
+      } else {
+        // Parse callback data for same stake or new game
+        const match = callbackData.match(/^bowling_play_again_(same|new)_(.+)_(.+)$/);
+        if (!match) {
+          await answerCallbackQuery(bot, ctx.callbackQuery.id, '❌ Invalid callback data');
+          return;
+        }
+        
+        const type = match[1];
+        const gameId = match[2];
+        const stake = parseInt(match[3]);
+        
+        const result = await startBowlingGame(userInfo.userId, stake as 2 | 5 | 10 | 20);
+        
+        if (!result.success) {
+          await sendMessage(bot, userInfo.chatId, `❌ ${result.error}`);
+          return;
+        }
+        
+        const rollKeyboard = {
+          inline_keyboard: [
+            [{ text: '🎳 Roll Dice', callback_data: `bowling_roll_${result.gameId}` }]
+          ]
+        };
+        
+        await sendMessage(bot, userInfo.chatId,
+          `🎳 Bowling Game Started!\n\n💰 Stake: ${stake} Coins\n\nReady to roll!`,
+          { replyMarkup: rollKeyboard }
+        );
+      }
+      
+      logFunctionEnd('bowlingPlayAgainCallback', { success: true }, { userId: userInfo.userId });
+    } catch (error) {
+      logError('bowlingPlayAgainCallback', error as Error, {});
+      await answerCallbackQuery(bot, ctx.callbackQuery.id, '❌ Failed to start new game');
     }
   });
   
