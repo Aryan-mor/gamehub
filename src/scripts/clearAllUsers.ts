@@ -1,5 +1,5 @@
 import { ref, remove } from "firebase/database";
-import { database } from "../lib/firebase";
+import { database } from "../core/firebase";
 
 /**
  * Script to clear all user data from Firebase

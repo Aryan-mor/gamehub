@@ -1,0 +1,1 @@
+{"version":3,"file":"handleTurn.d.ts","sourceRoot":"","sources":["../../../src/games/bowling/handleTurn.ts"],"names":[],"mappings":"AAIA,OAAO,EAAmB,iBAAiB,EAAE,MAAM,SAAS,CAAC;AAuC7D,eAAO,MAAM,iBAAiB,GAC5B,QAAQ,MAAM,KACb,OAAO,CAAC;IACT,OAAO,EAAE,OAAO,CAAC;IACjB,MAAM,CAAC,EAAE,iBAAiB,CAAC;IAC3B,KAAK,CAAC,EAAE,MAAM,CAAC;CAChB,CAgFA,CAAC"}

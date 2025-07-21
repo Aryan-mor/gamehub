@@ -14,7 +14,7 @@ case "$1" in
   "stop")
     echo "🛑 Stopping all bot processes..."
     pkill -f "pnpm bot" || true
-    pkill -f "tsx src/bot/index.ts" || true
+    pkill -f "tsx src/bot.ts" || true
     echo "✅ Bot processes stopped"
     ;;
   "start")
@@ -29,9 +29,9 @@ case "$1" in
     ;;
   "status")
     echo "🔍 Checking bot status..."
-    if pgrep -f "pnpm bot" > /dev/null || pgrep -f "tsx src/bot/index.ts" > /dev/null; then
+    if pgrep -f "pnpm bot" > /dev/null || pgrep -f "tsx src/bot.ts" > /dev/null; then
       echo "🟢 Bot is running:"
-      ps aux | grep -E "(pnpm bot|tsx src/bot/index.ts)" | grep -v grep
+      ps aux | grep -E "(pnpm bot|tsx src/bot.ts)" | grep -v grep
     else
       echo "🔴 Bot is not running"
     fi
