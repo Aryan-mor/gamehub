@@ -98,11 +98,13 @@ export const registerDiceHandlers = (bot: Bot): void => {
         : `${emoji} <b>You Lost!</b>\n\n🎲 Your guess: ${diceResult.playerGuess}\n🎲 Dice result: ${diceResult.diceResult}\n💰 Lost: ${diceResult.coinsLost} Coins`;
       
       // Create play again keyboard
-      const playAgainKeyboard = createInlineKeyboard([
-        { text: '🔄 Same Stake & Guess', callbackData: { action: 'dice_play_again', type: 'same', gameId, stake: diceResult.coinsLost || diceResult.coinsWon, guess } },
-        { text: '🎲 New Guess', callbackData: { action: 'dice_play_again', type: 'new_guess', gameId, stake: diceResult.coinsLost || diceResult.coinsWon } },
-        { text: '🔄 Start Over', callbackData: { action: 'dice_play_again', type: 'restart' } },
-      ]);
+      const playAgainKeyboard = {
+        inline_keyboard: [
+          [{ text: '🔄 Same Stake & Guess', callback_data: `dice_play_again_same_${gameId}_${diceResult.coinsLost || diceResult.coinsWon}_${guess}` }],
+          [{ text: '🎲 New Guess', callback_data: `dice_play_again_new_guess_${gameId}_${diceResult.coinsLost || diceResult.coinsWon}` }],
+          [{ text: '🔄 Start Over', callback_data: 'dice_play_again_restart' }]
+        ]
+      };
       
       await sendMessage(bot, userInfo.chatId, message, { 
         parseMode: 'HTML',
@@ -117,17 +119,16 @@ export const registerDiceHandlers = (bot: Bot): void => {
   });
   
   // Handle dice play again
-  bot.callbackQuery(/.*"action":"dice_play_again".*/, async (ctx) => {
+  bot.callbackQuery(/^dice_play_again_.*/, async (ctx) => {
     try {
       const userInfo = extractUserInfo(ctx);
-      const data = parseCallbackData(ctx.callbackQuery.data);
-      const type = data.type as string;
+      const callbackData = ctx.callbackQuery.data || '';
       
-      logFunctionStart('dicePlayAgainCallback', { userId: userInfo.userId, type });
+      logFunctionStart('dicePlayAgainCallback', { userId: userInfo.userId, callbackData });
       
       await answerCallbackQuery(bot, ctx.callbackQuery.id);
       
-      if (type === 'restart') {
+      if (callbackData === 'dice_play_again_restart') {
         // Start over - show stake selection
         const stakeKeyboard = createInlineKeyboard([
           { text: '2 Coins', callbackData: { action: 'dice_stake', stake: 2 } },
@@ -140,9 +141,19 @@ export const registerDiceHandlers = (bot: Bot): void => {
           '🎲 Dice Guess Game\n\nChoose your stake amount:',
           { replyMarkup: stakeKeyboard }
         );
-      } else if (type === 'same' || type === 'new_guess') {
-        // Play again with same stake
-        const stake = data.stake as number;
+      } else {
+        // Parse callback data for same stake or new guess
+        const match = callbackData.match(/^dice_play_again_(same|new_guess)_(.+)_(.+)(?:_(.+))?$/);
+        if (!match) {
+          await answerCallbackQuery(bot, ctx.callbackQuery.id, '❌ Invalid callback data');
+          return;
+        }
+        
+        const type = match[1];
+        const gameId = match[2];
+        const stake = parseInt(match[3]);
+        const guess = match[4] ? parseInt(match[4]) : null;
+        
         const result = await startDiceGame(userInfo.userId, stake);
         
         if (!result.success) {
@@ -165,7 +176,7 @@ export const registerDiceHandlers = (bot: Bot): void => {
         );
       }
       
-      logFunctionEnd('dicePlayAgainCallback', { success: true }, { userId: userInfo.userId, type });
+      logFunctionEnd('dicePlayAgainCallback', { success: true }, { userId: userInfo.userId });
     } catch (error) {
       logError('dicePlayAgainCallback', error as Error, {});
       await answerCallbackQuery(bot, ctx.callbackQuery.id, '❌ Failed to start new game');
