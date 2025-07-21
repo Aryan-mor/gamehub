@@ -183,8 +183,6 @@ export const registerBlackjackHandlers = (bot: Bot): void => {
           return;
         }
         
-        const type = match[1];
-        const gameId = match[2];
         const stake = parseInt(match[3]);
         
         const result = await startBlackjackGame(userInfo.userId, stake as 2 | 5 | 10 | 20 | 30 | 50);

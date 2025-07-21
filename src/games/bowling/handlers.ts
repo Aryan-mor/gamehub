@@ -165,8 +165,6 @@ export const registerBowlingHandlers = (bot: Bot): void => {
           return;
         }
         
-        const type = match[1];
-        const gameId = match[2];
         const stake = parseInt(match[3]);
         
         const result = await startBowlingGame(userInfo.userId, stake as 2 | 5 | 10 | 20);

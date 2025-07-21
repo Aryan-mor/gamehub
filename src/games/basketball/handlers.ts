@@ -158,9 +158,6 @@ export const registerBasketballHandlers = (bot: Bot): void => {
           return;
         }
         
-        const type = match[1];
-        const gameId = match[2];
-        const guess = match[3];
         const stake = parseInt(match[4]);
         
         const result = await startBasketballGame(userInfo.userId, stake as 2 | 5 | 10 | 20);
