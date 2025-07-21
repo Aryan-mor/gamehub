@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { Bot } from 'grammy';
+// import { Bot } from 'grammy';
 
 // Mock the modules
 vi.mock('../../src/core/logger', () => ({
@@ -38,7 +38,7 @@ describe('Compact Callback Data Format Tests', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    mockBot = new Bot('test-token');
+    mockBot = {} as any; // Mock bot object
   });
 
   describe('Blackjack Compact Callback Data', () => {
