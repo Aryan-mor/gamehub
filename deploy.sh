@@ -5,15 +5,16 @@ cd /opt/gamehub
 # Check Node.js version
 echo "Node.js version: $(node --version)"
 
-# Stash any local changes to avoid conflicts
-git stash || true
+# Install dependencies
+pnpm install --frozen-lockfile --prod
 
-# Pull latest changes
-git pull origin main
+# Build the application (if not already built by CI/CD)
+if [ ! -d "dist" ]; then
+  echo "Building application..."
+  pnpm run build
+fi
 
-# Remove yarn.lock if it exists (since we're using pnpm now)
-rm -f yarn.lock
+# Restart the application
+pm2 restart all || pm2 start all
 
-pnpm install --frozen-lockfile
-pnpm run build
-pm2 restart all || true 
+echo "Deployment completed successfully!" 
