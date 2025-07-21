@@ -1,15 +1,30 @@
 import 'dotenv/config';
 import { Bot } from 'grammy';
+import { InlineQueryResult } from 'grammy/types';
 import { logFunctionStart, logFunctionEnd, logError } from './core/logger';
-import { extractUserInfo, sendMessage, createInlineKeyboard, answerCallbackQuery, parseCallbackData } from './core/telegramHelpers';
+import { extractUserInfo, sendMessage, answerCallbackQuery } from './core/telegramHelpers';
 import { getUser, addCoins, canClaimDaily, setLastFreeCoinAt, setUserProfile } from './core/userService';
 import { getActiveGamesForUser } from './core/gameService';
-import { registerDiceHandlers } from './games/dice';
-import { registerBasketballHandlers } from './games/basketball';
-import { registerFootballHandlers } from './games/football';
-import { registerBlackjackHandlers } from './games/blackjack';
-import { registerBowlingHandlers } from './games/bowling';
+import { 
+  createOptimizedKeyboard, 
+  updateOrSendMessage
+} from './core/interfaceHelpers';
+import { registerTriviaHandlers } from './games/trivia';
 
+/**
+ * GameHub Telegram Bot
+ * 
+ * Signal Handling:
+ * - SIGINT (Ctrl+C): Graceful shutdown
+ * - SIGTERM: Graceful shutdown
+ * - Exits immediately to prevent double signal issues
+ */
+// Temporarily disabled other games to focus on trivia
+// import { registerDiceHandlers } from './games/dice';
+// import { registerBasketballHandlers } from './games/basketball';
+// import { registerFootballHandlers } from './games/football';
+// import { registerBlackjackHandlers } from './games/blackjack';
+// import { registerBowlingHandlers } from './games/bowling';
 
 const token = process.env.TELEGRAM_BOT_TOKEN;
 if (!token) {
@@ -49,11 +64,20 @@ bot.use(async (ctx, next) => {
 });
 
 // Register game handlers
-registerDiceHandlers(bot);
-registerBasketballHandlers(bot);
-registerFootballHandlers(bot);
-registerBlackjackHandlers(bot);
-registerBowlingHandlers(bot);
+registerTriviaHandlers(bot);
+
+// Add simple callback query listener to log all incoming callbacks
+bot.on('callback_query', (ctx) => {
+  console.log(`🔘 Callback received from ${ctx.from?.id} (${ctx.from?.username}): ${ctx.callbackQuery.data || 'No data'}`);
+});
+// Temporarily disabled other games to focus on trivia
+// registerDiceHandlers(bot);
+// registerBasketballHandlers(bot);
+// registerFootballHandlers(bot);
+// registerBlackjackHandlers(bot);
+// registerBowlingHandlers(bot);
+
+
 
 // Handle /start command
 bot.command('start', async (ctx) => {
@@ -65,23 +89,28 @@ bot.command('start', async (ctx) => {
     await setUserProfile(userInfo.userId, userInfo.username, userInfo.name);
     
     // Get user data
-    const user = await getUser(userInfo.userId);
+    const userData = await getUser(userInfo.userId);
     
-    let welcome = `🎮 Welcome to GameHub!\n\n💰 Earn and claim daily Coins with /freecoin!\n\n🎯 Choose an action below:`;
+    let welcome = `🧠 <b>Welcome to GameHub - Trivia Edition!</b>\n\n` +
+      `🎯 Challenge your friends in competitive 2-player trivia games!\n\n` +
+      `💰 Earn and claim daily Coins with /freecoin!\n\n` +
+      `🎯 Choose an action below:`;
     
-    if (user.coins === 0 && !user.lastFreeCoinAt) {
+    if (userData.coins === 0 && !userData.lastFreeCoinAt) {
       await addCoins(userInfo.userId, 100, 'initial grant');
-      welcome = `🎉 You received 100\u202FCoins for joining!\n\n` + welcome;
+      welcome = `🎉 You received <b>100 Coins</b> for joining!\n\n` + welcome;
     }
     
-    const keyboard = createInlineKeyboard([
-      { text: '🎮 Start Game', callbackData: { action: 'startgame' } },
+    const buttons = [
+      { text: '🧠 Start Trivia', callbackData: { action: 'startgame' } },
       { text: '🪙 Free Coin', callbackData: { action: 'freecoin' } },
-      { text: '❓ Help', callbackData: { action: 'help' } },
       { text: '💰 Balance', callbackData: { action: 'balance' } },
-    ]);
+      { text: '❓ Help', callbackData: { action: 'help' } },
+    ];
     
-    await sendMessage(bot, userInfo.chatId, welcome, { replyMarkup: keyboard });
+    const keyboard = createOptimizedKeyboard(buttons);
+    
+    await updateOrSendMessage(bot, userInfo.chatId, welcome, keyboard, userInfo.userId, 'main_menu');
     
     logFunctionEnd('startCommand', {}, { userId: userInfo.userId });
   } catch (error) {
@@ -96,20 +125,7 @@ bot.command('help', async (ctx) => {
     const userInfo = extractUserInfo(ctx);
     logFunctionStart('helpCommand', { userId: userInfo.userId });
     
-    const helpText = `Available commands:\n` +
-      `/start - Start the bot\n` +
-      `/startgame - Start a new game\n` +
-      `/freecoin - Claim your daily free coins\n` +
-      `/help - Show this help message\n` +
-      `/newgame - Create a new game\n` +
-      `/games - Show your unfinished games\n` +
-      `/stats - Show your game statistics\n` +
-      `/balance - Show your coin balance\n` +
-      `/dice - Play dice game\n` +
-      `/basketball - Play basketball game\n` +
-      `/football - Play football game`;
-    
-    await sendMessage(bot, userInfo.chatId, helpText);
+    await handleHelp(bot, userInfo);
     
     logFunctionEnd('helpCommand', {}, { userId: userInfo.userId });
   } catch (error) {
@@ -124,10 +140,7 @@ bot.command('balance', async (ctx) => {
     const userInfo = extractUserInfo(ctx);
     logFunctionStart('balanceCommand', { userId: userInfo.userId });
     
-    const user = await getUser(userInfo.userId);
-    await sendMessage(bot, userInfo.chatId, `💰 Your balance: <b>${user.coins}</b> Coins`, {
-      parseMode: 'HTML'
-    });
+    await handleBalance(bot, userInfo);
     
     logFunctionEnd('balanceCommand', {}, { userId: userInfo.userId });
   } catch (error) {
@@ -142,21 +155,7 @@ bot.command('freecoin', async (ctx) => {
     const userInfo = extractUserInfo(ctx);
     logFunctionStart('freecoinCommand', { userId: userInfo.userId });
     
-    const { canClaim, nextClaimIn } = await canClaimDaily(userInfo.userId);
-    
-    if (canClaim) {
-      await addCoins(userInfo.userId, 20, 'daily free coin');
-      await setLastFreeCoinAt(userInfo.userId);
-      await sendMessage(bot, userInfo.chatId, 
-        `🪙 You claimed <b>+20</b> daily Coins! Come back tomorrow.`,
-        { parseMode: 'HTML' }
-      );
-    } else {
-      const timeRemaining = formatTimeRemaining(nextClaimIn);
-      await sendMessage(bot, userInfo.chatId,
-        `⏰ You already claimed today. Come back in ${timeRemaining}.`
-      );
-    }
+    await handleFreeCoin(bot, userInfo);
     
     logFunctionEnd('freecoinCommand', {}, { userId: userInfo.userId });
   } catch (error) {
@@ -203,6 +202,38 @@ bot.command('games', async (ctx) => {
   }
 });
 
+// Handle back button
+bot.callbackQuery(/.*"action":"back".*/, async (ctx) => {
+  try {
+    const userInfo = extractUserInfo(ctx);
+    logFunctionStart('menu_back', { 
+      userId: userInfo.userId, 
+      action: 'back'
+    });
+    
+    await answerCallbackQuery(bot, ctx.callbackQuery.id);
+    
+    // Return to main menu
+    let welcome = `🧠 <b>Welcome to GameHub - Trivia Edition!</b>\n\n🎯 Challenge your friends in competitive 2-player trivia games!\n\n💰 Earn and claim daily Coins with /freecoin!\n\n🎯 Choose an action below:`;
+    
+    const buttons = [
+      { text: '🧠 Start Trivia', callbackData: { action: 'startgame' } },
+      { text: '🪙 Free Coin', callbackData: { action: 'freecoin' } },
+      { text: '💰 Balance', callbackData: { action: 'balance' } },
+      { text: '❓ Help', callbackData: { action: 'help' } },
+    ];
+    
+    const keyboard = createOptimizedKeyboard(buttons);
+    
+    await updateOrSendMessage(bot, userInfo.chatId, welcome, keyboard, userInfo.userId, 'main_menu');
+    
+    logFunctionEnd('menu_back', {}, { userId: userInfo.userId });
+  } catch (error) {
+    logError('menu_back', error as Error, {});
+    await answerCallbackQuery(bot, ctx.callbackQuery.id, '❌ Processing failed');
+  }
+});
+
 // Handle main menu callback queries with specific patterns
 bot.callbackQuery(/.*"action":"startgame".*/, async (ctx) => {
   try {
@@ -227,31 +258,32 @@ bot.callbackQuery(/.*"action":"startgame".*/, async (ctx) => {
   }
 });
 
-bot.callbackQuery(/.*"action":"newgame".*/, async (ctx) => {
-  try {
-    const userInfo = extractUserInfo(ctx);
-    const data = parseCallbackData(ctx.callbackQuery.data || '');
-    
-    logFunctionStart('menu_newgame', { 
-      userId: userInfo.userId, 
-      action: 'newgame',
-      context: 'main_menu',
-      gameType: data.gameType || 'none'
-    });
-    
-    await answerCallbackQuery(bot, ctx.callbackQuery.id);
-    await handleNewGame(bot, userInfo, data);
-    
-    logFunctionEnd('menu_newgame', {}, { 
-      userId: userInfo.userId, 
-      action: 'newgame',
-      context: 'main_menu'
-    });
-  } catch (error) {
-    logError('menu_newgame', error as Error, {});
-    await answerCallbackQuery(bot, ctx.callbackQuery.id, '❌ Processing failed');
-  }
-});
+// Temporarily disabled to focus on trivia
+// bot.callbackQuery(/.*"action":"newgame".*/, async (ctx) => {
+//   try {
+//     const userInfo = extractUserInfo(ctx);
+//     const data = parseCallbackData(ctx.callbackQuery.data || '');
+//     
+//     logFunctionStart('menu_newgame', { 
+//       userId: userInfo.userId, 
+//       action: 'newgame',
+//       context: 'main_menu',
+//       gameType: data.gameType || 'none'
+//     });
+//     
+//     await answerCallbackQuery(bot, ctx.callbackQuery.id);
+//     await handleNewGame(bot, userInfo, data);
+//     
+//     logFunctionEnd('menu_newgame', {}, { 
+//       userId: userInfo.userId, 
+//       action: 'newgame',
+//       context: 'main_menu'
+//     });
+//   } catch (error) {
+//     logError('menu_newgame', error as Error, {});
+//     await answerCallbackQuery(bot, ctx.callbackQuery.id, '❌ Processing failed');
+//   }
+// });
 
 bot.callbackQuery(/.*"action":"freecoin".*/, async (ctx) => {
   try {
@@ -323,215 +355,238 @@ bot.callbackQuery(/.*"action":"balance".*/, async (ctx) => {
 });
 
 // Helper functions for callback handlers
-// Game trigger functions
-const triggerDiceGame = async (bot: Bot, userInfo: { userId: string; chatId: number }) => {
-  logFunctionStart('triggerDiceGame', { 
-    userId: userInfo.userId, 
-    context: 'dice_game',
-    step: 'stake_selection'
-  });
-  
-  const stakeKeyboard = createInlineKeyboard([
-    { text: '2 Coins', callbackData: { action: 'dice_stake', stake: 2 } },
-    { text: '5 Coins', callbackData: { action: 'dice_stake', stake: 5 } },
-    { text: '10 Coins', callbackData: { action: 'dice_stake', stake: 10 } },
-    { text: '20 Coins', callbackData: { action: 'dice_stake', stake: 20 } },
-  ]);
-  
-  await sendMessage(bot, userInfo.chatId, 
-    '🎲 Dice Guess Game\n\nChoose your stake amount:',
-    { replyMarkup: stakeKeyboard }
-  );
-  
-  logFunctionEnd('triggerDiceGame', { success: true }, { 
-    userId: userInfo.userId, 
-    context: 'dice_game',
-    step: 'stake_selection'
-  });
-};
+// Temporarily disabled game trigger functions to focus on trivia
+// const triggerDiceGame = async (bot: Bot, userInfo: { userId: string; chatId: number }) => {
+//   logFunctionStart('triggerDiceGame', { 
+//     userId: userInfo.userId, 
+//     context: 'dice_game',
+//     step: 'stake_selection'
+//   });
+//   
+//           const buttons = [
+//           { text: '2 Coins', callbackData: { action: 'dice_stake', stake: 2 } },
+//           { text: '5 Coins', callbackData: { action: 'dice_stake', stake: 5 } },
+//           { text: '10 Coins', callbackData: { action: 'dice_stake', stake: 10 } },
+//           { text: '20 Coins', callbackData: { action: 'dice_stake', stake: 20 } },
+//         ];
+//         const stakeKeyboard = createOptimizedKeyboard(buttons, true);
+//   
+//   await updateGameMessage(bot, userInfo.chatId, 
+//     '🎲 <b>Dice Game</b>\n\nGuess the dice number!\n\nChoose your stake amount:',
+//     stakeKeyboard, userInfo.userId, 'dice', 'stake_selection'
+//   );
+//   
+//   logFunctionEnd('triggerDiceGame', { success: true }, { 
+//     userId: userInfo.userId, 
+//     context: 'dice_game',
+//     step: 'stake_selection'
+//   });
+// };
 
-const triggerBasketballGame = async (bot: Bot, userInfo: { userId: string; chatId: number }) => {
-  logFunctionStart('triggerBasketballGame', { 
-    userId: userInfo.userId, 
-    context: 'basketball_game',
-    step: 'stake_selection'
-  });
-  
-  const stakeKeyboard = createInlineKeyboard([
-    { text: '2 Coins', callbackData: { action: 'basketball_stake', stake: 2 } },
-    { text: '5 Coins', callbackData: { action: 'basketball_stake', stake: 5 } },
-    { text: '10 Coins', callbackData: { action: 'basketball_stake', stake: 10 } },
-    { text: '20 Coins', callbackData: { action: 'basketball_stake', stake: 20 } },
-  ]);
-  
-  await sendMessage(bot, userInfo.chatId, 
-    '🏀 Basketball Game\n\nGuess if you will score or miss!\n\nChoose your stake amount:',
-    { replyMarkup: stakeKeyboard }
-  );
-  
-  logFunctionEnd('triggerBasketballGame', { success: true }, { 
-    userId: userInfo.userId, 
-    context: 'basketball_game',
-    step: 'stake_selection'
-  });
-};
+// const triggerBasketballGame = async (bot: Bot, userInfo: { userId: string; chatId: number }) => {
+//   logFunctionStart('triggerBasketballGame', { 
+//     userId: userInfo.userId, 
+//     context: 'basketball_game',
+//     step: 'stake_selection'
+//   });
+//   
+//           const buttons = [
+//           { text: '2 Coins', callbackData: { action: 'basketball_stake', stake: 2 } },
+//           { text: '5 Coins', callbackData: { action: 'basketball_stake', stake: 5 } },
+//           { text: '10 Coins', callbackData: { action: 'basketball_stake', stake: 10 } },
+//           { text: '20 Coins', callbackData: { action: 'basketball_stake', stake: 20 } },
+//         ];
+//         const stakeKeyboard = createOptimizedKeyboard(buttons, true);
+//   
+//   await updateGameMessage(bot, userInfo.chatId, 
+//     '🏀 <b>Basketball Game</b>\n\nGuess if you will score or miss!\n\nChoose your stake amount:',
+//     stakeKeyboard, userInfo.userId, 'basketball', 'stake_selection'
+//   );
+//   
+//   logFunctionEnd('triggerBasketballGame', { success: true }, { 
+//     userId: userInfo.userId, 
+//     context: 'basketball_game',
+//     step: 'stake_selection'
+//   });
+// };
 
-const triggerFootballGame = async (bot: Bot, userInfo: { userId: string; chatId: number }) => {
-  const stakeKeyboard = createInlineKeyboard([
-    { text: '2 Coins', callbackData: { action: 'football_stake', stake: 2 } },
-    { text: '5 Coins', callbackData: { action: 'football_stake', stake: 5 } },
-    { text: '10 Coins', callbackData: { action: 'football_stake', stake: 10 } },
-    { text: '20 Coins', callbackData: { action: 'football_stake', stake: 20 } },
-  ]);
-  
-  await sendMessage(bot, userInfo.chatId, 
-    '⚽️ Football Game\n\nPredict the ball direction!\n\nChoose your stake amount:',
-    { replyMarkup: stakeKeyboard }
-  );
-};
+// const triggerFootballGame = async (bot: Bot, userInfo: { userId: string; chatId: number }) => {
+//           const buttons = [
+//           { text: '2 Coins', callbackData: { action: 'football_stake', stake: 2 } },
+//           { text: '5 Coins', callbackData: { action: 'football_stake', stake: 5 } },
+//           { text: '10 Coins', callbackData: { action: 'football_stake', stake: 10 } },
+//           { text: '20 Coins', callbackData: { action: 'football_stake', stake: 20 } },
+//         ];
+//         const stakeKeyboard = createOptimizedKeyboard(buttons, true);
+//   
+//   await updateGameMessage(bot, userInfo.chatId, 
+//     '⚽️ <b>Football Game</b>\n\nPredict the ball direction!\n\nChoose your stake amount:',
+//     stakeKeyboard, userInfo.userId, 'football', 'stake_selection'
+//   );
+// };
 
-const triggerBlackjackGame = async (bot: Bot, userInfo: { userId: string; chatId: number }) => {
-  const stakeKeyboard = createInlineKeyboard([
-    { text: '2 Coins', callbackData: { action: 'blackjack_stake', stake: 2 } },
-    { text: '5 Coins', callbackData: { action: 'blackjack_stake', stake: 5 } },
-    { text: '10 Coins', callbackData: { action: 'blackjack_stake', stake: 10 } },
-    { text: '20 Coins', callbackData: { action: 'blackjack_stake', stake: 20 } },
-    { text: '30 Coins', callbackData: { action: 'blackjack_stake', stake: 30 } },
-    { text: '50 Coins', callbackData: { action: 'blackjack_stake', stake: 50 } },
-  ]);
-  
-  await sendMessage(bot, userInfo.chatId, 
-    '🃏 Blackjack Game\n\nBeat the dealer to 21!\n\nChoose your stake amount:',
-    { replyMarkup: stakeKeyboard }
-  );
-};
+// const triggerBlackjackGame = async (bot: Bot, userInfo: { userId: string; chatId: number }) => {
+//   const buttons = [
+//     { text: '2 Coins', callbackData: { action: 'blackjack_stake', stake: 2 } },
+//     { text: '5 Coins', callbackData: { action: 'blackjack_stake', stake: 5 } },
+//     { text: '10 Coins', callbackData: { action: 'blackjack_stake', stake: 10 } },
+//     { text: '20 Coins', callbackData: { action: 'blackjack_stake', stake: 20 } },
+//     { text: '30 Coins', callbackData: { action: 'blackjack_stake', stake: 30 } },
+//     { text: '50 Coins', callbackData: { action: 'blackjack_stake', stake: 50 } },
+//   ];
+//   const stakeKeyboard = createOptimizedKeyboard(buttons, true);
+//   
+//   await updateGameMessage(bot, userInfo.chatId, 
+//     '🃏 <b>Blackjack Game</b>\n\nBeat the dealer to 21!\n\nChoose your stake amount:',
+//     stakeKeyboard, userInfo.userId, 'blackjack', 'stake_selection'
+//   );
+// };
 
-const triggerBowlingGame = async (bot: Bot, userInfo: { userId: string; chatId: number }) => {
-  const stakeKeyboard = {
-    inline_keyboard: [
-      [{ text: '2 Coins', callback_data: 'bowling_stake_2' }],
-      [{ text: '5 Coins', callback_data: 'bowling_stake_5' }],
-      [{ text: '10 Coins', callback_data: 'bowling_stake_10' }],
-      [{ text: '20 Coins', callback_data: 'bowling_stake_20' }]
-    ]
-  };
-  
-  await sendMessage(bot, userInfo.chatId, 
-    '🎳 Bowling Game\n\nRoll the dice to knock down pins!\n\nChoose your stake amount:',
-    { replyMarkup: stakeKeyboard }
-  );
-};
+// const triggerBowlingGame = async (bot: Bot, userInfo: { userId: string; chatId: number }) => {
+//   const buttons = [
+//     { text: '2 Coins', callbackData: { action: 'bowling_stake', stake: 2 } },
+//     { text: '5 Coins', callbackData: { action: 'bowling_stake', stake: 5 } },
+//     { text: '10 Coins', callbackData: { action: 'bowling_stake', stake: 10 } },
+//     { text: '20 Coins', callbackData: { action: 'bowling_stake', stake: 20 } },
+//   ];
+//   const stakeKeyboard = createOptimizedKeyboard(buttons, true);
+//   
+//   await updateGameMessage(bot, userInfo.chatId, 
+//     '🎳 <b>Bowling Game</b>\n\nRoll the dice to knock down pins!\n\nChoose your stake amount:',
+//     stakeKeyboard, userInfo.userId, 'bowling', 'stake_selection'
+//   );
+// };
 
-const handleNewGame = async (bot: Bot, userInfo: { userId: string; chatId: number }, data: any) => {
-  const gameType = data.gameType;
-  
-  logFunctionStart('handleNewGame', { 
-    userId: userInfo.userId, 
-    gameType: gameType || 'unknown',
-    context: 'game_selection'
-  });
-  
-  if (!gameType) {
-    await sendMessage(bot, userInfo.chatId, '❌ Invalid game selection.');
-    logFunctionEnd('handleNewGame', { success: false, error: 'No game type' }, { 
-      userId: userInfo.userId, 
-      gameType: 'none',
-      context: 'game_selection'
-    });
-    return;
-  }
-  
-  // Directly trigger the game's stake selection
-  switch (gameType) {
-    case 'dice':
-      await triggerDiceGame(bot, userInfo);
-      break;
-    case 'basketball':
-      await triggerBasketballGame(bot, userInfo);
-      break;
-    case 'football':
-      await triggerFootballGame(bot, userInfo);
-      break;
-    case 'blackjack':
-      await triggerBlackjackGame(bot, userInfo);
-      break;
-    case 'bowling':
-      await triggerBowlingGame(bot, userInfo);
-      break;
-    default:
-      await sendMessage(bot, userInfo.chatId, '❌ Unknown game type.');
-      logFunctionEnd('handleNewGame', { success: false, error: 'Unknown game type' }, { 
-        userId: userInfo.userId, 
-        gameType,
-        context: 'game_selection'
-      });
-      return;
-  }
-  
-  logFunctionEnd('handleNewGame', { success: true }, { 
-    userId: userInfo.userId, 
-    gameType,
-    context: 'game_selection'
-  });
-};
+// Temporarily disabled to focus on trivia
+// const handleNewGame = async (bot: Bot, userInfo: { userId: string; chatId: number }, data: any) => {
+//   const gameType = data.gameType;
+//   
+//   logFunctionStart('handleNewGame', { 
+//     userId: userInfo.userId, 
+//     gameType: gameType || 'unknown',
+//     context: 'game_selection'
+//   });
+//   
+//   if (!gameType) {
+//     await sendMessage(bot, userInfo.chatId, '❌ Invalid game selection.');
+//     logFunctionEnd('handleNewGame', { success: false, error: 'No game type' }, { 
+//       userId: userInfo.userId, 
+//       gameType: 'none',
+//       context: 'game_selection'
+//     });
+//     return;
+//   }
+//   
+//   // Directly trigger the game's stake selection
+//   switch (gameType) {
+//     case 'dice':
+//       await triggerDiceGame(bot, userInfo);
+//       break;
+//     case 'basketball':
+//       await triggerBasketballGame(bot, userInfo);
+//       break;
+//     case 'football':
+//       await triggerFootballGame(bot, userInfo);
+//       break;
+//     case 'blackjack':
+//       await triggerBlackjackGame(bot, userInfo);
+//       break;
+//     case 'bowling':
+//       await triggerBowlingGame(bot, userInfo);
+//       break;
+//     default:
+//       await sendMessage(bot, userInfo.chatId, '❌ Unknown game type.');
+//       logFunctionEnd('handleNewGame', { success: false, error: 'Unknown game type' }, { 
+//         userId: userInfo.userId, 
+//         gameType,
+//         context: 'game_selection'
+//       });
+//       return;
+//   }
+//   
+//   logFunctionEnd('handleNewGame', { success: true }, { 
+//     userId: userInfo.userId, 
+//     gameType,
+//     context: 'game_selection'
+//     });
+// };
 
 const handleStartGame = async (bot: Bot, userInfo: { userId: string; chatId: number }) => {
-  const singlePlayerKeyboard = createInlineKeyboard([
-    { text: '🎲 Dice Game', callbackData: { action: 'newgame', gameType: 'dice' } },
-    { text: '🏀 Basketball Game', callbackData: { action: 'newgame', gameType: 'basketball' } },
-    { text: '⚽️ Football Game', callbackData: { action: 'newgame', gameType: 'football' } },
-    { text: '🃏 Blackjack Game', callbackData: { action: 'newgame', gameType: 'blackjack' } },
-    { text: '🎳 Bowling Game', callbackData: { action: 'newgame', gameType: 'bowling' } },
-  ]);
+  const buttons = [
+    { text: '🧠 Trivia Game', callbackData: { action: 'trivia_start' } },
+  ];
   
-  await sendMessage(bot, userInfo.chatId, 
-    '🎮 Choose a game to play:\n\n*Single-player games available in bot chat*',
-    { replyMarkup: singlePlayerKeyboard, parseMode: 'Markdown' }
+  const keyboard = createOptimizedKeyboard(buttons, true);
+  
+  await updateOrSendMessage(bot, userInfo.chatId, 
+    '🎮 <b>GameHub - Trivia Focus</b>\n\n🧠 Challenge your friends in a competitive 2-player trivia game!\n\n6 rounds, 3 questions per round. Test your knowledge across 10 categories.',
+    keyboard, userInfo.userId, 'game_selection'
   );
 };
 
 const handleFreeCoin = async (bot: Bot, userInfo: { userId: string; chatId: number }) => {
   const { canClaim, nextClaimIn } = await canClaimDaily(userInfo.userId);
   
+  let message: string;
   if (canClaim) {
     await addCoins(userInfo.userId, 20, 'daily free coin');
     await setLastFreeCoinAt(userInfo.userId);
-    await sendMessage(bot, userInfo.chatId, 
-      `🪙 You claimed <b>+20</b> daily Coins! Come back tomorrow.`,
-      { parseMode: 'HTML' }
-    );
+    message = `🪙 You claimed <b>+20</b> daily Coins!\n\nCome back tomorrow for more.`;
   } else {
     const timeRemaining = formatTimeRemaining(nextClaimIn);
-    await sendMessage(bot, userInfo.chatId,
-      `⏰ You already claimed today. Come back in ${timeRemaining}.`
-    );
+    message = `⏰ You already claimed today.\n\nCome back in <b>${timeRemaining}</b>.`;
   }
+  
+  const buttons = [
+    { text: '🪙 Claim Again', callbackData: { action: 'freecoin' } },
+  ];
+  
+  const keyboard = createOptimizedKeyboard(buttons, true);
+  
+  await updateOrSendMessage(bot, userInfo.chatId, message, keyboard, userInfo.userId, 'freecoin');
 };
 
 const handleHelp = async (bot: Bot, userInfo: { userId: string; chatId: number }) => {
-  const helpText = `Available commands:\n` +
+  const helpText = `<b>GameHub - Trivia Game</b>\n\n` +
+    `<b>Available Commands:</b>\n\n` +
     `/start - Start the bot\n` +
+    `/trivia - Start a new trivia game\n` +
     `/startgame - Start a new game\n` +
     `/freecoin - Claim your daily free coins\n` +
     `/help - Show this help message\n` +
-    `/newgame - Create a new game\n` +
-    `/games - Show your unfinished games\n` +
-    `/stats - Show your game statistics\n` +
-    `/balance - Show your coin balance\n` +
-    `/dice - Play dice game\n` +
-    `/basketball - Play basketball game\n` +
-    `/football - Play football game\n` +
-    `/blackjack - Play blackjack game\n` +
-    `/bowling - Play bowling game`;
+    `/balance - Show your coin balance\n\n` +
+    `<b>How to Play Trivia:</b>\n` +
+    `• 2 players compete in 6 rounds\n` +
+    `• Each round has 3 questions from one category\n` +
+    `• Players take turns choosing categories\n` +
+    `• Fast-paced with 10-second time limits\n` +
+    `• Win: +20 coins, Draw: +10 coins each\n\n` +
+    `<b>Categories:</b>\n` +
+    `🌍 Geography, 📚 Literature, ⚽ Sports,\n` +
+    `🎬 Entertainment, 🔬 Science, 🎨 Art & Culture,\n` +
+    `🍔 Food & Drink, 🌍 History, 🎵 Music, 💻 Technology`;
   
-  await sendMessage(bot, userInfo.chatId, helpText);
+  const buttons = [
+    { text: '📋 Commands', callbackData: { action: 'help' } },
+  ];
+  
+  const keyboard = createOptimizedKeyboard(buttons, true);
+  
+  await updateOrSendMessage(bot, userInfo.chatId, helpText, keyboard, userInfo.userId, 'help');
 };
 
 const handleBalance = async (bot: Bot, userInfo: { userId: string; chatId: number }) => {
   const user = await getUser(userInfo.userId);
-  await sendMessage(bot, userInfo.chatId, `💰 Your balance: <b>${user.coins}</b> Coins`, {
-    parseMode: 'HTML'
-  });
+  const message = `💰 <b>Your Balance:</b>\n\n<b>${user.coins} Coins</b>`;
+  
+  const buttons = [
+    { text: '🪙 Free Coin', callbackData: { action: 'freecoin' } },
+    { text: '🎮 Start Game', callbackData: { action: 'startgame' } },
+  ];
+  
+  const keyboard = createOptimizedKeyboard(buttons, true);
+  
+  await updateOrSendMessage(bot, userInfo.chatId, message, keyboard, userInfo.userId, 'balance');
 };
 
 // Helper function for formatting time
@@ -576,11 +631,11 @@ const startBot = async () => {
     
     console.log('✅ Bot commands set successfully');
     
-    // Start polling
-    await bot.start();
+    // Start polling - this will run until the bot is stopped
     console.log('🎮 GameHub bot is running!');
-    
     logFunctionEnd('startBot', {}, {});
+    
+    await bot.start();
   } catch (error) {
     logError('startBot', error as Error, {});
     console.error('❌ Failed to start bot:', error);
@@ -589,8 +644,48 @@ const startBot = async () => {
 };
 
 // Handle graceful shutdown
-process.once('SIGINT', () => bot.stop());
-process.once('SIGTERM', () => bot.stop());
+let isShuttingDown = false;
+
+const gracefulShutdown = (signal: string) => {
+  if (isShuttingDown) {
+    console.log(`🛑 Force shutting down due to ${signal}...`);
+    process.exit(1);
+  }
+  
+  isShuttingDown = true;
+  console.log(`\n🛑 Received ${signal}. Shutting down gracefully...`);
+  process.exit(0);
+};
+
+// Handle shutdown signals
+process.once('SIGINT', () => gracefulShutdown('SIGINT'));
+process.once('SIGTERM', () => gracefulShutdown('SIGTERM'));
 
 // Start the bot
 startBot(); 
+
+bot.on('inline_query', async (ctx) => {
+  const query = ctx.inlineQuery.query;
+  if (query.startsWith('trivia_')) {
+    const gameId = query.split('_')[1];
+    if (gameId) {
+      const results: InlineQueryResult[] = [
+        {
+          type: 'article',
+          id: `share_${gameId}`,
+          title: '🧠 Share Trivia Game',
+          input_message_content: {
+            message_text: `🧠 <b>Trivia Challenge!</b>\n\nI've started a new trivia game. Click below to join and test your knowledge!`,
+            parse_mode: 'HTML',
+          },
+          reply_markup: {
+            inline_keyboard: [
+              [{ text: '🎮 Join Game', callback_data: JSON.stringify({ a: 'tj', g: gameId }) }]
+            ]
+          }
+        }
+      ];
+      await ctx.answerInlineQuery(results, { cache_time: 0 });
+    }
+  }
+}); 
