@@ -1,7 +1,7 @@
 import { Bot } from 'grammy';
 import { logFunctionStart, logFunctionEnd, logError } from '../../core/logger';
 import { extractUserInfo, sendMessage, createInlineKeyboard, parseCallbackData, answerCallbackQuery } from '../../core/telegramHelpers';
-import { startBlackjackGame, handleBlackjackTurn, resolveBlackjackResult } from './index';
+import { startBlackjackGame, handleBlackjackTurn } from './index';
 import { getGame } from '../../core/gameService';
 
 // Helper function to format cards for display

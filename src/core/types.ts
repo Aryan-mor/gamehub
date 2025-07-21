@@ -53,7 +53,7 @@ export interface GameResult {
 }
 
 export interface LogContext {
-  userId: string | undefined;
+  userId?: string;
   gameId?: string;
   action?: string;
   [key: string]: unknown;
@@ -68,7 +68,7 @@ export interface BotContext {
 
 export interface CallbackData {
   action: string;
-  gameId: string | undefined;
+  gameId?: string;
   stake?: number;
   choice?: string;
   [key: string]: unknown;

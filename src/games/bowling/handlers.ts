@@ -1,6 +1,6 @@
 import { Bot } from 'grammy';
 import { logFunctionStart, logFunctionEnd, logError } from '../../core/logger';
-import { extractUserInfo, sendMessage, createInlineKeyboard, parseCallbackData, answerCallbackQuery } from '../../core/telegramHelpers';
+import { extractUserInfo, sendMessage, answerCallbackQuery } from '../../core/telegramHelpers';
 import { startBowlingGame, handleBowlingTurn } from './index';
 
 export const registerBowlingHandlers = (bot: Bot): void => {
