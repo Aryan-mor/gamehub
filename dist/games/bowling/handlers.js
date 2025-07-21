@@ -10,12 +10,14 @@ const registerBowlingHandlers = (bot) => {
         try {
             const userInfo = (0, telegramHelpers_1.extractUserInfo)(ctx);
             (0, logger_1.logFunctionStart)('bowlingCommand', { userId: userInfo.userId });
-            const stakeKeyboard = (0, telegramHelpers_1.createInlineKeyboard)([
-                { text: '2 Coins', callbackData: { action: 'bowling_stake', stake: 2 } },
-                { text: '5 Coins', callbackData: { action: 'bowling_stake', stake: 5 } },
-                { text: '10 Coins', callbackData: { action: 'bowling_stake', stake: 10 } },
-                { text: '20 Coins', callbackData: { action: 'bowling_stake', stake: 20 } },
-            ]);
+            const stakeKeyboard = {
+                inline_keyboard: [
+                    [{ text: '2 Coins', callback_data: 'bowling_stake_2' }],
+                    [{ text: '5 Coins', callback_data: 'bowling_stake_5' }],
+                    [{ text: '10 Coins', callback_data: 'bowling_stake_10' }],
+                    [{ text: '20 Coins', callback_data: 'bowling_stake_20' }]
+                ]
+            };
             await (0, telegramHelpers_1.sendMessage)(bot, userInfo.chatId, '🎳 Bowling Game\n\nKnock down pins with your dice roll!\n\nChoose your stake amount:', { replyMarkup: stakeKeyboard });
             (0, logger_1.logFunctionEnd)('bowlingCommand', {}, { userId: userInfo.userId });
         }
@@ -24,11 +26,16 @@ const registerBowlingHandlers = (bot) => {
             await ctx.reply('❌ Failed to start bowling game.');
         }
     });
-    bot.callbackQuery(/^bowling_stake:/, async (ctx) => {
+    bot.callbackQuery(/^bowling_stake_.*/, async (ctx) => {
         try {
             const userInfo = (0, telegramHelpers_1.extractUserInfo)(ctx);
-            const data = (0, telegramHelpers_1.parseCallbackData)(ctx.callbackQuery.data || '');
-            const stake = data.stake;
+            const callbackData = ctx.callbackQuery.data || '';
+            const match = callbackData.match(/^bowling_stake_(\d+)$/);
+            if (!match) {
+                await (0, telegramHelpers_1.answerCallbackQuery)(bot, ctx.callbackQuery.id, '❌ Invalid callback data');
+                return;
+            }
+            const stake = parseInt(match[1]);
             (0, logger_1.logFunctionStart)('bowlingStakeCallback', { userId: userInfo.userId, stake });
             await (0, telegramHelpers_1.answerCallbackQuery)(bot, ctx.callbackQuery.id);
             const result = await (0, index_1.startBowlingGame)(userInfo.userId, stake);
@@ -37,9 +44,11 @@ const registerBowlingHandlers = (bot) => {
                 (0, logger_1.logFunctionEnd)('bowlingStakeCallback', { success: false }, { userId: userInfo.userId, stake });
                 return;
             }
-            const rollKeyboard = (0, telegramHelpers_1.createInlineKeyboard)([
-                { text: '🎳 Roll Dice', callbackData: { action: 'bowling_roll', gameId: result.gameId } },
-            ]);
+            const rollKeyboard = {
+                inline_keyboard: [
+                    [{ text: '🎳 Roll Dice', callback_data: `bowling_roll_${result.gameId}` }]
+                ]
+            };
             await (0, telegramHelpers_1.sendMessage)(bot, userInfo.chatId, `🎳 Bowling Game Started!\n\n💰 Stake: ${stake} Coins\n\nReady to roll!`, { replyMarkup: rollKeyboard });
             (0, logger_1.logFunctionEnd)('bowlingStakeCallback', { success: true }, { userId: userInfo.userId, stake });
         }
@@ -48,11 +57,16 @@ const registerBowlingHandlers = (bot) => {
             await (0, telegramHelpers_1.answerCallbackQuery)(bot, ctx.callbackQuery.id, '❌ Failed to start game');
         }
     });
-    bot.callbackQuery(/^bowling_roll:/, async (ctx) => {
+    bot.callbackQuery(/^bowling_roll_.*/, async (ctx) => {
         try {
             const userInfo = (0, telegramHelpers_1.extractUserInfo)(ctx);
-            const data = (0, telegramHelpers_1.parseCallbackData)(ctx.callbackQuery.data || '');
-            const gameId = data.gameId;
+            const callbackData = ctx.callbackQuery.data || '';
+            const match = callbackData.match(/^bowling_roll_(.+)$/);
+            if (!match) {
+                await (0, telegramHelpers_1.answerCallbackQuery)(bot, ctx.callbackQuery.id, '❌ Invalid callback data');
+                return;
+            }
+            const gameId = match[1];
             (0, logger_1.logFunctionStart)('bowlingRollCallback', { userId: userInfo.userId, gameId });
             await (0, telegramHelpers_1.answerCallbackQuery)(bot, ctx.callbackQuery.id);
             const result = await (0, index_1.handleBowlingTurn)(gameId);

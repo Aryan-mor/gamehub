@@ -40,6 +40,7 @@ const startBasketballGame = async (userId, stake) => {
             fee: 0,
         };
         await (0, gameService_1.updateGame)(game.id, {
+            status: types_1.GameStatus.PLAYING,
             data: basketballData,
         });
         const result = { success: true, gameId: game.id };

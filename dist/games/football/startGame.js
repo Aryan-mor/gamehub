@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.startFootballGame = void 0;
 const logger_1 = require("../../core/logger");
 const gameService_1 = require("../../core/gameService");
+const userService_1 = require("../../core/userService");
 const types_1 = require("../../core/types");
 const startFootballGame = async (userId, stake) => {
     (0, logger_1.logFunctionStart)('startFootballGame', { userId, stake });
@@ -12,13 +13,13 @@ const startFootballGame = async (userId, stake) => {
             (0, logger_1.logFunctionEnd)('startFootballGame', result, { userId, stake });
             return result;
         }
-        const user = await getUser(userId);
+        const user = await (0, userService_1.getUser)(userId);
         if (user.coins < stake) {
             const result = { success: false, error: 'Insufficient coins for this stake.' };
             (0, logger_1.logFunctionEnd)('startFootballGame', result, { userId, stake });
             return result;
         }
-        const deductionSuccess = await deductCoins(userId, stake, 'football_game_stake');
+        const deductionSuccess = await (0, userService_1.deductCoins)(userId, stake, 'football_game_stake');
         if (!deductionSuccess) {
             const result = { success: false, error: 'Failed to deduct coins.' };
             (0, logger_1.logFunctionEnd)('startFootballGame', result, { userId, stake });
@@ -39,6 +40,7 @@ const startFootballGame = async (userId, stake) => {
             fee: 0,
         };
         await (0, gameService_1.updateGame)(game.id, {
+            status: types_1.GameStatus.PLAYING,
             data: footballData,
         });
         const result = { success: true, gameId: game.id };

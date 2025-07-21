@@ -24,7 +24,7 @@ const registerBasketballHandlers = (bot) => {
             await ctx.reply('❌ Failed to start basketball game.');
         }
     });
-    bot.callbackQuery(/^basketball_stake:/, async (ctx) => {
+    bot.callbackQuery(/.*"action":"basketball_stake".*/, async (ctx) => {
         try {
             const userInfo = (0, telegramHelpers_1.extractUserInfo)(ctx);
             const data = (0, telegramHelpers_1.parseCallbackData)(ctx.callbackQuery.data || '');
@@ -37,10 +37,12 @@ const registerBasketballHandlers = (bot) => {
                 (0, logger_1.logFunctionEnd)('basketballStakeCallback', { success: false }, { userId: userInfo.userId, stake });
                 return;
             }
-            const guessKeyboard = (0, telegramHelpers_1.createInlineKeyboard)([
-                { text: '🏀 Score', callbackData: { action: 'basketball_guess', gameId: result.gameId, guess: 'score' } },
-                { text: '❌ Miss', callbackData: { action: 'basketball_guess', gameId: result.gameId, guess: 'miss' } },
-            ]);
+            const guessKeyboard = {
+                inline_keyboard: [
+                    [{ text: '🏀 Score', callback_data: `basketball_guess_${result.gameId}_score` }],
+                    [{ text: '❌ Miss', callback_data: `basketball_guess_${result.gameId}_miss` }]
+                ]
+            };
             await (0, telegramHelpers_1.sendMessage)(bot, userInfo.chatId, `🏀 Basketball Game Started!\n\n💰 Stake: ${stake} Coins\n\nGuess your shot:`, { replyMarkup: guessKeyboard });
             (0, logger_1.logFunctionEnd)('basketballStakeCallback', { success: true }, { userId: userInfo.userId, stake });
         }
@@ -49,12 +51,17 @@ const registerBasketballHandlers = (bot) => {
             await (0, telegramHelpers_1.answerCallbackQuery)(bot, ctx.callbackQuery.id, '❌ Failed to start game');
         }
     });
-    bot.callbackQuery(/^basketball_guess:/, async (ctx) => {
+    bot.callbackQuery(/^basketball_guess_.*/, async (ctx) => {
         try {
             const userInfo = (0, telegramHelpers_1.extractUserInfo)(ctx);
-            const data = (0, telegramHelpers_1.parseCallbackData)(ctx.callbackQuery.data || '');
-            const gameId = data.gameId;
-            const guess = data.guess;
+            const callbackData = ctx.callbackQuery.data || '';
+            const match = callbackData.match(/^basketball_guess_(.+)_(score|miss)$/);
+            if (!match) {
+                await (0, telegramHelpers_1.answerCallbackQuery)(bot, ctx.callbackQuery.id, '❌ Invalid callback data');
+                return;
+            }
+            const gameId = match[1];
+            const guess = match[2];
             (0, logger_1.logFunctionStart)('basketballGuessCallback', { userId: userInfo.userId, gameId, guess });
             await (0, telegramHelpers_1.answerCallbackQuery)(bot, ctx.callbackQuery.id);
             const result = await (0, index_1.handleBasketballTurn)(gameId, guess);

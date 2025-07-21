@@ -160,45 +160,119 @@ bot.command('games', async (ctx) => {
         await ctx.reply('❌ Failed to fetch your games.');
     }
 });
-bot.on('callback_query', async (ctx) => {
+bot.callbackQuery(/.*"action":"startgame".*/, async (ctx) => {
+    try {
+        const userInfo = (0, telegramHelpers_1.extractUserInfo)(ctx);
+        (0, logger_1.logFunctionStart)('menu_startgame', {
+            userId: userInfo.userId,
+            action: 'startgame',
+            context: 'main_menu'
+        });
+        await (0, telegramHelpers_1.answerCallbackQuery)(bot, ctx.callbackQuery.id);
+        await handleStartGame(bot, userInfo);
+        (0, logger_1.logFunctionEnd)('menu_startgame', {}, {
+            userId: userInfo.userId,
+            action: 'startgame',
+            context: 'main_menu'
+        });
+    }
+    catch (error) {
+        (0, logger_1.logError)('menu_startgame', error, {});
+        await (0, telegramHelpers_1.answerCallbackQuery)(bot, ctx.callbackQuery.id, '❌ Processing failed');
+    }
+});
+bot.callbackQuery(/.*"action":"newgame".*/, async (ctx) => {
     try {
         const userInfo = (0, telegramHelpers_1.extractUserInfo)(ctx);
         const data = (0, telegramHelpers_1.parseCallbackData)(ctx.callbackQuery.data || '');
-        (0, logger_1.logFunctionStart)('callbackQuery', {
+        (0, logger_1.logFunctionStart)('menu_newgame', {
             userId: userInfo.userId,
-            action: data.action
+            action: 'newgame',
+            context: 'main_menu',
+            gameType: data.gameType || 'none'
         });
-        if (['startgame', 'newgame', 'freecoin', 'help', 'balance'].includes(data.action)) {
-            await (0, telegramHelpers_1.answerCallbackQuery)(bot, ctx.callbackQuery.id);
-            switch (data.action) {
-                case 'startgame':
-                    await handleStartGame(bot, userInfo);
-                    break;
-                case 'newgame':
-                    await handleNewGame(bot, userInfo, data);
-                    break;
-                case 'freecoin':
-                    await handleFreeCoin(bot, userInfo);
-                    break;
-                case 'help':
-                    await handleHelp(bot, userInfo);
-                    break;
-                case 'balance':
-                    await handleBalance(bot, userInfo);
-                    break;
-            }
-            (0, logger_1.logFunctionEnd)('callbackQuery', {}, { userId: userInfo.userId, action: data.action });
-        }
-        else {
-            console.log(`🎮 Game callback received: ${data.action} for user ${userInfo.userId}`);
-        }
+        await (0, telegramHelpers_1.answerCallbackQuery)(bot, ctx.callbackQuery.id);
+        await handleNewGame(bot, userInfo, data);
+        (0, logger_1.logFunctionEnd)('menu_newgame', {}, {
+            userId: userInfo.userId,
+            action: 'newgame',
+            context: 'main_menu'
+        });
     }
     catch (error) {
-        (0, logger_1.logError)('callbackQuery', error, {});
+        (0, logger_1.logError)('menu_newgame', error, {});
+        await (0, telegramHelpers_1.answerCallbackQuery)(bot, ctx.callbackQuery.id, '❌ Processing failed');
+    }
+});
+bot.callbackQuery(/.*"action":"freecoin".*/, async (ctx) => {
+    try {
+        const userInfo = (0, telegramHelpers_1.extractUserInfo)(ctx);
+        (0, logger_1.logFunctionStart)('menu_freecoin', {
+            userId: userInfo.userId,
+            action: 'freecoin',
+            context: 'main_menu'
+        });
+        await (0, telegramHelpers_1.answerCallbackQuery)(bot, ctx.callbackQuery.id);
+        await handleFreeCoin(bot, userInfo);
+        (0, logger_1.logFunctionEnd)('menu_freecoin', {}, {
+            userId: userInfo.userId,
+            action: 'freecoin',
+            context: 'main_menu'
+        });
+    }
+    catch (error) {
+        (0, logger_1.logError)('menu_freecoin', error, {});
+        await (0, telegramHelpers_1.answerCallbackQuery)(bot, ctx.callbackQuery.id, '❌ Processing failed');
+    }
+});
+bot.callbackQuery(/.*"action":"help".*/, async (ctx) => {
+    try {
+        const userInfo = (0, telegramHelpers_1.extractUserInfo)(ctx);
+        (0, logger_1.logFunctionStart)('menu_help', {
+            userId: userInfo.userId,
+            action: 'help',
+            context: 'main_menu'
+        });
+        await (0, telegramHelpers_1.answerCallbackQuery)(bot, ctx.callbackQuery.id);
+        await handleHelp(bot, userInfo);
+        (0, logger_1.logFunctionEnd)('menu_help', {}, {
+            userId: userInfo.userId,
+            action: 'help',
+            context: 'main_menu'
+        });
+    }
+    catch (error) {
+        (0, logger_1.logError)('menu_help', error, {});
+        await (0, telegramHelpers_1.answerCallbackQuery)(bot, ctx.callbackQuery.id, '❌ Processing failed');
+    }
+});
+bot.callbackQuery(/.*"action":"balance".*/, async (ctx) => {
+    try {
+        const userInfo = (0, telegramHelpers_1.extractUserInfo)(ctx);
+        (0, logger_1.logFunctionStart)('menu_balance', {
+            userId: userInfo.userId,
+            action: 'balance',
+            context: 'main_menu'
+        });
+        await (0, telegramHelpers_1.answerCallbackQuery)(bot, ctx.callbackQuery.id);
+        await handleBalance(bot, userInfo);
+        (0, logger_1.logFunctionEnd)('menu_balance', {}, {
+            userId: userInfo.userId,
+            action: 'balance',
+            context: 'main_menu'
+        });
+    }
+    catch (error) {
+        (0, logger_1.logError)('menu_balance', error, {});
         await (0, telegramHelpers_1.answerCallbackQuery)(bot, ctx.callbackQuery.id, '❌ Processing failed');
     }
 });
 const triggerDiceGame = async (bot, userInfo) => {
+    (0, logger_1.logFunctionStart)('triggerDiceGame', {
+        userId: userInfo.userId,
+        context: 'dice_game',
+        step: 'stake_selection'
+    });
     const stakeKeyboard = (0, telegramHelpers_1.createInlineKeyboard)([
         { text: '2 Coins', callbackData: { action: 'dice_stake', stake: 2 } },
         { text: '5 Coins', callbackData: { action: 'dice_stake', stake: 5 } },
@@ -206,8 +280,18 @@ const triggerDiceGame = async (bot, userInfo) => {
         { text: '20 Coins', callbackData: { action: 'dice_stake', stake: 20 } },
     ]);
     await (0, telegramHelpers_1.sendMessage)(bot, userInfo.chatId, '🎲 Dice Guess Game\n\nChoose your stake amount:', { replyMarkup: stakeKeyboard });
+    (0, logger_1.logFunctionEnd)('triggerDiceGame', { success: true }, {
+        userId: userInfo.userId,
+        context: 'dice_game',
+        step: 'stake_selection'
+    });
 };
 const triggerBasketballGame = async (bot, userInfo) => {
+    (0, logger_1.logFunctionStart)('triggerBasketballGame', {
+        userId: userInfo.userId,
+        context: 'basketball_game',
+        step: 'stake_selection'
+    });
     const stakeKeyboard = (0, telegramHelpers_1.createInlineKeyboard)([
         { text: '2 Coins', callbackData: { action: 'basketball_stake', stake: 2 } },
         { text: '5 Coins', callbackData: { action: 'basketball_stake', stake: 5 } },
@@ -215,6 +299,11 @@ const triggerBasketballGame = async (bot, userInfo) => {
         { text: '20 Coins', callbackData: { action: 'basketball_stake', stake: 20 } },
     ]);
     await (0, telegramHelpers_1.sendMessage)(bot, userInfo.chatId, '🏀 Basketball Game\n\nGuess if you will score or miss!\n\nChoose your stake amount:', { replyMarkup: stakeKeyboard });
+    (0, logger_1.logFunctionEnd)('triggerBasketballGame', { success: true }, {
+        userId: userInfo.userId,
+        context: 'basketball_game',
+        step: 'stake_selection'
+    });
 };
 const triggerFootballGame = async (bot, userInfo) => {
     const stakeKeyboard = (0, telegramHelpers_1.createInlineKeyboard)([
@@ -237,18 +326,30 @@ const triggerBlackjackGame = async (bot, userInfo) => {
     await (0, telegramHelpers_1.sendMessage)(bot, userInfo.chatId, '🃏 Blackjack Game\n\nBeat the dealer to 21!\n\nChoose your stake amount:', { replyMarkup: stakeKeyboard });
 };
 const triggerBowlingGame = async (bot, userInfo) => {
-    const stakeKeyboard = (0, telegramHelpers_1.createInlineKeyboard)([
-        { text: '2 Coins', callbackData: { action: 'bowling_stake', stake: 2 } },
-        { text: '5 Coins', callbackData: { action: 'bowling_stake', stake: 5 } },
-        { text: '10 Coins', callbackData: { action: 'bowling_stake', stake: 10 } },
-        { text: '20 Coins', callbackData: { action: 'bowling_stake', stake: 20 } },
-    ]);
+    const stakeKeyboard = {
+        inline_keyboard: [
+            [{ text: '2 Coins', callback_data: 'bowling_stake_2' }],
+            [{ text: '5 Coins', callback_data: 'bowling_stake_5' }],
+            [{ text: '10 Coins', callback_data: 'bowling_stake_10' }],
+            [{ text: '20 Coins', callback_data: 'bowling_stake_20' }]
+        ]
+    };
     await (0, telegramHelpers_1.sendMessage)(bot, userInfo.chatId, '🎳 Bowling Game\n\nRoll the dice to knock down pins!\n\nChoose your stake amount:', { replyMarkup: stakeKeyboard });
 };
 const handleNewGame = async (bot, userInfo, data) => {
     const gameType = data.gameType;
+    (0, logger_1.logFunctionStart)('handleNewGame', {
+        userId: userInfo.userId,
+        gameType: gameType || 'unknown',
+        context: 'game_selection'
+    });
     if (!gameType) {
         await (0, telegramHelpers_1.sendMessage)(bot, userInfo.chatId, '❌ Invalid game selection.');
+        (0, logger_1.logFunctionEnd)('handleNewGame', { success: false, error: 'No game type' }, {
+            userId: userInfo.userId,
+            gameType: 'none',
+            context: 'game_selection'
+        });
         return;
     }
     switch (gameType) {
@@ -269,8 +370,18 @@ const handleNewGame = async (bot, userInfo, data) => {
             break;
         default:
             await (0, telegramHelpers_1.sendMessage)(bot, userInfo.chatId, '❌ Unknown game type.');
+            (0, logger_1.logFunctionEnd)('handleNewGame', { success: false, error: 'Unknown game type' }, {
+                userId: userInfo.userId,
+                gameType,
+                context: 'game_selection'
+            });
             return;
     }
+    (0, logger_1.logFunctionEnd)('handleNewGame', { success: true }, {
+        userId: userInfo.userId,
+        gameType,
+        context: 'game_selection'
+    });
 };
 const handleStartGame = async (bot, userInfo) => {
     const singlePlayerKeyboard = (0, telegramHelpers_1.createInlineKeyboard)([

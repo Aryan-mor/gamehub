@@ -108,7 +108,7 @@ export const startBlackjackGame = async (
     
     // Update game with blackjack-specific data
     const cleanData = Object.fromEntries(
-      Object.entries(blackjackData).filter(([_, value]) => value !== undefined)
+      Object.entries(blackjackData).filter(([, value]) => value !== undefined)
     );
     
     await updateGame(game.id, {

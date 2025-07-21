@@ -119,11 +119,18 @@ const finishGame = async (gameId, result) => {
     try {
         if (!firebase_1.database)
             throw new Error('Firebase not initialized');
+        const cleanResult = {
+            winner: result.winner || null,
+            loser: result.loser || null,
+            isDraw: result.isDraw,
+            coinsWon: result.coinsWon,
+            coinsLost: result.coinsLost,
+        };
         const gameRef = (0, database_1.ref)(firebase_1.database, `games/${gameId}`);
         await (0, database_1.update)(gameRef, {
             status: types_1.GameStatus.FINISHED,
             updatedAt: Date.now(),
-            result,
+            result: cleanResult,
         });
         (0, logger_1.logFunctionEnd)('finishGame', {}, { gameId, result });
     }

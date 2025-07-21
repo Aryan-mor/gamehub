@@ -4,6 +4,7 @@ exports.registerBlackjackHandlers = void 0;
 const logger_1 = require("../../core/logger");
 const telegramHelpers_1 = require("../../core/telegramHelpers");
 const index_1 = require("./index");
+const gameService_1 = require("../../core/gameService");
 function formatCards(cards) {
     return cards.map(card => `${card.displayValue}${getSuitEmoji(card.suit)}`).join(' ');
 }
@@ -38,7 +39,7 @@ const registerBlackjackHandlers = (bot) => {
             await ctx.reply('❌ Failed to start blackjack game.');
         }
     });
-    bot.callbackQuery(/^blackjack_stake:/, async (ctx) => {
+    bot.callbackQuery(/.*"action":"blackjack_stake".*/, async (ctx) => {
         try {
             const userInfo = (0, telegramHelpers_1.extractUserInfo)(ctx);
             const data = (0, telegramHelpers_1.parseCallbackData)(ctx.callbackQuery.data || '');
@@ -51,13 +52,15 @@ const registerBlackjackHandlers = (bot) => {
                 (0, logger_1.logFunctionEnd)('blackjackStakeCallback', { success: false }, { userId: userInfo.userId, stake });
                 return;
             }
-            const gameData = await (0, index_1.resolveBlackjackResult)(result.gameId);
-            if (gameData.success && gameData.result) {
-                const { playerHand, dealerHand } = gameData.result;
-                const actionKeyboard = (0, telegramHelpers_1.createInlineKeyboard)([
-                    { text: '🎯 Hit', callbackData: { action: 'blackjack_action', gameId: result.gameId, playerAction: 'hit' } },
-                    { text: '✋ Stand', callbackData: { action: 'blackjack_action', gameId: result.gameId, playerAction: 'stand' } },
-                ]);
+            const game = await (0, gameService_1.getGame)(result.gameId);
+            if (game && game.data) {
+                const { playerHand, dealerHand } = game.data;
+                const actionKeyboard = {
+                    inline_keyboard: [
+                        [{ text: '🎯 Hit', callback_data: `blackjack_action_${result.gameId}_hit` }],
+                        [{ text: '✋ Stand', callback_data: `blackjack_action_${result.gameId}_stand` }]
+                    ]
+                };
                 const message = `🃏 Blackjack Game Started!\n\n💰 Stake: ${stake} Coins\n\nYour hand: ${formatCards(playerHand)}\nDealer's hand: ${formatCards([dealerHand[0]])} [?]\n\nWhat would you like to do?`;
                 await (0, telegramHelpers_1.sendMessage)(bot, userInfo.chatId, message, { replyMarkup: actionKeyboard });
             }
@@ -68,12 +71,17 @@ const registerBlackjackHandlers = (bot) => {
             await (0, telegramHelpers_1.answerCallbackQuery)(bot, ctx.callbackQuery.id, '❌ Failed to start game');
         }
     });
-    bot.callbackQuery(/^blackjack_action:/, async (ctx) => {
+    bot.callbackQuery(/^blackjack_action_.*/, async (ctx) => {
         try {
             const userInfo = (0, telegramHelpers_1.extractUserInfo)(ctx);
-            const data = (0, telegramHelpers_1.parseCallbackData)(ctx.callbackQuery.data || '');
-            const gameId = data.gameId;
-            const action = data.playerAction;
+            const callbackData = ctx.callbackQuery.data || '';
+            const match = callbackData.match(/^blackjack_action_(.+)_(hit|stand)$/);
+            if (!match) {
+                await (0, telegramHelpers_1.answerCallbackQuery)(bot, ctx.callbackQuery.id, '❌ Invalid callback data');
+                return;
+            }
+            const gameId = match[1];
+            const action = match[2];
             (0, logger_1.logFunctionStart)('blackjackActionCallback', { userId: userInfo.userId, gameId, action });
             await (0, telegramHelpers_1.answerCallbackQuery)(bot, ctx.callbackQuery.id);
             const result = await (0, index_1.handleBlackjackTurn)(gameId, action);

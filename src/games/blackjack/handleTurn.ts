@@ -77,8 +77,8 @@ export const handleBlackjackTurn = async (
     const { playerHand, dealerHand, deck } = gameData;
     const stake = game.stake;
     
-    let updatedPlayerHand = [...playerHand];
-    let updatedDealerHand = [...dealerHand];
+    const updatedPlayerHand = [...playerHand];
+    const updatedDealerHand = [...dealerHand];
     let updatedDeck = [...deck];
     let gameResult: 'win' | 'lose' | 'push' | undefined;
     
@@ -146,7 +146,7 @@ export const handleBlackjackTurn = async (
     
     // Filter out undefined values before sending to Firebase
     const cleanData = Object.fromEntries(
-      Object.entries(updatedBlackjackData).filter(([_, value]) => value !== undefined)
+      Object.entries(updatedBlackjackData).filter(([, value]) => value !== undefined)
     );
     
     await updateGame(gameId, {

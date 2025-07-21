@@ -56,8 +56,8 @@ const handleBlackjackTurn = async (gameId, action) => {
         const gameData = game.data;
         const { playerHand, dealerHand, deck } = gameData;
         const stake = game.stake;
-        let updatedPlayerHand = [...playerHand];
-        let updatedDealerHand = [...dealerHand];
+        const updatedPlayerHand = [...playerHand];
+        const updatedDealerHand = [...dealerHand];
         let updatedDeck = [...deck];
         let gameResult;
         if (action === 'hit') {
@@ -107,12 +107,13 @@ const handleBlackjackTurn = async (gameId, action) => {
             playerHand: updatedPlayerHand,
             dealerHand: updatedDealerHand,
             deck: updatedDeck,
-            result: gameResult || undefined,
+            result: gameResult,
             reward,
             fee,
         };
+        const cleanData = Object.fromEntries(Object.entries(updatedBlackjackData).filter(([, value]) => value !== undefined));
         await (0, gameService_1.updateGame)(gameId, {
-            data: updatedBlackjackData,
+            data: cleanData,
         });
         const playerId = game.players[0].id;
         if (isWon) {

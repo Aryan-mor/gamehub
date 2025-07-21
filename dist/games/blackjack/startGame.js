@@ -2,8 +2,8 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.startBlackjackGame = void 0;
 const logger_1 = require("../../core/logger");
-const userService_1 = require("../../core/userService");
 const gameService_1 = require("../../core/gameService");
+const userService_1 = require("../../core/userService");
 const types_1 = require("../../core/types");
 function createDeck() {
     const suits = ['hearts', 'diamonds', 'clubs', 'spades'];
@@ -80,8 +80,10 @@ const startBlackjackGame = async (userId, stake) => {
             reward: 0,
             fee: 0,
         };
+        const cleanData = Object.fromEntries(Object.entries(blackjackData).filter(([, value]) => value !== undefined));
         await (0, gameService_1.updateGame)(game.id, {
-            data: blackjackData,
+            status: types_1.GameStatus.PLAYING,
+            data: cleanData,
         });
         const result = { success: true, gameId: game.id };
         (0, logger_1.logFunctionEnd)('startBlackjackGame', result, { userId, stake });
