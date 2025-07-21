@@ -1,48 +1,56 @@
 ---
-description: Enforce Git Flow branching model for the GameHub project
+description: Persistent bot debugging workflow for GameHub Telegram bot inside Cursor
 globs: []
 alwaysApply: true
 ---
 
-# 🧩 Git Flow Branching Strategy (GameHub Project)
+# 🧠 Telegram Bot Debugging Workflow
 
-## 🔃 Branching Rules
+## 🎯 Core Principle
+Run and debug the Telegram bot **inside this Cursor session**. We will fix issues together in real-time.
 
-- `main` branch is always **stable** and **production-ready**.
-- `develop` branch is used for active feature integration and testing.
+## 🔒 Rules
 
-## 🌱 Feature Development
+- **DO NOT** open a new external terminal.
+- **DO NOT** run the bot as a background or detached process.
+- **DO NOT** stop automatically after one run or error.
+- Run and **persist the bot session inline** in this conversation.
 
-- Create feature branches from `develop`, using the naming format:
-feature/<feature-name>
-Examples:
-- `feature/uno-game-ui`
-- `feature/telegram-webapp-integration`
+## ⚙️ Behavior
 
-- When complete, merge feature branches **back into `develop`** using a **pull request**.
+- Start the bot in this session and **show logs inline**:
+  - User input
+  - Callback queries
+  - Game state changes
+  - Errors
+- Keep the session **alive** for full debugging.
+- If an error occurs:
+  - Pause and display the error
+  - Ask for confirmation before restarting
 
-## 🚀 Release Workflow
+## 🔧 Developer Commands
 
-- Create `release/*` branches from `develop` for staging and final QA.
-- Merge `release/*` branches into both `main` and `develop` when ready.
+- `🔁 restart bot` — manually restart the bot
+- `❌ stop bot` — stop everything
 
-## 🔥 Hotfixes
+## 📦 Additional Instructions
 
-- For urgent production issues:
-- Create `hotfix/*` branches from `main`
-- Merge back into **both** `main` and `develop` after the fix
+- Log all key events using the logger (start, result, failure)
+- All user interactions (clicks, guesses, choices) must appear in logs
+- Do not auto-restart or stop unless explicitly requested
+- Games should log every step: coin choice → game start → result
 
-## 📝 Commit Messages
+## 🧪 Testing Expectations
 
-- Use **Conventional Commit** format:
-- `feat: add uno game board`
-- `fix: handle wild card logic bug`
-- `chore: update game dependencies`
+- For every bug found, write a test that fails first (TDD)
+- All core functionality (games, coins, sessions) must be tested
+- Use mocks for Telegram API where needed
+- Avoid regressions by improving test coverage when fixing issues
 
-## 🛑 Direct Commit Rules
+## 💬 Session Flow
 
-- ❌ Never commit directly to:
-- `main`
-- `develop`
+- The bot stays online during this session
+- I will interact with it through Telegram and share logs here
+- Fixes will be handled step-by-step inside this thread
 
-(Only allow merges via pull requests or release/hotfix branches)
+---

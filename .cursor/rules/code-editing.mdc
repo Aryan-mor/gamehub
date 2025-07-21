@@ -1,5 +1,4 @@
 ---
-alwaysApply: true
 Always implement the fix automatically if a problem is found, without asking for confirmation.
 description: Code Editing Preferences for GameHub project
 rules:
@@ -9,4 +8,5 @@ rules:
 - Focus on implementing solutions rather than discussing ideas unless requested
 - Apply changes automatically without lengthy explanations
 
+alwaysApply: true
 ---

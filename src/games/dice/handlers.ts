@@ -2,6 +2,7 @@ import { Bot } from 'grammy';
 import { logFunctionStart, logFunctionEnd, logError } from '../../core/logger';
 import { extractUserInfo, sendMessage, createInlineKeyboard, parseCallbackData, answerCallbackQuery } from '../../core/telegramHelpers';
 import { startDiceGame, handleDiceTurn } from './index';
+import { getGame } from '../../core/gameService';
 
 export const registerDiceHandlers = (bot: Bot): void => {
   logFunctionStart('registerDiceHandlers', {});
@@ -124,6 +125,11 @@ export const registerDiceHandlers = (bot: Bot): void => {
       const userInfo = extractUserInfo(ctx);
       const callbackData = ctx.callbackQuery.data || '';
       
+      console.log('🔍 DEBUG - ENTRY: dicePlayAgainCallback called');
+      console.log('🔍 DEBUG - Raw callback data:', callbackData);
+      console.log('🔍 DEBUG - Callback data type:', typeof callbackData);
+      console.log('🔍 DEBUG - Callback data length:', callbackData.length);
+      
       logFunctionStart('dicePlayAgainCallback', { userId: userInfo.userId, callbackData });
       
       await answerCallbackQuery(bot, ctx.callbackQuery.id);
@@ -143,31 +149,103 @@ export const registerDiceHandlers = (bot: Bot): void => {
         );
       } else {
         // Parse callback data for same stake or new guess
-        const match = callbackData.match(/^dice_play_again_(same|new_guess)_(.+)_(.+)(?:_(.+))?$/);
-        if (!match) {
+        console.log('🔍 DEBUG - About to parse callback data:', callbackData);
+        console.log('🔍 DEBUG - Callback data length:', callbackData.length);
+        console.log('🔍 DEBUG - Callback data type:', typeof callbackData);
+        
+        // Manual parsing instead of regex
+        const parts = callbackData.split('_');
+        console.log('🔍 DEBUG - Split parts:', parts);
+        
+        if (parts.length < 6) {
+          console.log('🔍 DEBUG - Not enough parts, showing error');
           await answerCallbackQuery(bot, ctx.callbackQuery.id, '❌ Invalid callback data');
           return;
         }
         
-        const type = match[1];
-        const gameId = match[2];
-        const stake = parseInt(match[3]);
-        const guess = match[4] ? parseInt(match[4]) : null;
+        const type = parts[3]; // 'same' or 'new'
         
-        const result = await startDiceGame(userInfo.userId, stake);
-        
-        if (!result.success) {
-          await sendMessage(bot, userInfo.chatId, `❌ ${result.error}`);
-          return;
-        }
-        
-        if (!result.gameId) {
-          await sendMessage(bot, userInfo.chatId, `❌ Failed to create game`);
-          return;
-        }
-        
-        if (type === 'same' && guess !== null) {
+        // For "new_guess" type, the format is: dice_play_again_new_guess_dice_1753127455178_0vzhumatr_25
+        // For "same" type, the format is: dice_play_again_same_dice_1753127455178_0vzhumatr_25
+        if (type === 'new') {
+          // New guess format: dice_play_again_new_guess_dice_1753128274742_3gkuevnd0_2
+          // parts: ['dice', 'play', 'again', 'new', 'guess', 'dice', '1753128274742', '3gkuevnd0', '2']
+          const gameId = `${parts[5]}_${parts[6]}_${parts[7]}`; // 'dice_1753128274742_3gkuevnd0'
+          const stake = parseInt(parts[parts.length - 1]); // '2' -> 2
+          const guess = null; // No guess for new_guess
+          
+          console.log('🔍 DEBUG - Manual parsed values:', { type, gameId, stake, guess });
+          
+          // For new guess, we need to get the original stake from the game
+          const originalGame = await getGame(gameId);
+          if (!originalGame) {
+            await sendMessage(bot, userInfo.chatId, '❌ Original game not found');
+            return;
+          }
+          
+          const actualStake = originalGame.stake;
+          console.log('🔍 DEBUG - Using original stake:', actualStake);
+          
+          const result = await startDiceGame(userInfo.userId, actualStake);
+          
+          if (!result.success) {
+            await sendMessage(bot, userInfo.chatId, `❌ ${result.error}`);
+            return;
+          }
+          
+          if (!result.gameId) {
+            await sendMessage(bot, userInfo.chatId, `❌ Failed to create game`);
+            return;
+          }
+          
+          // Show guess selection keyboard
+          console.log('🔍 DEBUG - Taking NEW GUESS path');
+          const guessKeyboard = createInlineKeyboard([
+            { text: '1', callbackData: { action: 'dice_guess', g: result.gameId, n: 1 } },
+            { text: '2', callbackData: { action: 'dice_guess', g: result.gameId, n: 2 } },
+            { text: '3', callbackData: { action: 'dice_guess', g: result.gameId, n: 3 } },
+            { text: '4', callbackData: { action: 'dice_guess', g: result.gameId, n: 4 } },
+            { text: '5', callbackData: { action: 'dice_guess', g: result.gameId, n: 5 } },
+            { text: '6', callbackData: { action: 'dice_guess', g: result.gameId, n: 6 } },
+          ]);
+          
+          await sendMessage(bot, userInfo.chatId,
+            `🎲 Dice Game Started!\n\n💰 Stake: ${actualStake} Coins\n\nGuess the dice number (1-6):`,
+            { replyMarkup: guessKeyboard }
+          );
+        } else if (type === 'same') {
+          // Same stake & guess format: dice_play_again_same_dice_1753128274742_3gkuevnd0_2_2
+          // parts: ['dice', 'play', 'again', 'same', 'dice', '1753128274742', '3gkuevnd0', '2', '2']
+          const gameId = `${parts[4]}_${parts[5]}_${parts[6]}`; // 'dice_1753128274742_3gkuevnd0'
+          const stake = parseInt(parts[parts.length - 2]); // '2' -> 2
+          const guess = parseInt(parts[parts.length - 1]); // '2' -> 2
+          
+          console.log('🔍 DEBUG - Manual parsed values:', { type, gameId, stake, guess });
+          
+          // For same stake, we need to get the original stake from the game
+          const originalGame = await getGame(gameId);
+          if (!originalGame) {
+            await sendMessage(bot, userInfo.chatId, '❌ Original game not found');
+            return;
+          }
+          
+          const actualStake = originalGame.stake;
+          console.log('🔍 DEBUG - Using original stake:', actualStake);
+          
+          const result = await startDiceGame(userInfo.userId, actualStake);
+          
+          if (!result.success) {
+            await sendMessage(bot, userInfo.chatId, `❌ ${result.error}`);
+            return;
+          }
+          
+          if (!result.gameId) {
+            await sendMessage(bot, userInfo.chatId, `❌ Failed to create game`);
+            return;
+          }
+          
           // Same stake & guess - automatically use the same guess
+          console.log('🔍 DEBUG - Taking SAME path with guess:', guess);
           const turnResult = await handleDiceTurn(result.gameId, guess);
           
           if (!turnResult.success) {
@@ -194,22 +272,9 @@ export const registerDiceHandlers = (bot: Bot): void => {
             parseMode: 'HTML',
             replyMarkup: playAgainKeyboard
           });
-        } else {
-          // New guess - show guess selection keyboard
-          const guessKeyboard = createInlineKeyboard([
-            { text: '1', callbackData: { action: 'dice_guess', g: result.gameId, n: 1 } },
-            { text: '2', callbackData: { action: 'dice_guess', g: result.gameId, n: 2 } },
-            { text: '3', callbackData: { action: 'dice_guess', g: result.gameId, n: 3 } },
-            { text: '4', callbackData: { action: 'dice_guess', g: result.gameId, n: 4 } },
-            { text: '5', callbackData: { action: 'dice_guess', g: result.gameId, n: 5 } },
-            { text: '6', callbackData: { action: 'dice_guess', g: result.gameId, n: 6 } },
-          ]);
-          
-          await sendMessage(bot, userInfo.chatId,
-            `🎲 Dice Game Started!\n\n💰 Stake: ${stake} Coins\n\nGuess the dice number (1-6):`,
-            { replyMarkup: guessKeyboard }
-          );
         }
+        
+        return; // Exit early since we handled both cases
       }
       
       logFunctionEnd('dicePlayAgainCallback', { success: true }, { userId: userInfo.userId });

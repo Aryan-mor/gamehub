@@ -11,7 +11,7 @@ pnpm install --frozen-lockfile --prod
 # Build the application (if not already built by CI/CD)
 if [ ! -d "dist" ]; then
   echo "Building application..."
-  pnpm run build
+pnpm run build
 fi
 
 # Restart the application

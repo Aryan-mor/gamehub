@@ -1,0 +1,46 @@
+# Bot Debugging Workflow Rules
+
+## Core Principle
+Run the Telegram bot directly inside this Cursor conversation — not in an external terminal.
+
+## 🔒 Strict Rules
+- **DO NOT** open a new external terminal
+- **DO NOT** run the bot in background or separate process
+- **DO NOT** auto-stop after one run
+- **DO NOT** auto-reload unless explicitly requested
+- Run the bot right here, in this chat — log everything inline
+
+## 🧠 Expected Behavior
+- Start the bot and keep it running inside the conversation
+- Show full logs here: function start/end, user input, callback data, errors
+- If the bot crashes or throws any error:
+  → Pause the execution
+  → Read and show the error
+  → Ask user before restarting
+
+## 📋 User Commands
+User will manually say:
+- `🔁 restart bot` — to restart the bot
+- `❌ stop bot` — to stop everything
+
+## 🎯 Objective
+Debug the bot **together** inside this session.
+Keep it running until **no errors are shown** and all game flows work correctly.
+
+## ⚠️ Important Notes
+- Do not exit the run loop until user explicitly says so
+- Do not auto-reload unless user requests it
+- Always show logs and debug information inline
+- Work together to fix issues in real-time
+
+## 🔧 Technical Approach
+Since direct inline execution isn't possible:
+1. Run bot in terminal but keep it visible
+2. Show logs when user shares them
+3. Analyze and fix issues together
+4. Iterate until everything works perfectly
+5. Keep bot running until user says "❌ stop bot"
+description:
+globs:
+alwaysApply: true
+---
