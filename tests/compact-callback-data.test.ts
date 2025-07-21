@@ -2,13 +2,13 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 // import { Bot } from 'grammy';
 
 // Mock the modules
-vi.mock('../../src/core/logger', () => ({
+vi.mock('../src/core/logger', () => ({
   logFunctionStart: vi.fn(),
   logFunctionEnd: vi.fn(),
   logError: vi.fn(),
 }));
 
-vi.mock('../../src/core/telegramHelpers', () => ({
+vi.mock('../src/core/telegramHelpers', () => ({
   sendMessage: vi.fn(),
   answerCallbackQuery: vi.fn(),
   createInlineKeyboard: vi.fn(),
@@ -16,19 +16,19 @@ vi.mock('../../src/core/telegramHelpers', () => ({
   parseCallbackData: vi.fn(),
 }));
 
-vi.mock('../../src/core/gameService', () => ({
+vi.mock('../src/core/gameService', () => ({
   getGame: vi.fn(),
   createGame: vi.fn(),
   updateGame: vi.fn(),
   finishGame: vi.fn(),
 }));
 
-vi.mock('../../src/games/blackjack/index', () => ({
+vi.mock('../src/games/blackjack/index', () => ({
   startBlackjackGame: vi.fn(),
   handleBlackjackTurn: vi.fn(),
 }));
 
-vi.mock('../../src/games/bowling/index', () => ({
+vi.mock('../src/games/bowling/index', () => ({
   startBowlingGame: vi.fn(),
   handleBowlingTurn: vi.fn(),
 }));

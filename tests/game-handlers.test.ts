@@ -17,13 +17,13 @@ vi.mock('grammy', () => ({
   })),
 }));
 
-vi.mock('../../src/core/logger', () => ({
+vi.mock('../src/core/logger', () => ({
   logFunctionStart: vi.fn(),
   logFunctionEnd: vi.fn(),
   logError: vi.fn(),
 }));
 
-vi.mock('../../src/core/telegramHelpers', () => ({
+vi.mock('../src/core/telegramHelpers', () => ({
   extractUserInfo: vi.fn(() => ({ userId: 'test-user', chatId: 123456, username: 'testuser', name: 'Test User' })),
   sendMessage: vi.fn(),
   createInlineKeyboard: vi.fn(() => ({ inline_keyboard: [] })),
@@ -31,13 +31,13 @@ vi.mock('../../src/core/telegramHelpers', () => ({
   answerCallbackQuery: vi.fn(),
 }));
 
-vi.mock('../../src/core/userService', () => ({
+vi.mock('../src/core/userService', () => ({
   getUser: vi.fn(() => Promise.resolve({ coins: 1000, name: 'Test User', username: 'testuser' })),
   addCoins: vi.fn(),
   deductCoins: vi.fn(),
 }));
 
-vi.mock('../../src/core/gameService', () => ({
+vi.mock('../src/core/gameService', () => ({
   createGame: vi.fn(() => Promise.resolve({ id: 'test-game-id', players: [], stake: 10 })),
   getGame: vi.fn(() => Promise.resolve({ id: 'test-game-id', status: 'playing', players: [], stake: 10 })),
   updateGame: vi.fn(),
@@ -49,13 +49,24 @@ describe('Game Handlers Integration Tests', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    mockBot = {} as any; // Mock bot object
+    mockBot = {
+      command: vi.fn(),
+      callbackQuery: vi.fn(),
+      use: vi.fn(),
+      start: vi.fn(),
+      stop: vi.fn(),
+      api: {
+        setMyCommands: vi.fn(),
+        sendMessage: vi.fn(),
+        answerCallbackQuery: vi.fn(),
+      },
+    } as any; // Mock bot object
   });
 
   describe('Dice Game Handlers', () => {
     it('should register dice handlers without throwing', async () => {
       // This test ensures all imports are working
-      const { registerDiceHandlers } = await import('../../src/games/dice/handlers');
+      const { registerDiceHandlers } = await import('../src/games/dice/handlers');
       
       expect(() => {
         registerDiceHandlers(mockBot);
@@ -65,7 +76,7 @@ describe('Game Handlers Integration Tests', () => {
     });
 
     it('should handle dice stake callback without runtime errors', async () => {
-      const { registerDiceHandlers } = await import('../../src/games/dice/handlers');
+      const { registerDiceHandlers } = await import('../src/games/dice/handlers');
       
       // Mock the game functions
       const mockStartDiceGame = vi.fn(() => Promise.resolve({ 
@@ -78,7 +89,7 @@ describe('Game Handlers Integration Tests', () => {
       }));
 
       // Mock the imports
-      vi.doMock('../../src/games/dice/index', () => ({
+      vi.doMock('../src/games/dice/index', () => ({
         startDiceGame: mockStartDiceGame,
         handleDiceTurn: mockHandleDiceTurn,
       }));
@@ -96,7 +107,7 @@ describe('Game Handlers Integration Tests', () => {
     });
 
     it('should handle dice guess callback without runtime errors', async () => {
-      const { registerDiceHandlers } = await import('../../src/games/dice/handlers');
+      const { registerDiceHandlers } = await import('../src/games/dice/handlers');
       
       // Mock the game functions
       const mockHandleDiceTurn = vi.fn(() => Promise.resolve({ 
@@ -104,7 +115,7 @@ describe('Game Handlers Integration Tests', () => {
         result: { isWon: true, playerGuess: 3, diceResult: 3, coinsWon: 50, coinsLost: 0 } 
       }));
 
-      vi.doMock('../../src/games/dice/index', () => ({
+      vi.doMock('../src/games/dice/index', () => ({
         startDiceGame: vi.fn(() => Promise.resolve({ success: true, gameId: 'test-game-id' })),
         handleDiceTurn: mockHandleDiceTurn,
       }));
@@ -122,7 +133,7 @@ describe('Game Handlers Integration Tests', () => {
 
   describe('Basketball Game Handlers', () => {
     it('should register basketball handlers without throwing', async () => {
-      const { registerBasketballHandlers } = await import('../../src/games/basketball/handlers');
+      const { registerBasketballHandlers } = await import('../src/games/basketball/handlers');
       
       expect(() => {
         registerBasketballHandlers(mockBot);
@@ -132,7 +143,7 @@ describe('Game Handlers Integration Tests', () => {
     });
 
     it('should handle basketball stake callback without runtime errors', async () => {
-      const { registerBasketballHandlers } = await import('../../src/games/basketball/handlers');
+      const { registerBasketballHandlers } = await import('../src/games/basketball/handlers');
       
       // Mock the game functions
       const mockStartBasketballGame = vi.fn(() => Promise.resolve({ 
@@ -144,7 +155,7 @@ describe('Game Handlers Integration Tests', () => {
         result: { isWon: true, guess: 'score', diceResult: 5, coinsWon: 20, coinsLost: 0 } 
       }));
 
-      vi.doMock('../../src/games/basketball/index', () => ({
+      vi.doMock('../src/games/basketball/index', () => ({
         startBasketballGame: mockStartBasketballGame,
         handleBasketballTurn: mockHandleBasketballTurn,
       }));
@@ -159,14 +170,14 @@ describe('Game Handlers Integration Tests', () => {
     });
 
     it('should handle basketball guess callback without runtime errors', async () => {
-      const { registerBasketballHandlers } = await import('../../src/games/basketball/handlers');
+      const { registerBasketballHandlers } = await import('../src/games/basketball/handlers');
       
       const mockHandleBasketballTurn = vi.fn(() => Promise.resolve({ 
         success: true, 
         result: { isWon: true, guess: 'score', diceResult: 5, coinsWon: 20, coinsLost: 0 } 
       }));
 
-      vi.doMock('../../src/games/basketball/index', () => ({
+      vi.doMock('../src/games/basketball/index', () => ({
         startBasketballGame: vi.fn(() => Promise.resolve({ success: true, gameId: 'test-game-id' })),
         handleBasketballTurn: mockHandleBasketballTurn,
       }));
@@ -183,7 +194,7 @@ describe('Game Handlers Integration Tests', () => {
 
   describe('Football Game Handlers', () => {
     it('should register football handlers without throwing', async () => {
-      const { registerFootballHandlers } = await import('../../src/games/football/handlers');
+      const { registerFootballHandlers } = await import('../src/games/football/handlers');
       
       expect(() => {
         registerFootballHandlers(mockBot);
@@ -193,7 +204,7 @@ describe('Game Handlers Integration Tests', () => {
     });
 
     it('should handle football stake callback without runtime errors', async () => {
-      const { registerFootballHandlers } = await import('../../src/games/football/handlers');
+      const { registerFootballHandlers } = await import('../src/games/football/handlers');
       
       const mockStartFootballGame = vi.fn(() => Promise.resolve({ 
         success: true, 
@@ -204,7 +215,7 @@ describe('Game Handlers Integration Tests', () => {
         result: { isWon: true, guess: 3, diceResult: 3, coinsWon: 20, coinsLost: 0 } 
       }));
 
-      vi.doMock('../../src/games/football/index', () => ({
+      vi.doMock('../src/games/football/index', () => ({
         startFootballGame: mockStartFootballGame,
         handleFootballTurn: mockHandleFootballTurn,
         FOOTBALL_DIRECTIONS: { 1: 'Top-Left', 2: 'Top-Right', 3: 'Center', 4: 'Bottom-Left', 5: 'Bottom-Right' },
@@ -220,14 +231,14 @@ describe('Game Handlers Integration Tests', () => {
     });
 
     it('should handle football guess callback without runtime errors', async () => {
-      const { registerFootballHandlers } = await import('../../src/games/football/handlers');
+      const { registerFootballHandlers } = await import('../src/games/football/handlers');
       
       const mockHandleFootballTurn = vi.fn(() => Promise.resolve({ 
         success: true, 
         result: { isWon: true, guess: 3, diceResult: 3, coinsWon: 20, coinsLost: 0 } 
       }));
 
-      vi.doMock('../../src/games/football/index', () => ({
+      vi.doMock('../src/games/football/index', () => ({
         startFootballGame: vi.fn(() => Promise.resolve({ success: true, gameId: 'test-game-id' })),
         handleFootballTurn: mockHandleFootballTurn,
         FOOTBALL_DIRECTIONS: { 1: 'Top-Left', 2: 'Top-Right', 3: 'Center', 4: 'Bottom-Left', 5: 'Bottom-Right' },
@@ -245,7 +256,7 @@ describe('Game Handlers Integration Tests', () => {
 
   describe('Blackjack Game Handlers', () => {
     it('should register blackjack handlers without throwing', async () => {
-      const { registerBlackjackHandlers } = await import('../../src/games/blackjack/handlers');
+      const { registerBlackjackHandlers } = await import('../src/games/blackjack/handlers');
       
       expect(() => {
         registerBlackjackHandlers(mockBot);
@@ -255,7 +266,7 @@ describe('Game Handlers Integration Tests', () => {
     });
 
     it('should handle blackjack stake callback without runtime errors', async () => {
-      const { registerBlackjackHandlers } = await import('../../src/games/blackjack/handlers');
+      const { registerBlackjackHandlers } = await import('../src/games/blackjack/handlers');
       
       const mockStartBlackjackGame = vi.fn(() => Promise.resolve({ 
         success: true, 
@@ -270,7 +281,7 @@ describe('Game Handlers Integration Tests', () => {
         result: { playerHand: [], dealerHand: [] } 
       }));
 
-      vi.doMock('../../src/games/blackjack/index', () => ({
+      vi.doMock('../src/games/blackjack/index', () => ({
         startBlackjackGame: mockStartBlackjackGame,
         handleBlackjackTurn: mockHandleBlackjackTurn,
         resolveBlackjackResult: mockResolveBlackjackResult,
@@ -286,14 +297,14 @@ describe('Game Handlers Integration Tests', () => {
     });
 
     it('should handle blackjack action callback without runtime errors', async () => {
-      const { registerBlackjackHandlers } = await import('../../src/games/blackjack/handlers');
+      const { registerBlackjackHandlers } = await import('../src/games/blackjack/handlers');
       
       const mockHandleBlackjackTurn = vi.fn(() => Promise.resolve({ 
         success: true, 
         result: { isWon: true, playerHand: [], dealerHand: [], coinsWon: 20, coinsLost: 0 } 
       }));
 
-      vi.doMock('../../src/games/blackjack/index', () => ({
+      vi.doMock('../src/games/blackjack/index', () => ({
         startBlackjackGame: vi.fn(() => Promise.resolve({ success: true, gameId: 'test-game-id' })),
         handleBlackjackTurn: mockHandleBlackjackTurn,
         resolveBlackjackResult: vi.fn(() => Promise.resolve({ success: true, result: { playerHand: [], dealerHand: [] } })),
@@ -311,7 +322,7 @@ describe('Game Handlers Integration Tests', () => {
 
   describe('Bowling Game Handlers', () => {
     it('should register bowling handlers without throwing', async () => {
-      const { registerBowlingHandlers } = await import('../../src/games/bowling/handlers');
+      const { registerBowlingHandlers } = await import('../src/games/bowling/handlers');
       
       expect(() => {
         registerBowlingHandlers(mockBot);
@@ -321,7 +332,7 @@ describe('Game Handlers Integration Tests', () => {
     });
 
     it('should handle bowling stake callback without runtime errors', async () => {
-      const { registerBowlingHandlers } = await import('../../src/games/bowling/handlers');
+      const { registerBowlingHandlers } = await import('../src/games/bowling/handlers');
       
       const mockStartBowlingGame = vi.fn(() => Promise.resolve({ 
         success: true, 
@@ -332,7 +343,7 @@ describe('Game Handlers Integration Tests', () => {
         result: { isWon: true, diceResult: 8, outcome: 'Strike!', coinsWon: 20, coinsLost: 0 } 
       }));
 
-      vi.doMock('../../src/games/bowling/index', () => ({
+      vi.doMock('../src/games/bowling/index', () => ({
         startBowlingGame: mockStartBowlingGame,
         handleBowlingTurn: mockHandleBowlingTurn,
       }));
@@ -347,14 +358,14 @@ describe('Game Handlers Integration Tests', () => {
     });
 
     it('should handle bowling roll callback without runtime errors', async () => {
-      const { registerBowlingHandlers } = await import('../../src/games/bowling/handlers');
+      const { registerBowlingHandlers } = await import('../src/games/bowling/handlers');
       
       const mockHandleBowlingTurn = vi.fn(() => Promise.resolve({ 
         success: true, 
         result: { isWon: true, diceResult: 8, outcome: 'Strike!', coinsWon: 20, coinsLost: 0 } 
       }));
 
-      vi.doMock('../../src/games/bowling/index', () => ({
+      vi.doMock('../src/games/bowling/index', () => ({
         startBowlingGame: vi.fn(() => Promise.resolve({ success: true, gameId: 'test-game-id' })),
         handleBowlingTurn: mockHandleBowlingTurn,
       }));
@@ -372,7 +383,7 @@ describe('Game Handlers Integration Tests', () => {
   describe('Complete Game Flow Simulation', () => {
     it('should simulate complete dice game flow without runtime errors', async () => {
       // This test simulates the exact flow that was failing
-      const { registerDiceHandlers } = await import('../../src/games/dice/handlers');
+      const { registerDiceHandlers } = await import('../src/games/dice/handlers');
       
       // Mock all required functions
       const mockStartDiceGame = vi.fn(() => Promise.resolve({ 
@@ -384,7 +395,7 @@ describe('Game Handlers Integration Tests', () => {
         result: { isWon: true, playerGuess: 3, diceResult: 3, coinsWon: 50, coinsLost: 0 } 
       }));
 
-      vi.doMock('../../src/games/dice/index', () => ({
+      vi.doMock('../src/games/dice/index', () => ({
         startDiceGame: mockStartDiceGame,
         handleDiceTurn: mockHandleDiceTurn,
       }));
@@ -405,7 +416,7 @@ describe('Game Handlers Integration Tests', () => {
     });
 
     it('should simulate complete basketball game flow without runtime errors', async () => {
-      const { registerBasketballHandlers } = await import('../../src/games/basketball/handlers');
+      const { registerBasketballHandlers } = await import('../src/games/basketball/handlers');
       
       const mockStartBasketballGame = vi.fn(() => Promise.resolve({ 
         success: true, 
@@ -416,7 +427,7 @@ describe('Game Handlers Integration Tests', () => {
         result: { isWon: true, guess: 'score', diceResult: 5, coinsWon: 20, coinsLost: 0 } 
       }));
 
-      vi.doMock('../../src/games/basketball/index', () => ({
+      vi.doMock('../src/games/basketball/index', () => ({
         startBasketballGame: mockStartBasketballGame,
         handleBasketballTurn: mockHandleBasketballTurn,
       }));
@@ -438,11 +449,11 @@ describe('Game Handlers Integration Tests', () => {
     it('should validate all game handler imports are working', async () => {
       // Test that all handler registration functions can be imported without errors
       const handlers = [
-        () => import('../../src/games/dice/handlers'),
-        () => import('../../src/games/basketball/handlers'),
-        () => import('../../src/games/football/handlers'),
-        () => import('../../src/games/blackjack/handlers'),
-        () => import('../../src/games/bowling/handlers'),
+        () => import('../src/games/dice/handlers'),
+        () => import('../src/games/basketball/handlers'),
+        () => import('../src/games/football/handlers'),
+        () => import('../src/games/blackjack/handlers'),
+        () => import('../src/games/bowling/handlers'),
       ];
 
       for (const handlerImport of handlers) {
@@ -455,11 +466,11 @@ describe('Game Handlers Integration Tests', () => {
     it('should validate all game function imports are working', async () => {
       // Test that all game functions can be imported without errors
       const gameModules = [
-        () => import('../../src/games/dice/index'),
-        () => import('../../src/games/basketball/index'),
-        () => import('../../src/games/football/index'),
-        () => import('../../src/games/blackjack/index'),
-        () => import('../../src/games/bowling/index'),
+        () => import('../src/games/dice/index'),
+        () => import('../src/games/basketball/index'),
+        () => import('../src/games/football/index'),
+        () => import('../src/games/blackjack/index'),
+        () => import('../src/games/bowling/index'),
       ];
 
       for (const moduleImport of gameModules) {

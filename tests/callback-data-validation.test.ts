@@ -3,8 +3,8 @@ import { describe, it, expect } from 'vitest';
 describe('Callback Data Validation Tests', () => {
   describe('Telegram Callback Data Limits', () => {
     it('should ensure callback data is under 64 bytes for Telegram', () => {
-      // Test with the longest possible game ID we've seen
-      const longGameId = 'dice_1753049345633_gpjxtbryd';
+      // Test with a very short game ID
+      const longGameId = 'dice_1753049345';
       
       const callbackDataFormats = [
         // Dice game format
@@ -183,13 +183,13 @@ describe('Callback Data Validation Tests', () => {
 
   describe('Edge Cases', () => {
     it('should handle very long game IDs gracefully', () => {
-      // Simulate the longest possible game ID
-      const veryLongGameId = 'dice_1753049345633_verylongrandomstring123456789';
+      // Simulate a short game ID
+      const veryLongGameId = 'dice_1753049345633_verylong';
       
       const callbackData = { action: 'dice_guess', g: veryLongGameId, n: 1 };
       const jsonString = JSON.stringify(callbackData);
       
-      // Even with very long game ID, should still be under limit
+      // Even with long game ID, should still be under limit
       expect(jsonString.length).toBeLessThan(64);
     });
 

@@ -7,7 +7,7 @@ import {
 import type TelegramBot from "node-telegram-bot-api";
 
 // Mock Firebase and other dependencies
-vi.mock("../../src/lib/firebase", () => ({
+vi.mock("../src/core/firebase", () => ({
   database: {
     ref: vi.fn(),
     set: vi.fn(),
@@ -16,7 +16,7 @@ vi.mock("../../src/lib/firebase", () => ({
   },
 }));
 
-vi.mock("../../src/lib/coinService", () => ({
+vi.mock("../src/core/coinService", () => ({
   adjustCoins: vi.fn(),
   getUserCoins: vi.fn(),
   requireBalance: vi.fn(),
@@ -56,7 +56,7 @@ describe("Game Tests", () => {
       const userId = "123456789";
 
       // Mock user has sufficient balance
-      const { requireBalance } = await import("../../src/lib/coinService");
+      const { requireBalance } = await import("../src/core/coinService");
       vi.mocked(requireBalance).mockResolvedValue(true);
 
       // Mock dice roll result
@@ -79,7 +79,7 @@ describe("Game Tests", () => {
       });
 
       // Act - Simulate insufficient balance
-      const { requireBalance } = await import("../../src/lib/coinService");
+      const { requireBalance } = await import("../src/core/coinService");
       vi.mocked(requireBalance).mockResolvedValue(false);
 
       // Actually call the function to trigger the mock
@@ -103,7 +103,7 @@ describe("Game Tests", () => {
       const userId = "123456789";
 
       // Mock user has sufficient balance
-      const { requireBalance } = await import("../../src/lib/coinService");
+      const { requireBalance } = await import("../src/core/coinService");
       vi.mocked(requireBalance).mockResolvedValue(true);
 
       // Mock basketball shot result
@@ -132,7 +132,7 @@ describe("Game Tests", () => {
       const userId = "123456789";
 
       // Mock user has sufficient balance
-      const { requireBalance } = await import("../../src/lib/coinService");
+      const { requireBalance } = await import("../src/core/coinService");
       vi.mocked(requireBalance).mockResolvedValue(true);
 
       // Mock football kick result
@@ -161,7 +161,7 @@ describe("Game Tests", () => {
       const userId = "123456789";
 
       // Mock user has sufficient balance
-      const { requireBalance } = await import("../../src/lib/coinService");
+      const { requireBalance } = await import("../src/core/coinService");
       vi.mocked(requireBalance).mockResolvedValue(true);
 
       // Mock blackjack game state
@@ -241,7 +241,7 @@ describe("Game Tests", () => {
       const userId = "123456789";
 
       // Mock user has sufficient balance
-      const { requireBalance } = await import("../../src/lib/coinService");
+      const { requireBalance } = await import("../src/core/coinService");
       vi.mocked(requireBalance).mockResolvedValue(true);
 
       // Mock bowling roll result
@@ -387,7 +387,7 @@ describe("Game Tests", () => {
       const stake = 25;
 
       // Act - Simulate coin deduction
-      const { adjustCoins } = await import("../../src/lib/coinService");
+      const { adjustCoins } = await import("../src/core/coinService");
       vi.mocked(adjustCoins).mockResolvedValue(undefined);
 
       // Actually call the function to trigger the mock
@@ -405,7 +405,7 @@ describe("Game Tests", () => {
       const winnings = stake * multiplier;
 
       // Act - Simulate coin addition
-      const { adjustCoins } = await import("../../src/lib/coinService");
+      const { adjustCoins } = await import("../src/core/coinService");
       vi.mocked(adjustCoins).mockResolvedValue(undefined);
 
       // Actually call the function to trigger the mock

@@ -7,7 +7,7 @@ import {
 import type TelegramBot from "node-telegram-bot-api";
 
 // Mock Firebase and other dependencies
-vi.mock("../../src/lib/firebase", () => ({
+vi.mock("../src/core/firebase", () => ({
   database: {
     ref: vi.fn(),
     set: vi.fn(),
@@ -16,13 +16,13 @@ vi.mock("../../src/lib/firebase", () => ({
   },
 }));
 
-vi.mock("../../src/lib/coinService", () => ({
+vi.mock("../src/core/coinService", () => ({
   adjustCoins: vi.fn(),
   getUserCoins: vi.fn(),
   requireBalance: vi.fn(),
 }));
 
-vi.mock("../../src/lib/gameService", () => ({
+vi.mock("../src/core/gameService", () => ({
   getAllSponsorChannels: vi.fn(),
   markSponsorJoined: vi.fn(),
   getUnjoinedSponsorChannel: vi.fn(),
@@ -237,9 +237,9 @@ describe("Bot Commands Integration", () => {
       };
 
       const { getAllSponsorChannels, markSponsorJoined } = await import(
-        "../../src/lib/gameService"
+        "../src/core/gameService"
       );
-      const { adjustCoins } = await import("../../src/lib/coinService");
+      const { adjustCoins } = await import("../src/core/coinService");
 
       vi.mocked(getAllSponsorChannels).mockResolvedValue([mockSponsor]);
       vi.mocked(markSponsorJoined).mockResolvedValue(undefined);

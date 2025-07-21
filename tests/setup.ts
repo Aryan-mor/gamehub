@@ -25,6 +25,14 @@ vi.mock("firebase/database", () => ({
   push: mockPush,
   onValue: mockOnValue,
   off: mockOff,
+  getDatabase: vi.fn(() => ({
+    ref: mockRef,
+    set: mockSet,
+    get: mockGet,
+    push: mockPush,
+    onValue: mockOnValue,
+    off: mockOff,
+  })),
 }));
 
 vi.mock("firebase/app", () => ({
@@ -33,13 +41,14 @@ vi.mock("firebase/app", () => ({
 }));
 
 // Mock the Firebase database instance
-vi.mock("../src/lib/firebase", () => ({
+vi.mock("../src/core/firebase", () => ({
   database: {
     ref: mockRef,
     set: mockSet,
     get: mockGet,
     push: mockPush,
   },
+  default: {},
 }));
 
 // Mock Telegram Bot

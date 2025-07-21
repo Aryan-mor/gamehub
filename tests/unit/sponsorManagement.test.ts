@@ -16,13 +16,13 @@ interface VerificationResult {
 }
 
 // Mock the modules
-vi.mock("../../src/lib/gameService", () => ({
+vi.mock("../src/core/gameService", () => ({
   getAllSponsorChannels: vi.fn(),
   markSponsorJoined: vi.fn(),
   getUnjoinedSponsorChannel: vi.fn(),
 }));
 
-vi.mock("../../src/lib/coinService", () => ({
+vi.mock("../src/core/coinService", () => ({
   adjustCoins: vi.fn(),
   getUser: vi.fn(),
 }));

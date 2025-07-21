@@ -1,210 +1,107 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { ref, set, get, push } from "firebase/database";
+import { ref, get, set, update, remove } from "firebase/database";
+import { GameType, GameStatus, GameResult } from "../../src/core/types";
 
 // Mock Firebase
 vi.mock("firebase/database", () => ({
   ref: vi.fn(),
-  set: vi.fn(),
   get: vi.fn(),
-  push: vi.fn(),
+  set: vi.fn(),
+  update: vi.fn(),
+  remove: vi.fn(),
 }));
+
+
 
 describe("Game Service", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  describe("Sponsor Channel Management", () => {
-    it("should add sponsor channel", async () => {
+  describe("Game Management", () => {
+    it("should create a new game", async () => {
       // Arrange
-      const mockRef = vi.fn();
-      const mockPush = vi.fn().mockReturnValue({ key: "sponsor-1" });
-      const mockSet = vi.fn().mockResolvedValue(undefined);
-
-      vi.mocked(ref).mockReturnValue(mockRef as any);
-      vi.mocked(push).mockReturnValue(mockPush as any);
-      vi.mocked(set).mockImplementation(mockSet);
-
-      // Mock the push function to return the expected structure
-      const mockPushRef = { key: "sponsor-1" };
-      vi.mocked(push).mockReturnValue(mockPushRef as any);
+      vi.mocked(ref).mockReturnValue({} as any);
+      vi.mocked(set).mockResolvedValue(undefined);
 
       // Act
-      const { addSponsorChannel } = await import("../../src/lib/gameService");
-      const result = await addSponsorChannel(
-        "Test Sponsor",
-        "https://t.me/test",
-        "Join us!"
-      );
+      const { createGame } = await import("../../src/core/gameService");
+      await createGame(GameType.DICE, { id: "123", name: "Test User", username: "testuser", coins: 100 }, 10);
 
       // Assert
-      expect(result).toEqual({
-        id: "sponsor-1",
-        name: "Test Sponsor",
-        link: "https://t.me/test",
-        previewText: "Join us!",
-      });
-      expect(result.name).toBe("Test Sponsor");
-      expect(result.link).toBe("https://t.me/test");
-      expect(result.previewText).toBe("Join us!");
       expect(set).toHaveBeenCalled();
     });
 
-    it("should get all sponsor channels", async () => {
+    it("should get a game by ID", async () => {
       // Arrange
-      const mockRef = vi.fn();
-      const mockGet = vi.fn().mockResolvedValue({
+      vi.mocked(ref).mockReturnValue({} as any);
+      vi.mocked(get).mockResolvedValue({
         exists: () => true,
         val: () => ({
-          "sponsor-1": {
-            id: "sponsor-1",
-            name: "Test Sponsor",
-            link: "https://t.me/test",
-            previewText: "Join us!",
-          },
+          id: "game123",
+          type: GameType.DICE,
+          status: GameStatus.PLAYING,
+          players: [],
+          currentPlayerIndex: 0,
+          stake: 10,
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+          data: {},
         }),
+      } as any);
+
+      // Act
+      const { getGame } = await import("../../src/core/gameService");
+      const result = await getGame("game123");
+
+      // Assert
+      expect(result).toBeDefined();
+      expect(get).toHaveBeenCalled();
+    });
+
+    it("should update a game", async () => {
+      // Arrange
+      vi.mocked(ref).mockReturnValue({} as any);
+      vi.mocked(update).mockResolvedValue(undefined);
+
+      // Act
+      const { updateGame } = await import("../../src/core/gameService");
+      await updateGame("game123", { status: GameStatus.PLAYING });
+
+      // Assert
+      expect(update).toHaveBeenCalled();
+    });
+
+    it("should finish a game", async () => {
+      // Arrange
+      vi.mocked(ref).mockReturnValue({} as any);
+      vi.mocked(update).mockResolvedValue(undefined);
+
+      // Act
+      const { finishGame } = await import("../../src/core/gameService");
+      await finishGame("game123", {
+        winner: "player1",
+        loser: "player2",
+        isDraw: false,
+        coinsWon: 10,
+        coinsLost: 10,
       });
 
-      vi.mocked(ref).mockReturnValue(
-        mockRef as unknown as ReturnType<typeof ref>
-      );
-      vi.mocked(get).mockImplementation(mockGet);
-
-      // Act
-      const { getAllSponsorChannels } = await import(
-        "../../src/lib/gameService"
-      );
-      const result = await getAllSponsorChannels();
-
       // Assert
-      expect(result).toHaveLength(1);
-      expect(result[0].id).toBe("sponsor-1");
-      expect(result[0].name).toBe("Test Sponsor");
+      expect(update).toHaveBeenCalled();
     });
 
-    it("should return empty array when no sponsor channels exist", async () => {
+    it("should delete a game", async () => {
       // Arrange
-      const mockRef = vi.fn();
-      const mockGet = vi.fn().mockResolvedValue({
-        exists: () => false,
-        val: () => null,
-      });
-
-      vi.mocked(ref).mockReturnValue(
-        mockRef as unknown as ReturnType<typeof ref>
-      );
-      vi.mocked(get).mockImplementation(mockGet);
+      vi.mocked(ref).mockReturnValue({} as any);
+      vi.mocked(remove).mockResolvedValue(undefined);
 
       // Act
-      const { getAllSponsorChannels } = await import(
-        "../../src/lib/gameService"
-      );
-      const result = await getAllSponsorChannels();
+      const { deleteGame } = await import("../../src/core/gameService");
+      await deleteGame("game123");
 
       // Assert
-      expect(result).toHaveLength(0);
-    });
-
-    it("should mark sponsor as joined", async () => {
-      // Arrange
-      const mockRef = vi.fn();
-      const mockSet = vi.fn().mockResolvedValue(undefined);
-
-      vi.mocked(ref).mockReturnValue(
-        mockRef as unknown as ReturnType<typeof ref>
-      );
-      vi.mocked(set).mockImplementation(mockSet);
-
-      // Act
-      const { markSponsorJoined } = await import("../../src/lib/gameService");
-      await markSponsorJoined("123456789", "sponsor-1");
-
-      // Assert
-      expect(set).toHaveBeenCalledWith(expect.anything(), true);
-    });
-
-    it("should get unjoined sponsor channel", async () => {
-      // Arrange
-      const mockRef = vi.fn();
-      const mockGet = vi
-        .fn()
-        .mockResolvedValueOnce({
-          exists: () => true,
-          val: () => ({
-            "sponsor-1": {
-              id: "sponsor-1",
-              name: "Test Sponsor",
-              link: "https://t.me/test",
-              previewText: "Join us!",
-            },
-            "sponsor-2": {
-              id: "sponsor-2",
-              name: "Test Sponsor 2",
-              link: "https://t.me/test2",
-              previewText: "Join us too!",
-            },
-          }),
-        })
-        .mockResolvedValueOnce({
-          exists: () => true,
-          val: () => ({
-            "sponsor-1": true,
-          }),
-        });
-
-      vi.mocked(ref).mockReturnValue(
-        mockRef as unknown as ReturnType<typeof ref>
-      );
-      vi.mocked(get).mockImplementation(mockGet);
-
-      // Act
-      const { getUnjoinedSponsorChannel } = await import(
-        "../../src/lib/gameService"
-      );
-      const result = await getUnjoinedSponsorChannel("123456789");
-
-      // Assert
-      expect(result).not.toBeNull();
-      expect(result?.id).toBe("sponsor-2");
-      expect(result?.name).toBe("Test Sponsor 2");
-    });
-
-    it("should return null when all sponsors are joined", async () => {
-      // Arrange
-      const mockRef = vi.fn();
-      const mockGet = vi
-        .fn()
-        .mockResolvedValueOnce({
-          exists: () => true,
-          val: () => ({
-            "sponsor-1": {
-              id: "sponsor-1",
-              name: "Test Sponsor",
-              link: "https://t.me/test",
-              previewText: "Join us!",
-            },
-          }),
-        })
-        .mockResolvedValueOnce({
-          exists: () => true,
-          val: () => ({
-            "sponsor-1": true,
-          }),
-        });
-
-      vi.mocked(ref).mockReturnValue(
-        mockRef as unknown as ReturnType<typeof ref>
-      );
-      vi.mocked(get).mockImplementation(mockGet);
-
-      // Act
-      const { getUnjoinedSponsorChannel } = await import(
-        "../../src/lib/gameService"
-      );
-      const result = await getUnjoinedSponsorChannel("123456789");
-
-      // Assert
-      expect(result).toBeNull();
+      expect(remove).toHaveBeenCalled();
     });
   });
 });
