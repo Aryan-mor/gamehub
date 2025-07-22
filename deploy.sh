@@ -11,10 +11,22 @@ pnpm install --frozen-lockfile --prod
 # Build the application (if not already built by CI/CD)
 if [ ! -d "dist" ]; then
   echo "Building application..."
-pnpm run build
+  pnpm run build
 fi
 
-# Restart the application
-pm2 restart all || pm2 start all
+# Create logs directory
+mkdir -p logs
 
-echo "Deployment completed successfully!" 
+# Stop and delete existing process
+pm2 stop gamehub-bot || true
+pm2 delete gamehub-bot || true
+
+# Start the application with PM2
+pm2 start ecosystem.config.js
+
+# Save PM2 configuration
+pm2 save
+
+echo "Deployment completed successfully!"
+echo "Bot status:"
+pm2 status 

@@ -197,7 +197,8 @@ jobs:
             echo "Node.js version: $(node --version)"
             
             # Stop the current application
-            pm2 stop all || true
+            pm2 stop gamehub-bot || true
+            pm2 delete gamehub-bot || true
             
             # Backup current dist folder
             if [ -d "dist" ]; then
@@ -214,6 +215,15 @@ jobs:
           target: "/opt/gamehub/dist"
           strip_components: 1
 
+      - name: Upload ecosystem config
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          source: "ecosystem.config.js"
+          target: "/opt/gamehub/"
+
       - name: Finalize deployment
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -223,13 +233,21 @@ jobs:
           script: |
             cd /opt/gamehub
             
+            # Create logs directory
+            mkdir -p logs
+            
             # Install dependencies
             pnpm install --frozen-lockfile --prod
             
-            # Start the application
-            pm2 start all || pm2 restart all
+            # Start the application with PM2
+            pm2 start ecosystem.config.js
+            
+            # Save PM2 configuration
+            pm2 save
             
             # Clean up old backups (keep last 3)
             ls -t dist.backup.* | tail -n +4 | xargs rm -rf || true
             
             echo "Deployment completed successfully!"
+            echo "Bot status:"
+            pm2 status
