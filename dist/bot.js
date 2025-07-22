@@ -38,6 +38,12 @@ bot.use(async (ctx, next) => {
     }
 });
 (0, trivia_1.registerTriviaHandlers)(bot);
+bot.use(async (ctx, next) => {
+    if (ctx.callbackQuery) {
+        console.log(`🔘 Callback received from ${ctx.from?.id} (${ctx.from?.username}): ${ctx.callbackQuery.data || 'No data'}`);
+    }
+    await next();
+});
 bot.command('start', async (ctx) => {
     try {
         const userInfo = (0, telegramHelpers_1.extractUserInfo)(ctx);
@@ -141,7 +147,7 @@ bot.callbackQuery(/.*"action":"back".*/, async (ctx) => {
             action: 'back'
         });
         await (0, telegramHelpers_1.answerCallbackQuery)(bot, ctx.callbackQuery.id);
-        let welcome = `🧠 <b>Welcome to GameHub - Trivia Edition!</b>\n\n🎯 Challenge your friends in competitive 2-player trivia games!\n\n💰 Earn and claim daily Coins with /freecoin!\n\n🎯 Choose an action below:`;
+        const welcome = `🧠 <b>Welcome to GameHub - Trivia Edition!</b>\n\n🎯 Challenge your friends in competitive 2-player trivia games!\n\n💰 Earn and claim daily Coins with /freecoin!\n\n🎯 Choose an action below:`;
         const buttons = [
             { text: '🧠 Start Trivia', callbackData: { action: 'startgame' } },
             { text: '🪙 Free Coin', callbackData: { action: 'freecoin' } },
@@ -332,9 +338,9 @@ const startBot = async () => {
             { command: 'bowling', description: 'Play bowling game' },
         ]);
         console.log('✅ Bot commands set successfully');
-        await bot.start();
         console.log('🎮 GameHub bot is running!');
         (0, logger_1.logFunctionEnd)('startBot', {}, {});
+        await bot.start();
     }
     catch (error) {
         (0, logger_1.logError)('startBot', error, {});
@@ -342,7 +348,42 @@ const startBot = async () => {
         process.exit(1);
     }
 };
-process.once('SIGINT', () => bot.stop());
-process.once('SIGTERM', () => bot.stop());
+let isShuttingDown = false;
+const gracefulShutdown = (signal) => {
+    if (isShuttingDown) {
+        console.log(`🛑 Force shutting down due to ${signal}...`);
+        process.exit(1);
+    }
+    isShuttingDown = true;
+    console.log(`\n🛑 Received ${signal}. Shutting down gracefully...`);
+    process.exit(0);
+};
+process.once('SIGINT', () => gracefulShutdown('SIGINT'));
+process.once('SIGTERM', () => gracefulShutdown('SIGTERM'));
 startBot();
+bot.on('inline_query', async (ctx) => {
+    const query = ctx.inlineQuery.query;
+    if (query.startsWith('trivia_')) {
+        const gameId = query.substring(7);
+        if (gameId) {
+            const results = [
+                {
+                    type: 'article',
+                    id: `share_${gameId}`,
+                    title: '🧠 Share Trivia Game',
+                    input_message_content: {
+                        message_text: `🧠 <b>Trivia Challenge!</b>\n\nI've started a new trivia game. Click below to join and test your knowledge!`,
+                        parse_mode: 'HTML',
+                    },
+                    reply_markup: {
+                        inline_keyboard: [
+                            [{ text: '🎮 Join Game', callback_data: JSON.stringify({ a: 'tj', g: gameId }) }]
+                        ]
+                    }
+                }
+            ];
+            await ctx.answerInlineQuery(results, { cache_time: 0 });
+        }
+    }
+});
 //# sourceMappingURL=bot.js.map

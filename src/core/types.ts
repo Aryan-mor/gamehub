@@ -45,6 +45,12 @@ export enum GameStatus {
   CANCELLED = 'cancelled'
 }
 
+export enum TriviaRoundStatus {
+  WAITING_FOR_ANSWERS = 'waiting_for_answers',
+  CALCULATING_RESULTS = 'calculating_results',
+  CATEGORY_COMPLETE = 'category_complete'
+}
+
 export interface GameResult {
   winner: string | undefined;
   loser: string | undefined;
@@ -107,7 +113,7 @@ export interface TriviaGameData {
     startTime: number; // When they started this category
   }};
   categoryQuestions: TriviaQuestion[]; // All 5 questions for the current category
-  roundStatus: 'waiting_for_answers' | 'calculating_results' | 'category_complete';
+  roundStatus: TriviaRoundStatus;
 }
 
 export interface TriviaGameState extends Omit<GameState, 'data'> {

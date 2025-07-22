@@ -11,7 +11,7 @@ export interface TriviaGameConfig {
 
 export const TRIVIA_CONFIG: TriviaGameConfig = {
   roundsPerGame: 6,
-  questionsPerRound: 3,
+  questionsPerRound: 5,
   questionTimeoutMs: 10000, // 10 seconds
   winReward: 20,
   drawReward: 10,

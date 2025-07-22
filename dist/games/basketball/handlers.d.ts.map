@@ -1,1 +1,1 @@
-{"version":3,"file":"handlers.d.ts","sourceRoot":"","sources":["../../../src/games/basketball/handlers.ts"],"names":[],"mappings":"AACA,OAAO,EAAE,GAAG,EAAE,MAAM,QAAQ,CAAC;AAE7B,eAAO,MAAM,0BAA0B,GAAI,MAAM,GAAG,KAAG,IAGtD,CAAC"}
+{"version":3,"file":"handlers.d.ts","sourceRoot":"","sources":["../../../src/games/basketball/handlers.ts"],"names":[],"mappings":"AAGA,eAAO,MAAM,0BAA0B,QAAO,IAG7C,CAAC"}

@@ -9,10 +9,12 @@ import {
   getCurrentQuestionForPlayer,
   answerQuestionForPlayer,
   checkCategoryCompletion,
-  QUESTIONS_PER_CATEGORY
+  QUESTIONS_PER_CATEGORY,
+  TOTAL_ROUNDS
 } from './service';
 import { getGame } from '../../core/gameService';
 import { TRIVIA_CATEGORIES } from './types';
+import { TriviaRoundStatus } from '../../core/types';
 
 export const registerTriviaHandlers = (bot: Bot) => {
   // Handle /trivia command
@@ -67,6 +69,14 @@ export const registerTriviaHandlers = (bot: Bot) => {
               await handleAnswerQuestion(bot, userInfo, data.gameId, data.answer);
             } else if (data.g && data.ans && typeof data.g === 'string' && typeof data.ans === 'string') {
               await handleAnswerQuestion(bot, userInfo, data.g, data.ans);
+            }
+            break;
+          case 'trivia_continue':
+          case 'tcont':
+            if (data.gameId && typeof data.gameId === 'string') {
+              await handleContinueToNextRound(bot, userInfo, data.gameId);
+            } else if (data.g && typeof data.g === 'string') {
+              await handleContinueToNextRound(bot, userInfo, data.g);
             }
             break;
           case 'trivia_play_again':
@@ -154,7 +164,7 @@ const handleGameStarted = async (bot: Bot, game: any) => {
   try {
     const currentPlayer = game.players[game.data.currentPlayerIndex];
     const message = `🎯 <b>Trivia Game Started!</b>\n\n` +
-      `Round ${game.data.currentRound}/6\n\n` +
+      `Round ${game.data.currentRound}/${TOTAL_ROUNDS}\n\n` +
       `It's <b>${currentPlayer.name}</b>'s turn to select a category.`;
     
     const categoryButtons = TRIVIA_CATEGORIES.map(category => {
@@ -251,7 +261,7 @@ const handleShowQuestionForPlayer = async (bot: Bot, game: any, playerId: string
       questionNumber: playerProgress.currentQuestionIndex + 1
     });
     
-    const message = `❓ <b>Question ${playerProgress.currentQuestionIndex + 1}/5</b>\n\n` +
+          const message = `❓ <b>Question ${playerProgress.currentQuestionIndex + 1}/${QUESTIONS_PER_CATEGORY}</b>\n\n` +
       `<b>${question.question}</b>\n\n` +
       `Category: ${question.category}\n` +
       `⏱ Answer at your own pace`;
@@ -309,7 +319,7 @@ const handleShowQuestion = async (bot: Bot, game: any) => {
     });
     
     const questionNumber = (game.data.questionsAnsweredInCurrentCategory || 0) + 1;
-    const message = `❓ <b>Question ${questionNumber}/5</b>\n\n` +
+          const message = `❓ <b>Question ${questionNumber}/${QUESTIONS_PER_CATEGORY}</b>\n\n` +
       `<b>${question.question}</b>\n\n` +
       `Category: ${question.category}\n` +
       `⏱ Time limit: 10 seconds`;
@@ -357,6 +367,52 @@ const handleShowQuestion = async (bot: Bot, game: any) => {
 };
 */
 
+const handleShowPersonalCategorySummary = async (bot: Bot, game: any, playerId: string) => {
+  try {
+    logFunctionStart('handleShowPersonalCategorySummary', { gameId: game.id, playerId });
+    
+    const currentCategory = game.data.selectedCategories[game.data.currentCategoryIndex];
+    const playerProgress = game.data.playerQuestionProgress[playerId];
+    const player = game.players.find((p: any) => p.id === playerId);
+    
+    if (!playerProgress || !player) {
+      throw new Error('Player progress not found');
+    }
+    
+    let message = `🎉 <b>Category Complete: ${currentCategory}</b>\n\n`;
+          message += `You finished all ${QUESTIONS_PER_CATEGORY} questions!\n\n`;
+    message += `<b>Your Results:</b>\n`;
+    
+    let correctAnswers = 0;
+    for (let i = 0; i < QUESTIONS_PER_CATEGORY; i++) {
+      const answer = playerProgress.answers[i];
+      if (answer) {
+        const status = answer.isCorrect ? '✅' : '❌';
+        const question = game.data.categoryQuestions[i];
+        message += `  ${status} Q${i + 1}: ${answer.answer}`;
+        
+        if (!answer.isCorrect) {
+          message += ` (Correct: ${question.correctAnswer})`;
+        }
+        message += `\n`;
+        
+        if (answer.isCorrect) correctAnswers++;
+      }
+    }
+    
+    message += `\n📊 <b>Your Score: ${correctAnswers}/${QUESTIONS_PER_CATEGORY} correct</b>\n`;
+    message += `🏆 <b>Total Score: ${game.data.scores[playerId] || 0} points</b>\n\n`;
+    
+    message += `⏳ Waiting for other player to finish...`;
+    await updateOrSendMessage(bot, parseInt(playerId), message, undefined, playerId, 'trivia_waiting_answer');
+    
+    logFunctionEnd('handleShowPersonalCategorySummary', { gameId: game.id, playerId, correctAnswers });
+  } catch (error) {
+    logError('handleShowPersonalCategorySummary', error as Error, { gameId: game.id, playerId });
+    throw error;
+  }
+};
+
 const handleAnswerQuestion = async (bot: Bot, userInfo: { userId: string; chatId: number }, gameId: string, answerCode: string) => {
   try {
     logFunctionStart('handleAnswerQuestion', { userId: userInfo.userId, gameId, answerCode });
@@ -368,7 +424,7 @@ const handleAnswerQuestion = async (bot: Bot, userInfo: { userId: string; chatId
     }
     
     // Check if category is complete and waiting for next round
-    if (game.data.roundStatus === 'category_complete') {
+    if (game.data.roundStatus === TriviaRoundStatus.CATEGORY_COMPLETE) {
       // Show category selection for next player
       const nextPlayer = game.players[game.data.currentPlayerIndex as number];
       const message = `📊 Category complete! Next: <b>${nextPlayer.name}</b> selects category`;
@@ -418,17 +474,9 @@ const handleAnswerQuestion = async (bot: Bot, userInfo: { userId: string; chatId
     const result = await answerQuestionForPlayer(gameId, userInfo.userId, actualAnswer);
     logFunctionEnd('handleAnswerQuestion_call_answerQuestionForPlayer', { userId: userInfo.userId, gameId, actualAnswer, result });
 
-    // Show result to player
-    const status = result.isCorrect ? '✅' : '❌';
-    let message = `${status} You answered: <b>${actualAnswer}</b>\n` +
-      `Correct answer: <b>${currentQuestion.correctAnswer}</b>\n\n`;
-    
     if (result.isFinished) {
-      message += `🎉 <b>Category complete!</b>\n` +
-        `You finished all 5 questions.\n\n` +
-        `Waiting for other player to finish...`;
-      
-      await updateOrSendMessage(bot, userInfo.chatId, message, undefined, userInfo.userId, 'trivia_waiting_answer');
+      // Player finished all questions - show personal category summary
+      await handleShowPersonalCategorySummary(bot, game, userInfo.userId);
       
       // Check if both players finished
       const completionResult = await checkCategoryCompletion(gameId);
@@ -448,26 +496,63 @@ const handleAnswerQuestion = async (bot: Bot, userInfo: { userId: string; chatId
         }
       }
     } else {
-      // Show next question
-      message += `📝 <b>Next question:</b>`;
-      await updateOrSendMessage(bot, userInfo.chatId, message, undefined, userInfo.userId, 'trivia_waiting_answer');
-      
-      // Send next question after a short delay
-      setTimeout(async () => {
-        try {
-          const updatedGame = await getGame(gameId);
-          if (updatedGame) {
-            await handleShowQuestionForPlayer(bot, updatedGame, userInfo.userId);
-          }
-        } catch (error) {
-          logError('handleAnswerQuestion_show_next_question', error as Error, { gameId, userId: userInfo.userId });
-        }
-      }, 1000);
+      // Send next question immediately (async)
+      const updatedGame = await getGame(gameId);
+      if (updatedGame) {
+        await handleShowQuestionForPlayer(bot, updatedGame, userInfo.userId);
+      }
     }
 
     logFunctionEnd('handleAnswerQuestion', { gameId, answer: actualAnswer, isCorrect: result.isCorrect, isFinished: result.isFinished }, { userId: userInfo.userId });
   } catch (error) {
     logError('handleAnswerQuestion', error as Error, { userId: userInfo.userId, gameId, answerCode });
+    throw error;
+  }
+};
+
+const handleContinueToNextRound = async (bot: Bot, userInfo: { userId: string; chatId: number }, gameId: string) => {
+  try {
+    logFunctionStart('handleContinueToNextRound', { userId: userInfo.userId, gameId });
+    
+    const game = await getGame(gameId);
+    if (!game) {
+      throw new Error('Game not found');
+    }
+    
+    const nextPlayer = game.players[game.data.currentPlayerIndex as number];
+    const message = `📊 Category complete! Next: <b>${nextPlayer.name}</b> selects category`;
+    
+    const categoryButtons = TRIVIA_CATEGORIES.map(category => {
+      // Map full category names to short codes
+      const categoryMap: { [key: string]: string } = {
+        '🌍 Geography': 'geo',
+        '📚 Literature': 'lit',
+        '⚽ Sports': 'spt',
+        '🎬 Entertainment': 'ent',
+        '🔬 Science': 'sci',
+        '🎨 Art & Culture': 'art',
+        '🍔 Food & Drink': 'fod',
+        '🌍 History': 'his',
+        '🎵 Music': 'mus',
+        '💻 Technology': 'tec'
+      };
+      
+      return {
+        text: category,
+        callbackData: { a: 'tc', g: game.id, c: categoryMap[category] || category }
+      };
+    });
+    
+    const keyboard = createOptimizedKeyboard(categoryButtons, true);
+    
+    // Send to both players
+    for (const player of game.players) {
+      await updateOrSendMessage(bot, parseInt(player.id), message, keyboard, player.id, 'trivia_round_result');
+    }
+    
+    logFunctionEnd('handleContinueToNextRound', { gameId }, { userId: userInfo.userId });
+  } catch (error) {
+    logError('handleContinueToNextRound', error as Error, { userId: userInfo.userId, gameId });
     throw error;
   }
 };
@@ -478,7 +563,7 @@ const handleShowRoundResult = async (bot: Bot, game: any) => {
     const playerProgress = game.data.playerQuestionProgress || {};
     
     let message = `📊 <b>Category Complete: ${currentCategory}</b>\n\n`;
-    message += `All 5 questions completed!\n\n`;
+    message += `All players finished!\n\n`;
     
     // Show results for each player
     for (const player of game.players) {
@@ -491,46 +576,38 @@ const handleShowRoundResult = async (bot: Bot, game: any) => {
           const answer = progress.answers[i];
           if (answer) {
             const status = answer.isCorrect ? '✅' : '❌';
-            message += `  ${status} Q${i + 1}: ${answer.answer}\n`;
+            const question = game.data.categoryQuestions[i];
+            message += `  ${status} Q${i + 1}: ${answer.answer}`;
+            
+            if (!answer.isCorrect) {
+              message += ` (Correct: ${question.correctAnswer})`;
+            }
+            message += `\n`;
+            
             if (answer.isCorrect) correctAnswers++;
           }
         }
-        message += `  Total: ${correctAnswers}/5 correct\n`;
+        message += `  Total: ${correctAnswers}/${QUESTIONS_PER_CATEGORY} correct\n`;
       }
       
       message += `  Score: ${game.data.scores[player.id] || 0} points\n\n`;
     }
     
     // Check if game is finished (6 rounds = 3 categories per player)
-    if (game.data.currentRound >= 6) {
+    if (game.data.currentRound >= TOTAL_ROUNDS) {
       await handleGameFinished(bot, game);
     } else {
-      // Continue to next round
+      // Show continue button
       const nextPlayer = game.players[game.data.currentPlayerIndex];
-      message += `Next: <b>${nextPlayer.name}</b> selects category`;
+      message += `Next: <b>${nextPlayer.name}</b> selects category\n\n`;
+      message += `Click "Continue" to proceed to the next round!`;
       
-      const categoryButtons = TRIVIA_CATEGORIES.map(category => {
-        // Map full category names to short codes
-        const categoryMap: { [key: string]: string } = {
-          '🌍 Geography': 'geo',
-          '📚 Literature': 'lit',
-          '⚽ Sports': 'spt',
-          '🎬 Entertainment': 'ent',
-          '🔬 Science': 'sci',
-          '🎨 Art & Culture': 'art',
-          '🍔 Food & Drink': 'fod',
-          '🌍 History': 'his',
-          '🎵 Music': 'mus',
-          '💻 Technology': 'tec'
-        };
-        
-        return {
-          text: category,
-          callbackData: { a: 'tc', g: game.id, c: categoryMap[category] || category }
-        };
-      });
+      const continueButton = [{
+        text: '🔄 Continue',
+        callbackData: { a: 'tcont', g: game.id }
+      }];
       
-      const keyboard = createOptimizedKeyboard(categoryButtons, true);
+      const keyboard = createOptimizedKeyboard(continueButton, true);
       
       // Send to both players
       for (const player of game.players) {

@@ -83,15 +83,33 @@ export interface TriviaGameData {
         [playerId: string]: number;
     };
     selectedCategories: string[];
-    currentQuestion?: TriviaQuestion;
+    currentQuestion?: TriviaQuestion | null;
     playerAnswers: {
         [playerId: string]: {
             answer: string;
             responseTime: number;
         };
     };
-    roundStartTime?: number;
-    questionTimeout?: number;
+    roundStartTime?: number | null;
+    questionTimeout?: number | null;
+    questionsAnsweredInCurrentCategory: number;
+    currentCategoryIndex: number;
+    playerQuestionProgress: {
+        [playerId: string]: {
+            currentQuestionIndex: number;
+            answers: {
+                [questionIndex: number]: {
+                    answer: string;
+                    responseTime: number;
+                    isCorrect: boolean;
+                };
+            };
+            isFinished: boolean;
+            startTime: number;
+        };
+    };
+    categoryQuestions: TriviaQuestion[];
+    roundStatus: 'waiting_for_answers' | 'calculating_results' | 'category_complete';
 }
 export interface TriviaGameState extends Omit<GameState, 'data'> {
     type: GameType.TRIVIA;

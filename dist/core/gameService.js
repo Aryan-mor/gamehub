@@ -10,7 +10,7 @@ const createGame = async (gameType, creator, stake) => {
     try {
         if (!firebase_1.database)
             throw new Error('Firebase not initialized');
-        const gameId = `${gameType}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        const gameId = `${gameType}_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
         const game = {
             id: gameId,
             type: gameType,

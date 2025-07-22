@@ -7,6 +7,7 @@ import {
   TriviaQuestion, 
   GameType, 
   GameStatus,
+  TriviaRoundStatus,
   TRIVIA_CATEGORIES
 } from '../../core/types';
 import { 
@@ -584,15 +585,18 @@ export const createTriviaGame = async (creatorId: string): Promise<TriviaGameSta
       currentCategoryIndex: 0,
       playerQuestionProgress: {},
       categoryQuestions: [],
-      roundStatus: 'waiting_for_answers',
+      roundStatus: TriviaRoundStatus.WAITING_FOR_ANSWERS,
     };
 
-    const updatedGame = await updateGame(game.id, {
+    // Fire and forget Firebase update for better performance
+    updateGame(game.id, {
       data: castTriviaData(triviaData)
+    }).catch(error => {
+      logError('createTriviaGame_firebase_update', error as Error, { gameId: game.id, creatorId });
     });
     
     logFunctionEnd('createTriviaGame', { gameId: game.id }, { creatorId });
-    return castToTriviaGameState(updatedGame);
+    return castToTriviaGameState(game);
   } catch (error) {
     logError('createTriviaGame', error as Error, { creatorId });
     throw error;
@@ -643,14 +647,17 @@ export const joinTriviaGame = async (gameId: string, playerId: string): Promise<
       triviaGame.data.roundStartTime = Date.now();
     }
     
-    const updatedGame = await updateGame(gameId, {
+    // Fire and forget Firebase update for better performance
+    updateGame(gameId, {
       players: triviaGame.players,
       status: triviaGame.status,
       data: castTriviaData(triviaGame.data)
+    }).catch(error => {
+      logError('joinTriviaGame_firebase_update', error as Error, { gameId, playerId });
     });
     
     logFunctionEnd('joinTriviaGame', { gameId }, { playerId });
-    return castToTriviaGameState(updatedGame);
+    return castToTriviaGameState(triviaGame);
   } catch (error) {
     logError('joinTriviaGame', error as Error, { gameId, playerId });
     throw error;
@@ -699,7 +706,7 @@ export const selectCategory = async (gameId: string, playerId: string, category:
     
     // Initialize the independent question system
     triviaGame.data.categoryQuestions = selectedQuestions;
-    triviaGame.data.roundStatus = 'waiting_for_answers';
+    triviaGame.data.roundStatus = TriviaRoundStatus.WAITING_FOR_ANSWERS;
     triviaGame.data.roundStartTime = Date.now();
     
     // Initialize player progress for both players
@@ -719,12 +726,15 @@ export const selectCategory = async (gameId: string, playerId: string, category:
     triviaGame.data.questionTimeout = null;
     triviaGame.data.questionsAnsweredInCurrentCategory = 0;
     
-    const updatedGame = await updateGame(gameId, {
+    // Fire and forget Firebase update for better performance
+    updateGame(gameId, {
       data: castTriviaData(triviaGame.data)
+    }).catch(error => {
+      logError('selectCategory_firebase_update', error as Error, { gameId, playerId, category });
     });
     
     logFunctionEnd('selectCategory', { gameId, category, questionsCount: selectedQuestions.length }, { playerId });
-    return castToTriviaGameState(updatedGame);
+    return castToTriviaGameState(triviaGame);
   } catch (error) {
     logError('selectCategory', error as Error, { gameId, playerId, category });
     throw error;
@@ -1072,11 +1082,14 @@ export const answerQuestionForPlayer = async (gameId: string, playerId: string, 
       
       if (allPlayersFinished) {
         // Both players finished, calculate round results
-        triviaGame.data.roundStatus = 'calculating_results';
+        triviaGame.data.roundStatus = TriviaRoundStatus.CALCULATING_RESULTS;
       }
       
-      await updateGame(gameId, {
+      // Fire and forget Firebase update for better performance
+      updateGame(gameId, {
         data: castTriviaData(triviaGame.data)
+      }).catch(error => {
+        logError('answerQuestionForPlayer_firebase_update', error as Error, { gameId, playerId });
       });
       
       logFunctionEnd('answerQuestionForPlayer', { gameId, playerId, isCorrect, isFinished: true });
@@ -1085,8 +1098,11 @@ export const answerQuestionForPlayer = async (gameId: string, playerId: string, 
       // Get next question
       const nextQuestion = triviaGame.data.categoryQuestions[playerProgress.currentQuestionIndex];
       
-      await updateGame(gameId, {
+      // Fire and forget Firebase update for better performance
+      updateGame(gameId, {
         data: castTriviaData(triviaGame.data)
+      }).catch(error => {
+        logError('answerQuestionForPlayer_firebase_update', error as Error, { gameId, playerId });
       });
       
       logFunctionEnd('answerQuestionForPlayer', { gameId, playerId, isCorrect, isFinished: false, nextQuestionIndex: playerProgress.currentQuestionIndex });
@@ -1112,7 +1128,7 @@ export const checkCategoryCompletion = async (gameId: string): Promise<{ isCompl
       triviaGame.data.playerQuestionProgress[player.id]?.isFinished
     );
     
-    if (allPlayersFinished && triviaGame.data.roundStatus === 'calculating_results') {
+    if (allPlayersFinished && triviaGame.data.roundStatus === TriviaRoundStatus.CALCULATING_RESULTS) {
       // Check if game is complete (6 rounds = 3 categories per player)
       if (triviaGame.data.currentRound >= TOTAL_ROUNDS) {
         await finishTriviaGame(triviaGame);
@@ -1123,10 +1139,13 @@ export const checkCategoryCompletion = async (gameId: string): Promise<{ isCompl
       // Move to next round
       triviaGame.data.currentRound++;
       triviaGame.data.currentPlayerIndex = (triviaGame.data.currentPlayerIndex + 1) % triviaGame.players.length;
-      triviaGame.data.roundStatus = 'category_complete';
+      triviaGame.data.roundStatus = TriviaRoundStatus.CATEGORY_COMPLETE;
       
-      await updateGame(gameId, {
+      // Fire and forget Firebase update for better performance
+      updateGame(gameId, {
         data: castTriviaData(triviaGame.data)
+      }).catch(error => {
+        logError('checkCategoryCompletion_firebase_update', error as Error, { gameId });
       });
       
       logFunctionEnd('checkCategoryCompletion', { gameId, isComplete: true, shouldProceedToNextRound: true, nextRound: triviaGame.data.currentRound });
