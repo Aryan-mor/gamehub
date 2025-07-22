@@ -13,7 +13,7 @@ export const createGame = async (
   try {
     if (!database) throw new Error('Firebase not initialized');
     
-    const gameId = `${gameType}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const gameId = `${gameType}_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
     const game: GameState = {
       id: gameId,
       type: gameType,

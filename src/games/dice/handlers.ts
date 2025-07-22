@@ -1,8 +1,9 @@
 import { Bot } from 'grammy';
 import { logFunctionStart, logFunctionEnd, logError } from '../../core/logger';
-import { extractUserInfo, sendMessage, createInlineKeyboard, parseCallbackData, answerCallbackQuery } from '../../core/telegramHelpers';
+import { extractUserInfo, sendMessage, parseCallbackData, answerCallbackQuery } from '../../core/telegramHelpers';
 import { startDiceGame, handleDiceTurn } from './index';
 import { getGame } from '../../core/gameService';
+import { updateGameMessage, createOptimizedKeyboard } from '../../core/interfaceHelpers';
 
 export const registerDiceHandlers = (bot: Bot): void => {
   logFunctionStart('registerDiceHandlers', {});
@@ -13,16 +14,17 @@ export const registerDiceHandlers = (bot: Bot): void => {
       const userInfo = extractUserInfo(ctx);
       logFunctionStart('diceCommand', { userId: userInfo.userId });
       
-      const stakeKeyboard = createInlineKeyboard([
+      const buttons = [
         { text: '2 Coins', callbackData: { action: 'dice_stake', stake: 2 } },
         { text: '5 Coins', callbackData: { action: 'dice_stake', stake: 5 } },
         { text: '10 Coins', callbackData: { action: 'dice_stake', stake: 10 } },
         { text: '20 Coins', callbackData: { action: 'dice_stake', stake: 20 } },
-      ]);
+      ];
+      const stakeKeyboard = createOptimizedKeyboard(buttons, true);
       
-      await sendMessage(bot, userInfo.chatId, 
-        '🎲 Dice Guess Game\n\nChoose your stake amount:',
-        { replyMarkup: stakeKeyboard }
+      await updateGameMessage(bot, userInfo.chatId, 
+        '🎲 <b>Dice Game</b>\n\nGuess the dice number!\n\nChoose your stake amount:',
+        stakeKeyboard, userInfo.userId, 'dice', 'stake_selection'
       );
       
       logFunctionEnd('diceCommand', {}, { userId: userInfo.userId });
@@ -51,18 +53,19 @@ export const registerDiceHandlers = (bot: Bot): void => {
         return;
       }
       
-      const guessKeyboard = createInlineKeyboard([
+      const buttons = [
         { text: '1', callbackData: { action: 'dice_guess', g: result.gameId, n: 1 } },
         { text: '2', callbackData: { action: 'dice_guess', g: result.gameId, n: 2 } },
         { text: '3', callbackData: { action: 'dice_guess', g: result.gameId, n: 3 } },
         { text: '4', callbackData: { action: 'dice_guess', g: result.gameId, n: 4 } },
         { text: '5', callbackData: { action: 'dice_guess', g: result.gameId, n: 5 } },
         { text: '6', callbackData: { action: 'dice_guess', g: result.gameId, n: 6 } },
-      ]);
+      ];
+      const guessKeyboard = createOptimizedKeyboard(buttons);
       
-      await sendMessage(bot, userInfo.chatId,
-        `🎲 Dice Game Started!\n\n💰 Stake: ${stake} Coins\n\nGuess the dice number (1-6):`,
-        { replyMarkup: guessKeyboard }
+      await updateGameMessage(bot, userInfo.chatId,
+        `🎲 <b>Dice Game Started!</b>\n\n💰 Stake: <b>${stake} Coins</b>\n\nGuess the dice number (1-6):`,
+        guessKeyboard, userInfo.userId, 'dice', 'option_selection', result.gameId, stake
       );
       
       logFunctionEnd('diceStakeCallback', { success: true }, { userId: userInfo.userId, stake });
@@ -107,10 +110,10 @@ export const registerDiceHandlers = (bot: Bot): void => {
         ]
       };
       
-      await sendMessage(bot, userInfo.chatId, message, { 
-        parseMode: 'HTML',
-        replyMarkup: playAgainKeyboard
-      });
+      // Get stake from the game
+      const game = await getGame(gameId);
+      const gameStake = game?.stake || 0;
+      await updateGameMessage(bot, userInfo.chatId, message, playAgainKeyboard, userInfo.userId, 'dice', 'result', gameId, gameStake);
       
       logFunctionEnd('diceGuessCallback', { success: true }, { userId: userInfo.userId, gameId, guess });
     } catch (error) {
@@ -136,16 +139,17 @@ export const registerDiceHandlers = (bot: Bot): void => {
       
       if (callbackData === 'dice_play_again_restart') {
         // Start over - show stake selection
-        const stakeKeyboard = createInlineKeyboard([
+        const buttons = [
           { text: '2 Coins', callbackData: { action: 'dice_stake', stake: 2 } },
           { text: '5 Coins', callbackData: { action: 'dice_stake', stake: 5 } },
           { text: '10 Coins', callbackData: { action: 'dice_stake', stake: 10 } },
           { text: '20 Coins', callbackData: { action: 'dice_stake', stake: 20 } },
-        ]);
+        ];
+        const stakeKeyboard = createOptimizedKeyboard(buttons, true);
         
-        await sendMessage(bot, userInfo.chatId, 
-          '🎲 Dice Guess Game\n\nChoose your stake amount:',
-          { replyMarkup: stakeKeyboard }
+        await updateGameMessage(bot, userInfo.chatId, 
+          '🎲 <b>Dice Game</b>\n\nGuess the dice number!\n\nChoose your stake amount:',
+          stakeKeyboard, userInfo.userId, 'dice', 'stake_selection'
         );
       } else {
         // Parse callback data for same stake or new guess
@@ -200,18 +204,19 @@ export const registerDiceHandlers = (bot: Bot): void => {
           
           // Show guess selection keyboard
           console.log('🔍 DEBUG - Taking NEW GUESS path');
-          const guessKeyboard = createInlineKeyboard([
+          const buttons = [
             { text: '1', callbackData: { action: 'dice_guess', g: result.gameId, n: 1 } },
             { text: '2', callbackData: { action: 'dice_guess', g: result.gameId, n: 2 } },
             { text: '3', callbackData: { action: 'dice_guess', g: result.gameId, n: 3 } },
             { text: '4', callbackData: { action: 'dice_guess', g: result.gameId, n: 4 } },
             { text: '5', callbackData: { action: 'dice_guess', g: result.gameId, n: 5 } },
             { text: '6', callbackData: { action: 'dice_guess', g: result.gameId, n: 6 } },
-          ]);
+          ];
+          const guessKeyboard = createOptimizedKeyboard(buttons);
           
-          await sendMessage(bot, userInfo.chatId,
-            `🎲 Dice Game Started!\n\n💰 Stake: ${actualStake} Coins\n\nGuess the dice number (1-6):`,
-            { replyMarkup: guessKeyboard }
+          await updateGameMessage(bot, userInfo.chatId,
+            `🎲 <b>Dice Game Started!</b>\n\n💰 Stake: <b>${actualStake} Coins</b>\n\nGuess the dice number (1-6):`,
+            guessKeyboard, userInfo.userId, 'dice', 'option_selection', result.gameId, actualStake
           );
         } else if (type === 'same') {
           // Same stake & guess format: dice_play_again_same_dice_1753128274742_3gkuevnd0_2_2
@@ -268,10 +273,7 @@ export const registerDiceHandlers = (bot: Bot): void => {
             ]
           };
           
-          await sendMessage(bot, userInfo.chatId, message, { 
-            parseMode: 'HTML',
-            replyMarkup: playAgainKeyboard
-          });
+          await updateGameMessage(bot, userInfo.chatId, message, playAgainKeyboard, userInfo.userId, 'dice', 'result', result.gameId, actualStake);
         }
         
         return; // Exit early since we handled both cases

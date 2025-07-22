@@ -18,7 +18,7 @@ export const startBasketballGame = async (
     // Validate stake amount
     if (![2, 5, 10, 20].includes(stake)) {
       const result = { success: false, error: 'Invalid stake amount. Must be 2, 5, 10, or 20 coins.' };
-      logFunctionEnd('startBasketballGame', result, { userId, stake });
+      logError('startBasketballGame', new Error(result.error), { userId, stake });
       return result;
     }
     
@@ -26,7 +26,7 @@ export const startBasketballGame = async (
     const user = await getUser(userId);
     if (user.coins < stake) {
       const result = { success: false, error: 'Insufficient coins for this stake.' };
-      logFunctionEnd('startBasketballGame', result, { userId, stake });
+      logError('startBasketballGame', new Error(result.error), { userId, stake });
       return result;
     }
     
@@ -34,7 +34,7 @@ export const startBasketballGame = async (
     const deductionSuccess = await deductCoins(userId, stake, 'basketball_game_stake');
     if (!deductionSuccess) {
       const result = { success: false, error: 'Failed to deduct coins.' };
-      logFunctionEnd('startBasketballGame', result, { userId, stake });
+      logError('startBasketballGame', new Error(result.error), { userId, stake });
       return result;
     }
     

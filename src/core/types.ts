@@ -34,7 +34,8 @@ export enum GameType {
   BLACKJACK = 'blackjack',
   FOOTBALL = 'football',
   BASKETBALL = 'basketball',
-  BOWLING = 'bowling'
+  BOWLING = 'bowling',
+  TRIVIA = 'trivia'
 }
 
 export enum GameStatus {
@@ -73,3 +74,58 @@ export interface CallbackData {
   choice?: string;
   [key: string]: unknown;
 } 
+
+// Trivia Game Types
+export interface TriviaQuestion {
+  id: string;
+  category: string;
+  question: string;
+  options: string[];
+  correctAnswer: string;
+  difficulty: 'easy' | 'medium' | 'hard';
+  source: 'DB' | 'AI';
+  createdAt: number;
+}
+
+export interface TriviaGameData {
+  currentRound: number;
+  currentPlayerIndex: number;
+  scores: { [playerId: string]: number };
+  selectedCategories: string[];
+  currentQuestion?: TriviaQuestion | null;
+  playerAnswers: { [playerId: string]: { answer: string; responseTime: number } };
+  roundStartTime?: number | null;
+  questionTimeout?: number | null;
+  questionsAnsweredInCurrentCategory: number; // Track questions answered in current category
+  currentCategoryIndex: number; // Track which category we're in
+  
+  // Independent question answering system
+  playerQuestionProgress: { [playerId: string]: {
+    currentQuestionIndex: number; // Which question (0-4) the player is on
+    answers: { [questionIndex: number]: { answer: string; responseTime: number; isCorrect: boolean } };
+    isFinished: boolean; // Whether player completed all questions in this category
+    startTime: number; // When they started this category
+  }};
+  categoryQuestions: TriviaQuestion[]; // All 5 questions for the current category
+  roundStatus: 'waiting_for_answers' | 'calculating_results' | 'category_complete';
+}
+
+export interface TriviaGameState extends Omit<GameState, 'data'> {
+  type: GameType.TRIVIA;
+  data: TriviaGameData;
+}
+
+export const TRIVIA_CATEGORIES = [
+  '🌍 Geography',
+  '📚 Literature',
+  '⚽ Sports',
+  '🎬 Entertainment',
+  '🔬 Science',
+  '🎨 Art & Culture',
+  '🍔 Food & Drink',
+  '🌍 History',
+  '🎵 Music',
+  '💻 Technology'
+] as const;
+
+export type TriviaCategory = typeof TRIVIA_CATEGORIES[number]; 

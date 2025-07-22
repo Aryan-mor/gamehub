@@ -31,7 +31,8 @@ export declare enum GameType {
     BLACKJACK = "blackjack",
     FOOTBALL = "football",
     BASKETBALL = "basketball",
-    BOWLING = "bowling"
+    BOWLING = "bowling",
+    TRIVIA = "trivia"
 }
 export declare enum GameStatus {
     WAITING = "waiting",
@@ -65,4 +66,37 @@ export interface CallbackData {
     choice?: string;
     [key: string]: unknown;
 }
+export interface TriviaQuestion {
+    id: string;
+    category: string;
+    question: string;
+    options: string[];
+    correctAnswer: string;
+    difficulty: 'easy' | 'medium' | 'hard';
+    source: 'DB' | 'AI';
+    createdAt: number;
+}
+export interface TriviaGameData {
+    currentRound: number;
+    currentPlayerIndex: number;
+    scores: {
+        [playerId: string]: number;
+    };
+    selectedCategories: string[];
+    currentQuestion?: TriviaQuestion;
+    playerAnswers: {
+        [playerId: string]: {
+            answer: string;
+            responseTime: number;
+        };
+    };
+    roundStartTime?: number;
+    questionTimeout?: number;
+}
+export interface TriviaGameState extends Omit<GameState, 'data'> {
+    type: GameType.TRIVIA;
+    data: TriviaGameData;
+}
+export declare const TRIVIA_CATEGORIES: readonly ["🌍 Geography", "📚 Literature", "⚽ Sports", "🎬 Entertainment", "🔬 Science", "🎨 Art & Culture", "🍔 Food & Drink", "🌍 History", "🎵 Music", "💻 Technology"];
+export type TriviaCategory = typeof TRIVIA_CATEGORIES[number];
 //# sourceMappingURL=types.d.ts.map

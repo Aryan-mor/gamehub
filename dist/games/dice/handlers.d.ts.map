@@ -1,1 +1,1 @@
-{"version":3,"file":"handlers.d.ts","sourceRoot":"","sources":["../../../src/games/dice/handlers.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,GAAG,EAAE,MAAM,QAAQ,CAAC;AAK7B,eAAO,MAAM,oBAAoB,GAAI,KAAK,GAAG,KAAG,IAwG/C,CAAC"}
+{"version":3,"file":"handlers.d.ts","sourceRoot":"","sources":["../../../src/games/dice/handlers.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,GAAG,EAAE,MAAM,QAAQ,CAAC;AAO7B,eAAO,MAAM,oBAAoB,GAAI,KAAK,GAAG,KAAG,IA0R/C,CAAC"}

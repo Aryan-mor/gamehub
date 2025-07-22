@@ -66,9 +66,12 @@ bot.use(async (ctx, next) => {
 // Register game handlers
 registerTriviaHandlers(bot);
 
-// Add simple callback query listener to log all incoming callbacks
-bot.on('callback_query', (ctx) => {
-  console.log(`🔘 Callback received from ${ctx.from?.id} (${ctx.from?.username}): ${ctx.callbackQuery.data || 'No data'}`);
+// Simple callback logging (without interfering with handlers)
+bot.use(async (ctx, next) => {
+  if (ctx.callbackQuery) {
+    console.log(`🔘 Callback received from ${ctx.from?.id} (${ctx.from?.username}): ${ctx.callbackQuery.data || 'No data'}`);
+  }
+  await next();
 });
 // Temporarily disabled other games to focus on trivia
 // registerDiceHandlers(bot);
@@ -667,7 +670,7 @@ startBot();
 bot.on('inline_query', async (ctx) => {
   const query = ctx.inlineQuery.query;
   if (query.startsWith('trivia_')) {
-    const gameId = query.split('_')[1];
+    const gameId = query.substring(7); // Remove "trivia_" prefix to get full game ID
     if (gameId) {
       const results: InlineQueryResult[] = [
         {

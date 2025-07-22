@@ -98,12 +98,71 @@ const registerBlackjackHandlers = (bot) => {
                 `Your hand: ${formatCards(blackjackResult.playerHand)} (${blackjackResult.playerScore})\n` +
                 `Dealer's hand: ${formatCards(blackjackResult.dealerHand)} (${blackjackResult.dealerScore})\n\n` +
                 `${blackjackResult.isWon ? `💰 Winnings: +${blackjackResult.coinsWon} Coins` : `💰 Lost: ${blackjackResult.coinsLost} Coins`}`;
-            await (0, telegramHelpers_1.sendMessage)(bot, userInfo.chatId, message, { parseMode: 'HTML' });
+            const playAgainKeyboard = {
+                inline_keyboard: [
+                    [{ text: '🔄 Same Stake', callback_data: `blackjack_play_again_same_${gameId}_${blackjackResult.coinsLost || blackjackResult.coinsWon}` }],
+                    [{ text: '🃏 New Game', callback_data: `blackjack_play_again_new_${gameId}_${blackjackResult.coinsLost || blackjackResult.coinsWon}` }],
+                    [{ text: '🔄 Start Over', callback_data: 'blackjack_play_again_restart' }]
+                ]
+            };
+            await (0, telegramHelpers_1.sendMessage)(bot, userInfo.chatId, message, {
+                parseMode: 'HTML',
+                replyMarkup: playAgainKeyboard
+            });
             (0, logger_1.logFunctionEnd)('blackjackActionCallback', { success: true }, { userId: userInfo.userId, gameId, action });
         }
         catch (error) {
             (0, logger_1.logError)('blackjackActionCallback', error, {});
             await (0, telegramHelpers_1.answerCallbackQuery)(bot, ctx.callbackQuery.id, '❌ Failed to process action');
+        }
+    });
+    bot.callbackQuery(/^blackjack_play_again_.*/, async (ctx) => {
+        try {
+            const userInfo = (0, telegramHelpers_1.extractUserInfo)(ctx);
+            const callbackData = ctx.callbackQuery.data || '';
+            (0, logger_1.logFunctionStart)('blackjackPlayAgainCallback', { userId: userInfo.userId, callbackData });
+            await (0, telegramHelpers_1.answerCallbackQuery)(bot, ctx.callbackQuery.id);
+            if (callbackData === 'blackjack_play_again_restart') {
+                const stakeKeyboard = (0, telegramHelpers_1.createInlineKeyboard)([
+                    { text: '2 Coins', callbackData: { action: 'blackjack_stake', stake: 2 } },
+                    { text: '5 Coins', callbackData: { action: 'blackjack_stake', stake: 5 } },
+                    { text: '10 Coins', callbackData: { action: 'blackjack_stake', stake: 10 } },
+                    { text: '20 Coins', callbackData: { action: 'blackjack_stake', stake: 20 } },
+                    { text: '30 Coins', callbackData: { action: 'blackjack_stake', stake: 30 } },
+                    { text: '50 Coins', callbackData: { action: 'blackjack_stake', stake: 50 } },
+                ]);
+                await (0, telegramHelpers_1.sendMessage)(bot, userInfo.chatId, '🃏 Blackjack Game\n\nGet as close to 21 as possible without going over!\n\nChoose your stake amount:', { replyMarkup: stakeKeyboard });
+            }
+            else {
+                const match = callbackData.match(/^blackjack_play_again_(same|new)_(.+)_(.+)$/);
+                if (!match) {
+                    await (0, telegramHelpers_1.answerCallbackQuery)(bot, ctx.callbackQuery.id, '❌ Invalid callback data');
+                    return;
+                }
+                const stake = parseInt(match[3]);
+                const result = await (0, index_1.startBlackjackGame)(userInfo.userId, stake);
+                if (!result.success) {
+                    await (0, telegramHelpers_1.sendMessage)(bot, userInfo.chatId, `❌ ${result.error}`);
+                    return;
+                }
+                const game = await (0, gameService_1.getGame)(result.gameId);
+                if (game && game.data) {
+                    const { playerHand, dealerHand } = game.data;
+                    const actionKeyboard = {
+                        inline_keyboard: [
+                            [{ text: '🎯 Hit', callback_data: `blackjack_action_${result.gameId}_hit` }],
+                            [{ text: '✋ Stand', callback_data: `blackjack_action_${result.gameId}_stand` }]
+                        ]
+                    };
+                    const message = `🃏 Blackjack Game Started!\n\n💰 Stake: ${stake} Coins\n\nYour hand: ${formatCards(playerHand)}\nDealer's hand: ${formatCards([dealerHand[0]])} [?]\n\nWhat would you like to do?`;
+                    await (0, telegramHelpers_1.sendMessage)(bot, userInfo.chatId, message, { replyMarkup: actionKeyboard });
+                }
+            }
+            (0, logger_1.logFunctionEnd)('blackjackPlayAgainCallback', { success: true }, { userId: userInfo.userId });
+        }
+        catch (error) {
+            (0, logger_1.logError)('blackjackPlayAgainCallback', error, {});
+            await (0, telegramHelpers_1.answerCallbackQuery)(bot, ctx.callbackQuery.id, '❌ Failed to start new game');
         }
     });
     (0, logger_1.logFunctionEnd)('registerBlackjackHandlers', {}, {});
