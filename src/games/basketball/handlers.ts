@@ -1,5 +1,5 @@
 // Temporarily disabled to focus on trivia
-import { Bot } from 'grammy';
+// import { Bot } from 'grammy';
 
 export const registerBasketballHandlers = (): void => {
   // Basketball handlers temporarily disabled
