@@ -6,12 +6,10 @@ import {
   createTriviaGame,
   joinTriviaGame,
   selectCategory,
-  answerQuestion,
   getCurrentQuestionForPlayer,
   answerQuestionForPlayer,
   checkCategoryCompletion,
-  QUESTIONS_PER_CATEGORY,
-  TOTAL_ROUNDS
+  QUESTIONS_PER_CATEGORY
 } from './service';
 import { getGame } from '../../core/gameService';
 import { TRIVIA_CATEGORIES } from './types';
@@ -289,6 +287,7 @@ const handleShowQuestionForPlayer = async (bot: Bot, game: any, playerId: string
   }
 };
 
+/*
 const handleShowQuestion = async (bot: Bot, game: any) => {
   try {
     logFunctionStart('handleShowQuestion', { 
@@ -356,6 +355,7 @@ const handleShowQuestion = async (bot: Bot, game: any) => {
     throw error;
   }
 };
+*/
 
 const handleAnswerQuestion = async (bot: Bot, userInfo: { userId: string; chatId: number }, gameId: string, answerCode: string) => {
   try {
@@ -491,7 +491,6 @@ const handleShowRoundResult = async (bot: Bot, game: any) => {
           const answer = progress.answers[i];
           if (answer) {
             const status = answer.isCorrect ? '✅' : '❌';
-            const question = game.data.categoryQuestions[i];
             message += `  ${status} Q${i + 1}: ${answer.answer}\n`;
             if (answer.isCorrect) correctAnswers++;
           }

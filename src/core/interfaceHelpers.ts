@@ -73,7 +73,7 @@ export const updateOrSendMessage = async (
         reply_markup: keyboard,
         parse_mode: 'HTML'
       });
-    } catch (error) {
+    } catch {
       // If edit fails, send new message
       const message = await bot.api.sendMessage(chatId, text, {
         reply_markup: keyboard,
@@ -122,7 +122,7 @@ export const updateGameMessage = async (
         reply_markup: keyboard,
         parse_mode: 'HTML'
       });
-    } catch (error) {
+    } catch {
       // If edit fails, send new message
       const message = await bot.api.sendMessage(chatId, text, {
         reply_markup: keyboard,
@@ -149,7 +149,7 @@ export const getGameState = (userId: string) => {
 
 // Helper function to clear game state and return to main menu
 export const returnToMainMenu = async (bot: Bot, userInfo: { userId: string; chatId: number }) => {
-  let welcome = `🧠 <b>Welcome to GameHub - Trivia Edition!</b>\n\n🎯 Challenge your friends in competitive 2-player trivia games!\n\n💰 Earn and claim daily Coins with /freecoin!\n\n🎯 Choose an action below:`;
+  const welcome = `🧠 <b>Welcome to GameHub - Trivia Edition!</b>\n\n🎯 Challenge your friends in competitive 2-player trivia games!\n\n💰 Earn and claim daily Coins with /freecoin!\n\n🎯 Choose an action below:`;
   
   const buttons = [
     { text: '🧠 Start Trivia', callbackData: { action: 'startgame' } },

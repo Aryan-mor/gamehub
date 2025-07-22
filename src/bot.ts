@@ -217,7 +217,7 @@ bot.callbackQuery(/.*"action":"back".*/, async (ctx) => {
     await answerCallbackQuery(bot, ctx.callbackQuery.id);
     
     // Return to main menu
-    let welcome = `🧠 <b>Welcome to GameHub - Trivia Edition!</b>\n\n🎯 Challenge your friends in competitive 2-player trivia games!\n\n💰 Earn and claim daily Coins with /freecoin!\n\n🎯 Choose an action below:`;
+    const welcome = `🧠 <b>Welcome to GameHub - Trivia Edition!</b>\n\n🎯 Challenge your friends in competitive 2-player trivia games!\n\n💰 Earn and claim daily Coins with /freecoin!\n\n🎯 Choose an action below:`;
     
     const buttons = [
       { text: '🧠 Start Trivia', callbackData: { action: 'startgame' } },

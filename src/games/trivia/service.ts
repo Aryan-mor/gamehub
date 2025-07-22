@@ -7,8 +7,7 @@ import {
   TriviaQuestion, 
   GameType, 
   GameStatus,
-  TRIVIA_CATEGORIES,
-  Player
+  TRIVIA_CATEGORIES
 } from '../../core/types';
 import { 
   TRIVIA_CONFIG, 
