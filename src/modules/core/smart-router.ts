@@ -55,7 +55,7 @@ class SmartRouter {
     
     // Convert pattern to regex
     // games.:game.room.:action -> games\.([^\.]+)\.room\.([^\.]+)
-    let regexString = pattern
+    const regexString = pattern
       .replace(/\./g, '\\.') // Escape dots
       .replace(/\*/g, '[^.]*') // Convert * to regex
       .replace(/:([a-zA-Z][a-zA-Z0-9]*)/g, (_match, paramName) => {
