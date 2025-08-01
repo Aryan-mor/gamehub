@@ -1,12 +1,11 @@
 import { HandlerContext } from '@/modules/core/handler';
-import { UserId } from '@/utils/types';
 import { isValidUserId } from '@/utils/typeGuards';
 
 /**
  * Handle help action
  * Show help information
  */
-async function handleHelp(context: HandlerContext, query: Record<string, string>): Promise<void> {
+async function handleHelp(context: HandlerContext): Promise<void> {
   const { user, ctx } = context;
   
   // Validate user ID

@@ -58,7 +58,7 @@ class SmartRouter {
     let regexString = pattern
       .replace(/\./g, '\\.') // Escape dots
       .replace(/\*/g, '[^.]*') // Convert * to regex
-      .replace(/:([a-zA-Z][a-zA-Z0-9]*)/g, (match, paramName) => {
+      .replace(/:([a-zA-Z][a-zA-Z0-9]*)/g, (_match, paramName) => {
         paramNames.push(paramName);
         return '([^.]*)'; // Capture group for parameter
       });
@@ -135,7 +135,7 @@ class SmartRouter {
         console.log(`❌ No default export found for: ${pathString}`);
       }
     } catch (error) {
-      console.log(`❌ Auto-discovery failed for ${pathString}:`, error.message);
+      console.log(`❌ Auto-discovery failed for ${pathString}:`, (error as Error).message);
     }
     
     return null;

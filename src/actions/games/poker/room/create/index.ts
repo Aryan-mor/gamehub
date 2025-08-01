@@ -1,5 +1,5 @@
 import { HandlerContext } from '@/modules/core/handler';
-import { RoomId, UserId } from '@/utils/types';
+import { RoomId } from '@/utils/types';
 import { createRoomId, isValidUserId } from '@/utils/typeGuards';
 
 /**

@@ -1,8 +1,7 @@
-import { Context } from 'telegraf';
 import { UserId } from '@/utils/types';
 
 export interface HandlerContext {
-  ctx: Context;
+  ctx: any; // Use any for now to avoid type conflicts
   user: {
     id: UserId;
     username: string;

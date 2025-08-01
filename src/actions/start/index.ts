@@ -1,12 +1,11 @@
 import { HandlerContext } from '@/modules/core/handler';
-import { UserId } from '@/utils/types';
 import { isValidUserId } from '@/utils/typeGuards';
 
 /**
  * Handle /start command
  * Welcome new users and show main menu
  */
-async function handleStart(context: HandlerContext, query: Record<string, string>): Promise<void> {
+async function handleStart(context: HandlerContext): Promise<void> {
   const { user, ctx } = context;
   
   // Validate user ID
@@ -17,7 +16,7 @@ async function handleStart(context: HandlerContext, query: Record<string, string
   try {
     // Import required services
     const { setUserProfile, getUser, addCoins } = await import('@/modules/core/userService');
-    const { createOptimizedKeyboard, updateOrSendMessage } = await import('@/modules/core/interfaceHelpers');
+    const { createOptimizedKeyboard } = await import('@/modules/core/interfaceHelpers');
     
     // Save user profile
     await setUserProfile(user.id, user.username, user.username || 'Unknown');
@@ -39,8 +38,8 @@ async function handleStart(context: HandlerContext, query: Record<string, string
     
     // Create buttons
     const buttons = [
-      { text: '🧠 Start Trivia', callbackData: { action: 'startgame' } },
-      { text: '🪙 Free Coin', callbackData: { action: 'freecoin' } },
+      { text: '🧠 Start Trivia', callbackData: { action: 'games.start' } },
+      { text: '🪙 Free Coin', callbackData: { action: 'financial.freecoin' } },
       { text: '💰 Balance', callbackData: { action: 'balance' } },
       { text: '❓ Help', callbackData: { action: 'help' } },
     ];

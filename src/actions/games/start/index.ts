@@ -1,12 +1,11 @@
 import { HandlerContext } from '@/modules/core/handler';
-import { UserId } from '@/utils/types';
 import { isValidUserId } from '@/utils/typeGuards';
 
 /**
  * Handle startgame action
  * Show game selection menu
  */
-async function handleStartGame(context: HandlerContext, query: Record<string, string>): Promise<void> {
+async function handleStartGame(context: HandlerContext): Promise<void> {
   const { user, ctx } = context;
   
   // Validate user ID

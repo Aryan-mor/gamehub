@@ -1,12 +1,11 @@
 import { HandlerContext } from '@/modules/core/handler';
-import { UserId } from '@/utils/types';
 import { isValidUserId } from '@/utils/typeGuards';
 
 /**
  * Handle freecoin action
  * Claim daily free coins
  */
-async function handleFreeCoin(context: HandlerContext, query: Record<string, string>): Promise<void> {
+async function handleFreeCoin(context: HandlerContext): Promise<void> {
   const { user, ctx } = context;
   
   // Validate user ID

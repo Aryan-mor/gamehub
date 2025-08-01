@@ -80,7 +80,7 @@ export interface BaseQuery {
 
 export interface RoomQuery extends BaseQuery {
   roomId: string; // Will be validated as RoomId
-  name?: string;
+  name: string;
 }
 
 export interface GameQuery extends BaseQuery {

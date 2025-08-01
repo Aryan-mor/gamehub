@@ -1,12 +1,11 @@
 import { HandlerContext } from '@/modules/core/handler';
-import { UserId } from '@/utils/types';
 import { isValidUserId } from '@/utils/typeGuards';
 
 /**
  * Handle balance action
  * Show user's coin balance
  */
-async function handleBalance(context: HandlerContext, query: Record<string, string>): Promise<void> {
+async function handleBalance(context: HandlerContext): Promise<void> {
   const { user, ctx } = context;
   
   // Validate user ID
