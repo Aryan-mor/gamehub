@@ -55,8 +55,8 @@ export async function updateUserBalance(
 /**
  * Check if user has sufficient funds
  */
-export async function hasSufficientFunds(userId: string, requiredAmount: number): Promise<boolean> {
-  const balance = await getUserBalance(userId);
+export async function hasSufficientFunds(_userId: string, requiredAmount: number): Promise<boolean> {
+  const balance = await getUserBalance();
   return balance >= requiredAmount;
 }
 

@@ -19,7 +19,7 @@ async function handleStartGame(context: HandlerContext): Promise<void> {
     
     // Create game selection buttons
     const buttons = [
-      { text: '🧠 Trivia Game', callbackData: { action: 'games.trivia.start' } },
+      { text: '🃏 Poker Game', callbackData: { action: 'games.poker.start' } },
     ];
     
     const keyboard = createOptimizedKeyboard(buttons, true);
@@ -27,7 +27,7 @@ async function handleStartGame(context: HandlerContext): Promise<void> {
     // Send game selection message
     if (ctx.reply) {
       await ctx.reply(
-        '🎮 <b>GameHub - Trivia Focus</b>\n\n🧠 Challenge your friends in a competitive 2-player trivia game!\n\n6 rounds, 3 questions per round. Test your knowledge across 10 categories.',
+        '🎮 <b>GameHub - Poker Focus</b>\n\n🃏 Challenge your friends in competitive poker games!\n\nJoin rooms, play Texas Hold\'em, and compete for coins.',
         { 
           parse_mode: 'HTML',
           reply_markup: keyboard 
@@ -40,7 +40,7 @@ async function handleStartGame(context: HandlerContext): Promise<void> {
     
     // Fallback message
     if (ctx.reply) {
-      await ctx.reply('🎮 Game selection is currently available for Trivia only.');
+      await ctx.reply('🎮 Game selection is currently available for Poker only.');
     }
   }
 }

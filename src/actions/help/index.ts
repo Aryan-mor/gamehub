@@ -17,24 +17,23 @@ async function handleHelp(context: HandlerContext): Promise<void> {
     // Import required services
     const { createOptimizedKeyboard } = await import('@/modules/core/interfaceHelpers');
     
-    const helpText = `<b>GameHub - Trivia Game</b>\n\n` +
+    const helpText = `<b>GameHub - Poker Game</b>\n\n` +
       `<b>Available Commands:</b>\n\n` +
       `/start - Start the bot\n` +
-      `/trivia - Start a new trivia game\n` +
+      `/poker - Start a new poker game\n` +
       `/startgame - Start a new game\n` +
       `/freecoin - Claim your daily free coins\n` +
       `/help - Show this help message\n` +
       `/balance - Show your coin balance\n\n` +
-      `<b>How to Play Trivia:</b>\n` +
-      `• 2 players compete in 6 rounds\n` +
-      `• Each round has 3 questions from one category\n` +
-      `• Players take turns choosing categories\n` +
-      `• Fast-paced with 10-second time limits\n` +
-      `• Win: +20 coins, Draw: +10 coins each\n\n` +
-      `<b>Categories:</b>\n` +
-      `🌍 Geography, 📚 Literature, ⚽ Sports,\n` +
-      `🎬 Entertainment, 🔬 Science, 🎨 Art & Culture,\n` +
-      `🍔 Food & Drink, 🌍 History, 🎵 Music, 💻 Technology`;
+      `<b>How to Play Poker:</b>\n` +
+      `• Join or create poker rooms\n` +
+      `• Play Texas Hold'em with friends\n` +
+      `• Use /poker to start a new game\n` +
+      `• Bet, raise, call, or fold\n` +
+      `• Win coins by having the best hand\n\n` +
+      `<b>Poker Actions:</b>\n` +
+      `🃏 Create Room, 🎯 Join Room, 💰 Bet,\n` +
+      `📞 Call, 🚀 Raise, 🛑 Fold, 🚪 Leave`;
     
     const buttons = [
       { text: '📋 Commands', callbackData: { action: 'help' } },

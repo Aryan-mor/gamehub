@@ -186,6 +186,32 @@ bot.command('freecoin', async (ctx) => {
   }
 });
 
+// Handle /poker command
+bot.command('poker', async (ctx) => {
+  try {
+    const userInfo = extractUserInfo(ctx);
+    logFunctionStart('pokerCommand', { userId: userInfo.userId });
+    
+    // Use auto-discovery router for poker action
+    const { dispatch } = await import('./modules/core/smart-router');
+    
+    const context: HandlerContext = {
+      ctx,
+      user: {
+        id: userInfo.userId as UserId,
+        username: userInfo.username || 'Unknown'
+      }
+    };
+    
+    await dispatch('games.poker.start', context);
+    
+    logFunctionEnd('pokerCommand', {}, { userId: userInfo.userId });
+  } catch (error) {
+    logError('pokerCommand', error as Error, {});
+    await ctx.reply('❌ Failed to start poker game.');
+  }
+});
+
 // Handle /games command
 bot.command('games', async (ctx) => {
   try {
@@ -236,10 +262,10 @@ bot.callbackQuery(/.*"action":"back".*/, async (ctx) => {
     await answerCallbackQuery(bot, ctx.callbackQuery.id);
     
     // Return to main menu
-    const welcome = `🧠 <b>Welcome to GameHub - Trivia Edition!</b>\n\n🎯 Challenge your friends in competitive 2-player trivia games!\n\n💰 Earn and claim daily Coins with /freecoin!\n\n🎯 Choose an action below:`;
+    const welcome = `🃏 <b>Welcome to GameHub - Poker Edition!</b>\n\n🎯 Challenge your friends in competitive poker games!\n\n💰 Earn and claim daily Coins with /freecoin!\n\n🎯 Choose an action below:`;
     
     const buttons = [
-      { text: '🧠 Start Trivia', callbackData: { action: 'games.start' } },
+      { text: '🃏 Start Poker', callbackData: { action: 'games.start' } },
       { text: '🪙 Free Coin', callbackData: { action: 'financial.freecoin' } },
       { text: '💰 Balance', callbackData: { action: 'balance' } },
       { text: '❓ Help', callbackData: { action: 'help' } },

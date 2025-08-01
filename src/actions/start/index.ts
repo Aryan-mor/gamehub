@@ -25,8 +25,8 @@ async function handleStart(context: HandlerContext): Promise<void> {
     const userData = await getUser(user.id);
     
     // Build welcome message
-    let welcome = `🧠 <b>Welcome to GameHub - Trivia Edition!</b>\n\n` +
-      `🎯 Challenge your friends in competitive 2-player trivia games!\n\n` +
+    let welcome = `🃏 <b>Welcome to GameHub - Poker Edition!</b>\n\n` +
+      `🎯 Challenge your friends in competitive poker games!\n\n` +
       `💰 Earn and claim daily Coins with /freecoin!\n\n` +
       `🎯 Choose an action below:`;
     
@@ -38,7 +38,7 @@ async function handleStart(context: HandlerContext): Promise<void> {
     
     // Create buttons
     const buttons = [
-      { text: '🧠 Start Trivia', callbackData: { action: 'games.start' } },
+      { text: '🃏 Start Poker', callbackData: { action: 'games.start' } },
       { text: '🪙 Free Coin', callbackData: { action: 'financial.freecoin' } },
       { text: '💰 Balance', callbackData: { action: 'balance' } },
       { text: '❓ Help', callbackData: { action: 'help' } },
