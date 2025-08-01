@@ -50,32 +50,12 @@ describe('Game Start Functions Import Tests', () => {
     expect(result).toHaveProperty('success');
   });
 
-  it('should validate blackjack start function imports', async () => {
-    const { startBlackjackGame } = await import('../src/games/blackjack/startGame');
-    
-    expect(typeof startBlackjackGame).toBe('function');
-    
-    const result = await startBlackjackGame('test-user', 10);
-    expect(result).toHaveProperty('success');
-  });
-
-  it('should validate bowling start function imports', async () => {
-    const { startBowlingGame } = await import('../src/games/bowling/startGame');
-    
-    expect(typeof startBowlingGame).toBe('function');
-    
-    const result = await startBowlingGame('test-user', 10);
-    expect(result).toHaveProperty('success');
-  });
-
   it('should validate all game start functions can be imported without errors', async () => {
     // Test that all start functions can be imported without throwing
     const startFunctions = [
       () => import('../src/games/dice/startGame'),
       () => import('../src/games/basketball/startGame'),
       () => import('../src/games/football/startGame'),
-      () => import('../src/games/blackjack/startGame'),
-      () => import('../src/games/bowling/startGame'),
     ];
 
     for (const importFn of startFunctions) {

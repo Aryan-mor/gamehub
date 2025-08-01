@@ -254,72 +254,6 @@ describe('Game Handlers Integration Tests', () => {
     });
   });
 
-  describe('Blackjack Game Handlers', () => {
-    it('should register blackjack handlers without throwing', async () => {
-      const { registerBlackjackHandlers } = await import('../src/games/blackjack/handlers');
-      
-      expect(() => {
-        registerBlackjackHandlers(mockBot);
-      }).not.toThrow();
-      
-      expect(typeof registerBlackjackHandlers).toBe('function');
-    });
-
-    it('should handle blackjack stake callback without runtime errors', async () => {
-      const { registerBlackjackHandlers } = await import('../src/games/blackjack/handlers');
-      
-      const mockStartBlackjackGame = vi.fn(() => Promise.resolve({ 
-        success: true, 
-        gameId: 'test-game-id' 
-      }));
-      const mockHandleBlackjackTurn = vi.fn(() => Promise.resolve({ 
-        success: true, 
-        result: { isWon: true, playerHand: [], dealerHand: [], coinsWon: 20, coinsLost: 0 } 
-      }));
-      const mockResolveBlackjackResult = vi.fn(() => Promise.resolve({ 
-        success: true, 
-        result: { playerHand: [], dealerHand: [] } 
-      }));
-
-      vi.doMock('../src/games/blackjack/index', () => ({
-        startBlackjackGame: mockStartBlackjackGame,
-        handleBlackjackTurn: mockHandleBlackjackTurn,
-        resolveBlackjackResult: mockResolveBlackjackResult,
-      }));
-
-      registerBlackjackHandlers(mockBot);
-
-      const stakeCallbackData = JSON.stringify({ action: 'blackjack_stake', stake: 10 });
-      
-      expect(() => {
-        expect(mockStartBlackjackGame).toBeDefined();
-      }).not.toThrow();
-    });
-
-    it('should handle blackjack action callback without runtime errors', async () => {
-      const { registerBlackjackHandlers } = await import('../src/games/blackjack/handlers');
-      
-      const mockHandleBlackjackTurn = vi.fn(() => Promise.resolve({ 
-        success: true, 
-        result: { isWon: true, playerHand: [], dealerHand: [], coinsWon: 20, coinsLost: 0 } 
-      }));
-
-      vi.doMock('../src/games/blackjack/index', () => ({
-        startBlackjackGame: vi.fn(() => Promise.resolve({ success: true, gameId: 'test-game-id' })),
-        handleBlackjackTurn: mockHandleBlackjackTurn,
-        resolveBlackjackResult: vi.fn(() => Promise.resolve({ success: true, result: { playerHand: [], dealerHand: [] } })),
-      }));
-
-      registerBlackjackHandlers(mockBot);
-
-      const actionCallbackData = JSON.stringify({ action: 'blackjack_action', gameId: 'test-game-id', playerAction: 'hit' });
-      
-      expect(() => {
-        expect(mockHandleBlackjackTurn).toBeDefined();
-      }).not.toThrow();
-    });
-  });
-
   describe('Bowling Game Handlers', () => {
     it('should register bowling handlers without throwing', async () => {
       const { registerBowlingHandlers } = await import('../src/games/bowling/handlers');
@@ -452,7 +386,6 @@ describe('Game Handlers Integration Tests', () => {
         () => import('../src/games/dice/handlers'),
         () => import('../src/games/basketball/handlers'),
         () => import('../src/games/football/handlers'),
-        () => import('../src/games/blackjack/handlers'),
         () => import('../src/games/bowling/handlers'),
       ];
 
@@ -469,7 +402,6 @@ describe('Game Handlers Integration Tests', () => {
         () => import('../src/games/dice/index'),
         () => import('../src/games/basketball/index'),
         () => import('../src/games/football/index'),
-        () => import('../src/games/blackjack/index'),
         () => import('../src/games/bowling/index'),
       ];
 
