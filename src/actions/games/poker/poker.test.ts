@@ -30,8 +30,13 @@ describe('Poker Game Routing', () => {
     });
 
     it('should handle unknown module gracefully', async () => {
-      await expect(handlePokerMessage('games.poker.unknown', mockContext))
-        .rejects.toThrow('Unknown poker module: unknown');
+      // The function should not throw, but should log an error and send a message
+      await handlePokerMessage('games.poker.unknown', mockContext);
+      
+      // Should send error message to user
+      expect(mockContext.ctx.reply).toHaveBeenCalledWith(
+        'Sorry, there was an error processing your Poker request.'
+      );
     });
   });
 }); 
