@@ -1,0 +1,68 @@
+# GameHub Architecture Rules
+
+## 🏗️ Project Structure & Architecture
+
+### Core Architecture
+- **Auto-Discovery Router System**: Use the smart router with auto-discovery for all new routes
+- **Hierarchical Routing**: Follow the pattern `games.{game}.{module}.{action}` 
+- **Export Default Pattern**: All handlers must use `export default` for auto-discovery
+- **Folder Structure**: Each action should be a folder with `index.ts` containing the handler
+
+### Directory Structure
+```
+src/
+├── actions/                # 🎯 Actions & Business Logic
+│   ├── games/             # Game actions (poker, etc.)
+│   │   ├── index.ts       # Main games handler
+│   │   └── {game}/        # Individual games
+│   │       ├── index.ts   # Game-specific handler
+│   │       └── {module}/  # Game modules (room, lobby, etc.)
+│   │           └── {action}/ # Action folders
+│   │               └── index.ts # Action handler (export default)
+│   └── financial/         # Financial actions (wallet, etc.)
+│       └── user-wallet/
+├── modules/               # 🔧 Core Modules & Systems
+│   ├── core/             # Router, handler, utilities
+│   │   ├── smart-router.ts
+│   │   ├── handler.ts
+│   │   └── utils/
+│   │       └── parseMessageKey.ts
+│   └── global/           # Global configurations
+├── utils/                # 🛠️ Utilities & Helpers
+│   ├── types/            # Type definitions
+│   ├── typeGuards.ts     # ID validation
+│   └── demos/            # Demo files
+├── archive/              # 📦 Archived/legacy code
+│   └── games/            # Old games
+└── scripts/              # 🔧 Build & deployment scripts
+```
+
+## 🚀 Development Guidelines
+
+### Router Usage
+- Use `smart-router.ts` for all routing
+- Register module handlers with `registerModule()`
+- Let auto-discovery handle action routes
+- Use pattern matching for dynamic routes: `games.:game.room.:action`
+
+### File Naming & Organization
+- **Action folders**: Use kebab-case for folder names (`create-room/`, `join-game/`)
+- **Handler files**: Always `index.ts` inside action folders
+- **Export pattern**: Always `export default` for handlers
+- **Import pattern**: Use `@/` alias for imports from src
+
+### Error Handling
+- Use proper error types and interfaces
+- Implement error boundaries in handlers
+- Log errors with context information
+- Return user-friendly error messages
+
+### Testing Requirements
+- Unit tests for all handlers
+- Integration tests for router functionality
+- Type checking tests for custom ID types
+- Mock external dependencies properly
+description:
+globs:
+alwaysApply: false
+---

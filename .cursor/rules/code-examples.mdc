@@ -1,0 +1,106 @@
+# Code Examples and Patterns
+
+## 📝 Code Examples
+
+### Creating New Game Action
+```typescript
+// src/actions/games/poker/room/bet/index.ts
+import { HandlerContext } from '@/modules/core/handler';
+import { RoomId } from '@/utils/types';
+
+interface BetQuery {
+  roomId: RoomId;
+  amount: string;
+}
+
+async function handleBet(context: HandlerContext, query: Record<string, string>): Promise<void> {
+  const { roomId, amount } = query as BetQuery;
+  
+  // Validate roomId is proper RoomId type
+  if (!isValidRoomId(roomId)) {
+    throw new Error('Invalid room ID');
+  }
+  
+  // Implementation
+}
+
+export default handleBet;
+```
+
+### Router Registration
+```typescript
+// src/actions/games/poker/index.ts
+import { registerModule } from '@/modules/core/smart-router';
+import { handlePokerMessage } from './pokerHandler';
+
+// Register module handler
+registerModule('games.poker', handlePokerMessage);
+```
+
+## 🔒 Security & Validation
+
+### Input Validation
+- Validate all query parameters
+- Use type guards for ID validation
+- Sanitize user inputs
+- Implement rate limiting for actions
+
+### Type Safety
+- Never trust external data types
+- Use runtime validation with type guards
+- Implement proper error handling for type mismatches
+
+## 📚 Documentation
+
+### Code Comments
+- Document complex business logic
+- Explain type constraints and validations
+- Add JSDoc for public functions
+- Include usage examples for handlers
+
+### Architecture Decisions
+- Document router design decisions
+- Explain auto-discovery benefits
+- Document ID type system rationale
+- Keep migration guides updated
+
+## 🎯 Migration Guidelines
+
+### From Old Structure
+- Move handlers to action folders
+- Convert to `export default` pattern
+- Update ID types to use custom types
+- Remove `any` types and `as` casting
+- Update imports to use `@/` alias
+
+### Testing Migration
+- Update test imports for new structure
+- Add type checking tests
+- Verify auto-discovery works
+- Test ID validation
+
+## ⚠️ Common Pitfalls to Avoid
+
+### Architecture Issues
+- ❌ Creating handlers without folders
+- ❌ Using named exports instead of default
+- ❌ Bypassing the router system
+- ❌ Mixing old and new patterns
+
+### Performance Issues
+- ❌ Not caching auto-discovered handlers
+- ❌ Re-importing modules unnecessarily
+- ❌ Not using proper error boundaries
+
+## 🔄 Continuous Improvement
+
+### Future Enhancements
+- Consider implementing dependency injection
+- Add middleware support to router
+- Implement plugin system for games
+- Add real-time WebSocket support
+- Consider GraphQL for complex queries
+description:
+globs:
+alwaysApply: false
+---

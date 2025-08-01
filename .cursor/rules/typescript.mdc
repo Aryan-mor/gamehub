@@ -1,0 +1,91 @@
+# TypeScript Best Practices
+
+## 🔧 Type Safety Requirements
+- **NO `any` types**: Use proper TypeScript types everywhere
+- **NO `as` casting**: Use proper type guards and validation instead
+- **Strict typing**: All functions, parameters, and return values must be typed
+- **Interface over type**: Prefer interfaces for object shapes
+- **Generic types**: Use generics for reusable components
+
+## 🆔 Custom ID System
+```typescript
+// Always use custom ID types, never raw strings for IDs
+export type ID = string & {
+  uuid: void;
+};
+
+type RoomId = ID & {
+  Room: void;
+};
+
+type UserId = ID & {
+  User: void;
+};
+
+type GameId = ID & {
+  Game: void;
+};
+
+// Example usage:
+export interface Room {
+  id: RoomId;
+  name: string;
+  created_at: string;
+  created_by: UserId;
+  // ... other properties
+}
+
+// ❌ WRONG - Never use string for IDs
+function getRoom(roomId: string) { }
+
+// ✅ CORRECT - Use typed IDs
+function getRoom(roomId: RoomId) { }
+```
+
+## 📝 Handler Pattern
+```typescript
+// All handlers must follow this pattern:
+import { HandlerContext } from '@/modules/core/handler';
+
+async function handleAction(context: HandlerContext, query: Record<string, string>): Promise<void> {
+  // Implementation
+}
+
+export default handleAction;
+```
+
+## 🔒 Type Guards for IDs
+```typescript
+// src/utils/typeGuards.ts
+import { RoomId, UserId, GameId } from '@/utils/types';
+
+export function isValidRoomId(id: string): id is RoomId {
+  return /^room_[a-zA-Z0-9_]+$/.test(id);
+}
+
+export function isValidUserId(id: string): id is UserId {
+  return /^\d+$/.test(id);
+}
+
+export function isValidGameId(id: string): id is GameId {
+  return /^game_[a-zA-Z0-9_]+$/.test(id);
+}
+```
+
+## ⚠️ Common Type Safety Issues to Avoid
+- ❌ Using `any` for unknown types
+- ❌ Using `as` for type casting
+- ❌ Using `string` for ID fields
+- ❌ Ignoring TypeScript errors
+
+## 🔍 Type Safety Checklist
+- [ ] No `any` types used
+- [ ] No `as` casting used
+- [ ] Custom ID types used for all IDs
+- [ ] Type guards implemented where needed
+- [ ] All functions have explicit return types
+- [ ] All parameters are properly typed
+description:
+globs:
+alwaysApply: false
+---
