@@ -14,9 +14,9 @@ export function wrapWithMiddlewares(
   handler: (ctx: HandlerContext, query: Record<string, string>) => Promise<void>,
   middlewares: Middleware[]
 ): (ctx: HandlerContext, query: Record<string, string>) => Promise<void> {
-  return async (ctx: HandlerContext, query: Record<string, string>) => {
+  return async (ctx: HandlerContext, query: Record<string, string>): Promise<void> => {
     // Create a chain of middleware functions
-    let current = async () => {
+    let current = async (): Promise<void> => {
       await handler(ctx, query);
     };
 
@@ -24,7 +24,7 @@ export function wrapWithMiddlewares(
     for (let i = middlewares.length - 1; i >= 0; i--) {
       const middleware = middlewares[i];
       const next = current;
-      current = async () => {
+      current = async (): Promise<void> => {
         await middleware(ctx, query, next);
       };
     }
@@ -41,7 +41,7 @@ export function createValidationMiddleware(
   validator: (ctx: HandlerContext, query: Record<string, string>) => Promise<boolean>,
   errorMessage: string
 ): Middleware {
-  return async (ctx: HandlerContext, query: Record<string, string>, next: () => Promise<void>) => {
+  return async (ctx: HandlerContext, query: Record<string, string>, next: () => Promise<void>): Promise<void> => {
     const isValid = await validator(ctx, query);
     if (!isValid) {
       throw new Error(errorMessage);

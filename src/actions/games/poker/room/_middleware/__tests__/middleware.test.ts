@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { wrapWithMiddlewares } from '@/modules/core/middleware';
 import { isJoined, isTurn, isNotJoined } from '../index';
+import { HandlerContext } from '@/modules/core/handler';
 
 // Mock the validation functions
 vi.mock('../../utils/validateUser', () => ({
@@ -12,7 +13,7 @@ vi.mock('../../utils/getRoomId', () => ({
 }));
 
 describe('Poker Room Middleware', () => {
-  let mockContext: any;
+  let mockContext: HandlerContext;
   let mockQuery: Record<string, string>;
 
   beforeEach(() => {
@@ -39,12 +40,12 @@ describe('Poker Room Middleware', () => {
       const handler = vi.fn();
       const executionOrder: string[] = [];
       
-      const middleware1 = vi.fn(async (ctx: any, query: any, next: () => Promise<void>) => {
+      const middleware1 = vi.fn(async (ctx: HandlerContext, query: Record<string, string>, next: () => Promise<void>) => {
         executionOrder.push('middleware1');
         await next();
       });
       
-      const middleware2 = vi.fn(async (ctx: any, query: any, next: () => Promise<void>) => {
+      const middleware2 = vi.fn(async (ctx: HandlerContext, query: Record<string, string>, next: () => Promise<void>) => {
         executionOrder.push('middleware2');
         await next();
       });
