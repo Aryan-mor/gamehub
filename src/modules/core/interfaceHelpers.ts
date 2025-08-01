@@ -16,9 +16,9 @@ export interface InterfaceState {
 export const userStates = new Map<string, InterfaceState>();
 
 // Helper function to create optimized keyboard layout
-export const createOptimizedKeyboard = (buttons: Array<{ text: string; callbackData: any }>, showBack = false) => {
-  const rows: any[][] = [];
-  let currentRow: any[] = [];
+export const createOptimizedKeyboard = (buttons: Array<{ text: string; callbackData: unknown }>, showBack = false): { inline_keyboard: Array<Array<{ text: string; callback_data: string }>> } => {
+  const rows: Array<Array<{ text: string; callback_data: string }>> = [];
+  let currentRow: Array<{ text: string; callback_data: string }> = [];
   
   // Group buttons by size (short buttons can fit 2-3 per row)
   const shortButtons = buttons.filter(btn => btn.text.length <= 8);
@@ -61,10 +61,10 @@ export const updateOrSendMessage = async (
   bot: Bot, 
   chatId: number, 
   text: string, 
-  keyboard: any, 
+  keyboard: { inline_keyboard: Array<Array<{ text: string; callback_data: string }>> }, 
   userId: string,
   view: InterfaceState['currentView']
-) => {
+): Promise<void> => {
   const state = userStates.get(userId) || { currentView: 'main_menu' };
   
   if (state.messageId) {
@@ -98,13 +98,13 @@ export const updateGameMessage = async (
   bot: Bot,
   chatId: number,
   text: string,
-  keyboard: any,
+  keyboard: { inline_keyboard: Array<Array<{ text: string; callback_data: string }>> },
   userId: string,
   gameType: string,
   step: 'stake_selection' | 'option_selection' | 'result' | 'play_again',
   gameId?: string,
   stake?: number
-) => {
+): Promise<void> => {
   const state = userStates.get(userId) || { currentView: 'main_menu' };
   
   // Update game state

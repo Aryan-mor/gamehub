@@ -9,10 +9,10 @@ if (!TELEGRAM_BOT_TOKEN) {
   process.exit(1);
 }
 
-const telegramApi = (method: string, params = "") =>
+const telegramApi = (method: string, params = ""): string =>
   `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/${method}${params}`;
 
-async function exportBotConfig() {
+async function exportBotConfig(): Promise<void> {
   try {
     const [getMe, getCommands, getDescription, getMenuButton] =
       await Promise.all([

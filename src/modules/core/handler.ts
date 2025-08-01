@@ -1,7 +1,7 @@
 import { UserId } from '@/utils/types';
 
 export interface HandlerContext {
-  ctx: any; // Use any for now to avoid type conflicts
+  ctx: any; // Use any for ctx to avoid complex type compatibility issues
   user: {
     id: UserId;
     username: string;

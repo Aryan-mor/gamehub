@@ -5,7 +5,7 @@ import { CallbackData } from './types';
 export const createInlineKeyboard = (buttons: Array<{
   text: string;
   callbackData: CallbackData;
-}>) => {
+}>): { inline_keyboard: Array<Array<{ text: string; callback_data: string }>> } => {
   return {
     inline_keyboard: buttons.map(button => [{
       text: button.text,
@@ -28,7 +28,7 @@ export const sendMessage = async (
   text: string,
   options?: {
     parseMode?: 'HTML' | 'Markdown';
-    replyMarkup?: any;
+    replyMarkup?: { inline_keyboard: Array<Array<{ text: string; callback_data: string }>> };
   }
 ): Promise<void> => {
   await bot.api.sendMessage(chatId, text, {
@@ -44,7 +44,7 @@ export const editMessage = async (
   text: string,
   options?: {
     parseMode?: 'HTML' | 'Markdown';
-    replyMarkup?: any;
+    replyMarkup?: { inline_keyboard: Array<Array<{ text: string; callback_data: string }>> };
   }
 ): Promise<void> => {
   await bot.api.editMessageText(chatId, messageId, text, {
@@ -70,7 +70,7 @@ export const formatTimeRemaining = (milliseconds: number): string => {
   const minutes = Math.floor((milliseconds % 3600000) / 60000);
   const seconds = Math.floor((milliseconds % 60000) / 1000);
   
-  const pad = (n: number) => n.toString().padStart(2, '0');
+  const pad = (n: number): string => n.toString().padStart(2, '0');
   return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
 };
 

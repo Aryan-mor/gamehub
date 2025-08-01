@@ -16,10 +16,10 @@ if (!commands || !Array.isArray(commands)) {
   process.exit(1);
 }
 
-const telegramApi = (method: string) =>
+const telegramApi = (method: string): string =>
   `https://api.telegram.org/bot${targetToken}/${method}`;
 
-async function setBotCommands() {
+async function setBotCommands(): Promise<void> {
   try {
     const res = await fetch(telegramApi("setMyCommands"), {
       method: "POST",

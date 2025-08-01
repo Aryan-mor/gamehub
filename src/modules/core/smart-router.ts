@@ -232,8 +232,8 @@ class SmartRouter {
 const smartRouter = new SmartRouter();
 
 export { smartRouter };
-export const register = (route: string, handler: Handler) => smartRouter.register(route, handler);
-export const registerModule = (modulePath: string, handler: (messageKey: string, context: HandlerContext) => Promise<void>) => smartRouter.registerModule(modulePath, handler);
-export const dispatch = (messageKey: string, context: HandlerContext) => smartRouter.dispatch(messageKey, context);
-export const getRoutes = () => smartRouter.getRoutes();
-export const getRouteInfo = () => smartRouter.getRouteInfo(); 
+export const register = (route: string, handler: Handler): void => smartRouter.register(route, handler);
+export const registerModule = (modulePath: string, handler: (messageKey: string, context: HandlerContext) => Promise<void>): void => smartRouter.registerModule(modulePath, handler);
+export const dispatch = (messageKey: string, context: HandlerContext): Promise<void> => smartRouter.dispatch(messageKey, context);
+export const getRoutes = (): string[] => smartRouter.getRoutes();
+export const getRouteInfo = (): Array<{ route: string; type: string; specificity?: number }> => smartRouter.getRouteInfo(); 

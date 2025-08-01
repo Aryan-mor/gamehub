@@ -5,7 +5,7 @@ import { database } from "../modules/core/firebase";
  * Script to clear data for a specific user
  * Usage: npm run clear-user -- 123456789
  */
-async function clearSpecificUser(userId: string) {
+async function clearSpecificUser(userId: string): Promise<void> {
   if (!database) {
     console.error("Firebase not initialized");
     return;

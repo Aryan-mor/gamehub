@@ -28,7 +28,9 @@ export function initializeRoutes(): void {
 /**
  * Main entry point for handling messages
  */
-export async function handleMessage(messageKey: string, context: any): Promise<void> {
+import { HandlerContext } from './modules/core/handler';
+
+export async function handleMessage(messageKey: string, context: HandlerContext): Promise<void> {
   try {
     const { dispatch } = await import('./modules/core/smart-router');
     await dispatch(messageKey, context);

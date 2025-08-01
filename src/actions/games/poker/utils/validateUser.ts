@@ -3,7 +3,7 @@ import { HandlerContext } from '@/modules/core/handler';
 /**
  * Validate user context and return user information
  */
-export function validateUser(context: HandlerContext): any {
+export function validateUser(context: HandlerContext): { id: string; username: string } {
   if (!context.user) {
     throw new Error('User information is required but not provided.');
   }
@@ -18,7 +18,7 @@ export function validateUser(context: HandlerContext): any {
 /**
  * Check if user has sufficient permissions for the action
  */
-export function checkUserPermissions(user: any): boolean {
+export function checkUserPermissions(user: unknown): boolean {
   // Basic permission check - can be extended based on your user model
   if (!user) {
     return false;

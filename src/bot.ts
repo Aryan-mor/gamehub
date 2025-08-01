@@ -622,7 +622,7 @@ bot.catch((err) => {
 });
 
 // Start the bot
-const startBot = async () => {
+const startBot = async (): Promise<void> => {
   logFunctionStart('startBot', {});
   
   try {
@@ -662,7 +662,7 @@ const startBot = async () => {
 // Handle graceful shutdown
 let isShuttingDown = false;
 
-const gracefulShutdown = (signal: string) => {
+const gracefulShutdown = (signal: string): void => {
   if (isShuttingDown) {
     console.log(`🛑 Force shutting down due to ${signal}...`);
     process.exit(1);

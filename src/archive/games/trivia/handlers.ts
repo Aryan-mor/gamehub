@@ -111,8 +111,7 @@ const handleStartTrivia = async (bot: Bot, userInfo: { userId: string; chatId: n
     const keyboard = {
       inline_keyboard: [
         [
-          { text: '🎮 Join Game', callback_data: JSON.stringify({ a: 'tj', g: game.id }) },
-          { text: '🔗 Share Game', switch_inline_query: `trivia_${game.id}` }
+          { text: '🎮 Join Game', callback_data: JSON.stringify({ a: 'tj', g: game.id }) }
         ]
       ]
     };
@@ -404,7 +403,7 @@ const handleShowPersonalCategorySummary = async (bot: Bot, game: any, playerId: 
     message += `🏆 <b>Total Score: ${game.data.scores[playerId] || 0} points</b>\n\n`;
     
     message += `⏳ Waiting for other player to finish...`;
-    await updateOrSendMessage(bot, parseInt(playerId), message, undefined, playerId, 'trivia_waiting_answer');
+    await updateOrSendMessage(bot, parseInt(playerId), message, { inline_keyboard: [] }, playerId, 'trivia_waiting_answer');
     
     logFunctionEnd('handleShowPersonalCategorySummary', { gameId: game.id, playerId, correctAnswers });
   } catch (error) {

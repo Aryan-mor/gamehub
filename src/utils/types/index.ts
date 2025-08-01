@@ -92,7 +92,7 @@ export interface UserQuery extends BaseQuery {
 }
 
 // Response types
-export interface ApiResponse<T = any> {
+export interface ApiResponse<T = unknown> {
   success: boolean;
   data?: T;
   error?: string;
@@ -112,7 +112,7 @@ export interface PaginatedResponse<T> extends ApiResponse<T[]> {
 export interface ValidationError {
   field: string;
   message: string;
-  value?: any;
+  value?: unknown;
 }
 
 export interface ApiError {

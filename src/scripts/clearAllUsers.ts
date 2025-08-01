@@ -6,7 +6,7 @@ import { database } from "../modules/core/firebase";
  * WARNING: This will delete ALL user data including coins, stats, etc.
  * Only use for testing!
  */
-async function clearAllUsers() {
+async function clearAllUsers(): Promise<void> {
   if (!database) {
     console.error("Firebase not initialized");
     return;
