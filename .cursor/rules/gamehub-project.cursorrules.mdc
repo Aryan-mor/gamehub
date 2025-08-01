@@ -9,7 +9,10 @@
 - **Handle linting errors**: If linting fails, offer to fix or skip with --no-verify
 
 ## 🎯 Development Workflow
-- **Always run tests**: Run `npm test` or `npx tsc --noEmit` before suggesting to push
+- **Package Manager**: Always use `pnpm` instead of `npm` or `yarn`
+- **Install dependencies**: Use `pnpm add` for new packages
+- **Run scripts**: Use `pnpm test`, `pnpm build`, `pnpm dev`, etc.
+- **Always run tests**: Run `pnpm test` or `npx tsc --noEmit` before suggesting to push
 - **Check TypeScript**: Ensure no TypeScript errors before pushing
 - **Follow user preferences**: If user says "don't push" or "wait", respect that
 - **Provide options**: When issues arise, give user choices (fix, skip, or wait)
@@ -268,15 +271,51 @@ registerModule('games.poker', handlePokerMessage);
 - Add real-time WebSocket support
 - Consider GraphQL for complex queries
 
+## 📦 Package Management
+
+### PNPM Usage
+- **Always use pnpm**: Never use `npm` or `yarn` commands
+- **Install packages**: `pnpm add <package-name>` for dependencies
+- **Install dev packages**: `pnpm add -D <package-name>` for dev dependencies
+- **Run scripts**: `pnpm test`, `pnpm build`, `pnpm dev`, `pnpm lint`
+- **Install all deps**: `pnpm install` to install all dependencies
+- **Update packages**: `pnpm update` to update packages
+- **Remove packages**: `pnpm remove <package-name>` to remove packages
+
+### Common Commands
+```bash
+# Install dependencies
+pnpm install
+
+# Add new package
+pnpm add telegraf
+
+# Add dev dependency
+pnpm add -D @types/node
+
+# Run tests
+pnpm test
+
+# Run TypeScript check
+npx tsc --noEmit
+
+# Run linting
+pnpm lint
+
+# Start development
+pnpm dev
+```
+
 ## 🔍 Code Quality Standards
 
 ### Before Any Push
 - [ ] All TypeScript errors resolved (`npx tsc --noEmit`)
-- [ ] All tests passing (`npm test`)
+- [ ] All tests passing (`pnpm test`)
 - [ ] No critical linting errors
 - [ ] Code follows project structure
 - [ ] Custom ID types used properly
 - [ ] Auto-discovery patterns followed
+- [ ] Dependencies installed with `pnpm install` if needed
 
 ### Code Review Standards
 - [ ] No `any` types (use proper TypeScript types)
