@@ -1,13 +1,44 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 Object.defineProperty(exports, "__esModule", { value: true });
 require("dotenv/config");
 const grammy_1 = require("grammy");
-const logger_1 = require("./core/logger");
-const telegramHelpers_1 = require("./core/telegramHelpers");
-const userService_1 = require("./core/userService");
-const gameService_1 = require("./core/gameService");
-const interfaceHelpers_1 = require("./core/interfaceHelpers");
-const trivia_1 = require("./games/trivia");
+const logger_1 = require("./modules/core/logger");
+const telegramHelpers_1 = require("./modules/core/telegramHelpers");
+const gameService_1 = require("./modules/core/gameService");
+const interfaceHelpers_1 = require("./modules/core/interfaceHelpers");
 const token = process.env.TELEGRAM_BOT_TOKEN;
 if (!token) {
     throw new Error('TELEGRAM_BOT_TOKEN is required');
@@ -37,7 +68,6 @@ bot.use(async (ctx, next) => {
         throw error;
     }
 });
-(0, trivia_1.registerTriviaHandlers)(bot);
 bot.use(async (ctx, next) => {
     if (ctx.callbackQuery) {
         console.log(`🔘 Callback received from ${ctx.from?.id} (${ctx.from?.username}): ${ctx.callbackQuery.data || 'No data'}`);
@@ -48,24 +78,15 @@ bot.command('start', async (ctx) => {
     try {
         const userInfo = (0, telegramHelpers_1.extractUserInfo)(ctx);
         (0, logger_1.logFunctionStart)('startCommand', { userId: userInfo.userId });
-        await (0, userService_1.setUserProfile)(userInfo.userId, userInfo.username, userInfo.name);
-        const userData = await (0, userService_1.getUser)(userInfo.userId);
-        let welcome = `🧠 <b>Welcome to GameHub - Trivia Edition!</b>\n\n` +
-            `🎯 Challenge your friends in competitive 2-player trivia games!\n\n` +
-            `💰 Earn and claim daily Coins with /freecoin!\n\n` +
-            `🎯 Choose an action below:`;
-        if (userData.coins === 0 && !userData.lastFreeCoinAt) {
-            await (0, userService_1.addCoins)(userInfo.userId, 100, 'initial grant');
-            welcome = `🎉 You received <b>100 Coins</b> for joining!\n\n` + welcome;
-        }
-        const buttons = [
-            { text: '🧠 Start Trivia', callbackData: { action: 'startgame' } },
-            { text: '🪙 Free Coin', callbackData: { action: 'freecoin' } },
-            { text: '💰 Balance', callbackData: { action: 'balance' } },
-            { text: '❓ Help', callbackData: { action: 'help' } },
-        ];
-        const keyboard = (0, interfaceHelpers_1.createOptimizedKeyboard)(buttons);
-        await (0, interfaceHelpers_1.updateOrSendMessage)(bot, userInfo.chatId, welcome, keyboard, userInfo.userId, 'main_menu');
+        const { dispatch } = await Promise.resolve().then(() => __importStar(require('./modules/core/smart-router')));
+        const context = {
+            ctx,
+            user: {
+                id: userInfo.userId,
+                username: userInfo.username || 'Unknown'
+            }
+        };
+        await dispatch('start', context);
         (0, logger_1.logFunctionEnd)('startCommand', {}, { userId: userInfo.userId });
     }
     catch (error) {
@@ -77,7 +98,15 @@ bot.command('help', async (ctx) => {
     try {
         const userInfo = (0, telegramHelpers_1.extractUserInfo)(ctx);
         (0, logger_1.logFunctionStart)('helpCommand', { userId: userInfo.userId });
-        await handleHelp(bot, userInfo);
+        const { dispatch } = await Promise.resolve().then(() => __importStar(require('./modules/core/smart-router')));
+        const context = {
+            ctx,
+            user: {
+                id: userInfo.userId,
+                username: userInfo.username || 'Unknown'
+            }
+        };
+        await dispatch('help', context);
         (0, logger_1.logFunctionEnd)('helpCommand', {}, { userId: userInfo.userId });
     }
     catch (error) {
@@ -89,7 +118,15 @@ bot.command('balance', async (ctx) => {
     try {
         const userInfo = (0, telegramHelpers_1.extractUserInfo)(ctx);
         (0, logger_1.logFunctionStart)('balanceCommand', { userId: userInfo.userId });
-        await handleBalance(bot, userInfo);
+        const { dispatch } = await Promise.resolve().then(() => __importStar(require('./modules/core/smart-router')));
+        const context = {
+            ctx,
+            user: {
+                id: userInfo.userId,
+                username: userInfo.username || 'Unknown'
+            }
+        };
+        await dispatch('balance', context);
         (0, logger_1.logFunctionEnd)('balanceCommand', {}, { userId: userInfo.userId });
     }
     catch (error) {
@@ -101,12 +138,40 @@ bot.command('freecoin', async (ctx) => {
     try {
         const userInfo = (0, telegramHelpers_1.extractUserInfo)(ctx);
         (0, logger_1.logFunctionStart)('freecoinCommand', { userId: userInfo.userId });
-        await handleFreeCoin(bot, userInfo);
+        const { dispatch } = await Promise.resolve().then(() => __importStar(require('./modules/core/smart-router')));
+        const context = {
+            ctx,
+            user: {
+                id: userInfo.userId,
+                username: userInfo.username || 'Unknown'
+            }
+        };
+        await dispatch('financial.freecoin', context);
         (0, logger_1.logFunctionEnd)('freecoinCommand', {}, { userId: userInfo.userId });
     }
     catch (error) {
         (0, logger_1.logError)('freecoinCommand', error, {});
         await ctx.reply('❌ Failed to claim free coins.');
+    }
+});
+bot.command('poker', async (ctx) => {
+    try {
+        const userInfo = (0, telegramHelpers_1.extractUserInfo)(ctx);
+        (0, logger_1.logFunctionStart)('pokerCommand', { userId: userInfo.userId });
+        const { dispatch } = await Promise.resolve().then(() => __importStar(require('./modules/core/smart-router')));
+        const context = {
+            ctx,
+            user: {
+                id: userInfo.userId,
+                username: userInfo.username || 'Unknown'
+            }
+        };
+        await dispatch('games.poker.start', context);
+        (0, logger_1.logFunctionEnd)('pokerCommand', {}, { userId: userInfo.userId });
+    }
+    catch (error) {
+        (0, logger_1.logError)('pokerCommand', error, {});
+        await ctx.reply('❌ Failed to start poker game.');
     }
 });
 bot.command('games', async (ctx) => {
@@ -147,10 +212,10 @@ bot.callbackQuery(/.*"action":"back".*/, async (ctx) => {
             action: 'back'
         });
         await (0, telegramHelpers_1.answerCallbackQuery)(bot, ctx.callbackQuery.id);
-        const welcome = `🧠 <b>Welcome to GameHub - Trivia Edition!</b>\n\n🎯 Challenge your friends in competitive 2-player trivia games!\n\n💰 Earn and claim daily Coins with /freecoin!\n\n🎯 Choose an action below:`;
+        const welcome = `🃏 <b>Welcome to GameHub - Poker Edition!</b>\n\n🎯 Challenge your friends in competitive poker games!\n\n💰 Earn and claim daily Coins with /freecoin!\n\n🎯 Choose an action below:`;
         const buttons = [
-            { text: '🧠 Start Trivia', callbackData: { action: 'startgame' } },
-            { text: '🪙 Free Coin', callbackData: { action: 'freecoin' } },
+            { text: '🃏 Start Poker', callbackData: { action: 'games.start' } },
+            { text: '🪙 Free Coin', callbackData: { action: 'financial.freecoin' } },
             { text: '💰 Balance', callbackData: { action: 'balance' } },
             { text: '❓ Help', callbackData: { action: 'help' } },
         ];
@@ -163,7 +228,7 @@ bot.callbackQuery(/.*"action":"back".*/, async (ctx) => {
         await (0, telegramHelpers_1.answerCallbackQuery)(bot, ctx.callbackQuery.id, '❌ Processing failed');
     }
 });
-bot.callbackQuery(/.*"action":"startgame".*/, async (ctx) => {
+bot.callbackQuery(/.*"action":"games\.start".*/, async (ctx) => {
     try {
         const userInfo = (0, telegramHelpers_1.extractUserInfo)(ctx);
         (0, logger_1.logFunctionStart)('menu_startgame', {
@@ -172,7 +237,15 @@ bot.callbackQuery(/.*"action":"startgame".*/, async (ctx) => {
             context: 'main_menu'
         });
         await (0, telegramHelpers_1.answerCallbackQuery)(bot, ctx.callbackQuery.id);
-        await handleStartGame(bot, userInfo);
+        const { dispatch } = await Promise.resolve().then(() => __importStar(require('./modules/core/smart-router')));
+        const context = {
+            ctx,
+            user: {
+                id: userInfo.userId,
+                username: userInfo.username || 'Unknown'
+            }
+        };
+        await dispatch('games.start', context);
         (0, logger_1.logFunctionEnd)('menu_startgame', {}, {
             userId: userInfo.userId,
             action: 'startgame',
@@ -184,7 +257,7 @@ bot.callbackQuery(/.*"action":"startgame".*/, async (ctx) => {
         await (0, telegramHelpers_1.answerCallbackQuery)(bot, ctx.callbackQuery.id, '❌ Processing failed');
     }
 });
-bot.callbackQuery(/.*"action":"freecoin".*/, async (ctx) => {
+bot.callbackQuery(/.*"action":"financial\.freecoin".*/, async (ctx) => {
     try {
         const userInfo = (0, telegramHelpers_1.extractUserInfo)(ctx);
         (0, logger_1.logFunctionStart)('menu_freecoin', {
@@ -193,7 +266,15 @@ bot.callbackQuery(/.*"action":"freecoin".*/, async (ctx) => {
             context: 'main_menu'
         });
         await (0, telegramHelpers_1.answerCallbackQuery)(bot, ctx.callbackQuery.id);
-        await handleFreeCoin(bot, userInfo);
+        const { dispatch } = await Promise.resolve().then(() => __importStar(require('./modules/core/smart-router')));
+        const context = {
+            ctx,
+            user: {
+                id: userInfo.userId,
+                username: userInfo.username || 'Unknown'
+            }
+        };
+        await dispatch('financial.freecoin', context);
         (0, logger_1.logFunctionEnd)('menu_freecoin', {}, {
             userId: userInfo.userId,
             action: 'freecoin',
@@ -214,7 +295,15 @@ bot.callbackQuery(/.*"action":"help".*/, async (ctx) => {
             context: 'main_menu'
         });
         await (0, telegramHelpers_1.answerCallbackQuery)(bot, ctx.callbackQuery.id);
-        await handleHelp(bot, userInfo);
+        const { dispatch } = await Promise.resolve().then(() => __importStar(require('./modules/core/smart-router')));
+        const context = {
+            ctx,
+            user: {
+                id: userInfo.userId,
+                username: userInfo.username || 'Unknown'
+            }
+        };
+        await dispatch('help', context);
         (0, logger_1.logFunctionEnd)('menu_help', {}, {
             userId: userInfo.userId,
             action: 'help',
@@ -235,7 +324,15 @@ bot.callbackQuery(/.*"action":"balance".*/, async (ctx) => {
             context: 'main_menu'
         });
         await (0, telegramHelpers_1.answerCallbackQuery)(bot, ctx.callbackQuery.id);
-        await handleBalance(bot, userInfo);
+        const { dispatch } = await Promise.resolve().then(() => __importStar(require('./modules/core/smart-router')));
+        const context = {
+            ctx,
+            user: {
+                id: userInfo.userId,
+                username: userInfo.username || 'Unknown'
+            }
+        };
+        await dispatch('balance', context);
         (0, logger_1.logFunctionEnd)('menu_balance', {}, {
             userId: userInfo.userId,
             action: 'balance',
@@ -247,73 +344,6 @@ bot.callbackQuery(/.*"action":"balance".*/, async (ctx) => {
         await (0, telegramHelpers_1.answerCallbackQuery)(bot, ctx.callbackQuery.id, '❌ Processing failed');
     }
 });
-const handleStartGame = async (bot, userInfo) => {
-    const buttons = [
-        { text: '🧠 Trivia Game', callbackData: { action: 'trivia_start' } },
-    ];
-    const keyboard = (0, interfaceHelpers_1.createOptimizedKeyboard)(buttons, true);
-    await (0, interfaceHelpers_1.updateOrSendMessage)(bot, userInfo.chatId, '🎮 <b>GameHub - Trivia Focus</b>\n\n🧠 Challenge your friends in a competitive 2-player trivia game!\n\n6 rounds, 3 questions per round. Test your knowledge across 10 categories.', keyboard, userInfo.userId, 'game_selection');
-};
-const handleFreeCoin = async (bot, userInfo) => {
-    const { canClaim, nextClaimIn } = await (0, userService_1.canClaimDaily)(userInfo.userId);
-    let message;
-    if (canClaim) {
-        await (0, userService_1.addCoins)(userInfo.userId, 20, 'daily free coin');
-        await (0, userService_1.setLastFreeCoinAt)(userInfo.userId);
-        message = `🪙 You claimed <b>+20</b> daily Coins!\n\nCome back tomorrow for more.`;
-    }
-    else {
-        const timeRemaining = formatTimeRemaining(nextClaimIn);
-        message = `⏰ You already claimed today.\n\nCome back in <b>${timeRemaining}</b>.`;
-    }
-    const buttons = [
-        { text: '🪙 Claim Again', callbackData: { action: 'freecoin' } },
-    ];
-    const keyboard = (0, interfaceHelpers_1.createOptimizedKeyboard)(buttons, true);
-    await (0, interfaceHelpers_1.updateOrSendMessage)(bot, userInfo.chatId, message, keyboard, userInfo.userId, 'freecoin');
-};
-const handleHelp = async (bot, userInfo) => {
-    const helpText = `<b>GameHub - Trivia Game</b>\n\n` +
-        `<b>Available Commands:</b>\n\n` +
-        `/start - Start the bot\n` +
-        `/trivia - Start a new trivia game\n` +
-        `/startgame - Start a new game\n` +
-        `/freecoin - Claim your daily free coins\n` +
-        `/help - Show this help message\n` +
-        `/balance - Show your coin balance\n\n` +
-        `<b>How to Play Trivia:</b>\n` +
-        `• 2 players compete in 6 rounds\n` +
-        `• Each round has 3 questions from one category\n` +
-        `• Players take turns choosing categories\n` +
-        `• Fast-paced with 10-second time limits\n` +
-        `• Win: +20 coins, Draw: +10 coins each\n\n` +
-        `<b>Categories:</b>\n` +
-        `🌍 Geography, 📚 Literature, ⚽ Sports,\n` +
-        `🎬 Entertainment, 🔬 Science, 🎨 Art & Culture,\n` +
-        `🍔 Food & Drink, 🌍 History, 🎵 Music, 💻 Technology`;
-    const buttons = [
-        { text: '📋 Commands', callbackData: { action: 'help' } },
-    ];
-    const keyboard = (0, interfaceHelpers_1.createOptimizedKeyboard)(buttons, true);
-    await (0, interfaceHelpers_1.updateOrSendMessage)(bot, userInfo.chatId, helpText, keyboard, userInfo.userId, 'help');
-};
-const handleBalance = async (bot, userInfo) => {
-    const user = await (0, userService_1.getUser)(userInfo.userId);
-    const message = `💰 <b>Your Balance:</b>\n\n<b>${user.coins} Coins</b>`;
-    const buttons = [
-        { text: '🪙 Free Coin', callbackData: { action: 'freecoin' } },
-        { text: '🎮 Start Game', callbackData: { action: 'startgame' } },
-    ];
-    const keyboard = (0, interfaceHelpers_1.createOptimizedKeyboard)(buttons, true);
-    await (0, interfaceHelpers_1.updateOrSendMessage)(bot, userInfo.chatId, message, keyboard, userInfo.userId, 'balance');
-};
-const formatTimeRemaining = (milliseconds) => {
-    const hours = Math.floor(milliseconds / 3600000);
-    const minutes = Math.floor((milliseconds % 3600000) / 60000);
-    const seconds = Math.floor((milliseconds % 60000) / 1000);
-    const pad = (n) => n.toString().padStart(2, '0');
-    return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
-};
 bot.catch((err) => {
     (0, logger_1.logError)('botError', err.error, {});
     console.error('Bot error:', err.error);
@@ -377,7 +407,7 @@ bot.on('inline_query', async (ctx) => {
                     },
                     reply_markup: {
                         inline_keyboard: [
-                            [{ text: '🎮 Join Game', callback_data: JSON.stringify({ a: 'tj', g: gameId }) }]
+                            [{ text: '🎮 Join Game', callback_data: JSON.stringify({ action: 'trivia_join', gameId }) }]
                         ]
                     }
                 }

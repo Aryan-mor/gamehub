@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const database_1 = require("firebase/database");
-const firebase_1 = require("../core/firebase");
+const firebase_1 = require("../modules/core/firebase");
 async function clearAllUsers() {
     if (!firebase_1.database) {
         console.error("Firebase not initialized");

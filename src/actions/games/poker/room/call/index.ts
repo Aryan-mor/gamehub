@@ -1,27 +1,23 @@
 import { HandlerContext } from '@/modules/core/handler';
-import { getRoomId } from '../../utils/getRoomId';
-import { validateUser } from '../../utils/validateUser';
+import { wrapWithMiddlewares } from '@/modules/core/middleware';
+import { isJoined, isTurn } from '../_middleware';
 
 /**
  * Handle Poker call action
  */
 async function handleCall(context: HandlerContext, query: Record<string, string>): Promise<void> {
-  // Validate user
-  const user = validateUser(context);
-  
-  // Get and validate room ID
-  const roomId = getRoomId(query);
+  // Get room ID from query (already validated by middleware)
+  const roomId = query.roomId;
   
   // Log the action
-  console.log(`User ${user.id} is calling in room ${roomId}`);
+  console.log(`Processing call action for room ${roomId}`);
   
   // TODO: Implement actual Poker call logic here
   // This would typically involve:
-  // 1. Validating the room exists
-  // 2. Checking if it's the user's turn
-  // 3. Processing the call action
-  // 4. Updating game state
-  // 5. Notifying other players
+  // 1. Processing the call action
+  // 2. Updating game state
+  // 3. Notifying other players
+  // 4. Moving to next player's turn
   
   // For now, just acknowledge the action
   if (context.ctx && context.ctx.reply) {
@@ -29,4 +25,5 @@ async function handleCall(context: HandlerContext, query: Record<string, string>
   }
 }
 
-export default handleCall; 
+// Export the handler wrapped with middleware
+export default wrapWithMiddlewares(handleCall, [isJoined, isTurn]); 
