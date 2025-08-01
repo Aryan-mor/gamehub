@@ -1,15 +1,16 @@
 import 'dotenv/config';
 import { Bot } from 'grammy';
 import { InlineQueryResult } from 'grammy/types';
-import { logFunctionStart, logFunctionEnd, logError } from './core/logger';
-import { extractUserInfo, sendMessage, answerCallbackQuery } from './core/telegramHelpers';
-import { getUser, addCoins, canClaimDaily, setLastFreeCoinAt, setUserProfile } from './core/userService';
-import { getActiveGamesForUser } from './core/gameService';
+import { logFunctionStart, logFunctionEnd, logError } from './modules/core/logger';
+import { extractUserInfo, sendMessage, answerCallbackQuery } from './modules/core/telegramHelpers';
+import { getActiveGamesForUser } from './modules/core/gameService';
 import { 
   createOptimizedKeyboard, 
   updateOrSendMessage
-} from './core/interfaceHelpers';
-import { registerTriviaHandlers } from './games/trivia';
+} from './modules/core/interfaceHelpers';
+// Archived games are no longer imported - using new auto-discovery router system
+import { HandlerContext } from './modules/core/handler';
+import { UserId } from './utils/types';
 
 /**
  * GameHub Telegram Bot
@@ -63,8 +64,7 @@ bot.use(async (ctx, next) => {
   }
 });
 
-// Register game handlers
-registerTriviaHandlers(bot);
+// Game handlers are now auto-discovered through the smart router system
 
 // Simple callback logging (without interfering with handlers)
 bot.use(async (ctx, next) => {
@@ -82,38 +82,24 @@ bot.use(async (ctx, next) => {
 
 
 
-// Handle /start command
+// Handle /start command using auto-discovery router
 bot.command('start', async (ctx) => {
   try {
     const userInfo = extractUserInfo(ctx);
     logFunctionStart('startCommand', { userId: userInfo.userId });
     
-    // Save user profile
-    await setUserProfile(userInfo.userId, userInfo.username, userInfo.name);
+    // Use auto-discovery router for start action
+    const { dispatch } = await import('./modules/core/smart-router');
     
-    // Get user data
-    const userData = await getUser(userInfo.userId);
+    const context: HandlerContext = {
+      ctx,
+      user: {
+        id: userInfo.userId as UserId,
+        username: userInfo.username || 'Unknown'
+      }
+    };
     
-    let welcome = `🧠 <b>Welcome to GameHub - Trivia Edition!</b>\n\n` +
-      `🎯 Challenge your friends in competitive 2-player trivia games!\n\n` +
-      `💰 Earn and claim daily Coins with /freecoin!\n\n` +
-      `🎯 Choose an action below:`;
-    
-    if (userData.coins === 0 && !userData.lastFreeCoinAt) {
-      await addCoins(userInfo.userId, 100, 'initial grant');
-      welcome = `🎉 You received <b>100 Coins</b> for joining!\n\n` + welcome;
-    }
-    
-    const buttons = [
-      { text: '🧠 Start Trivia', callbackData: { action: 'startgame' } },
-      { text: '🪙 Free Coin', callbackData: { action: 'freecoin' } },
-      { text: '💰 Balance', callbackData: { action: 'balance' } },
-      { text: '❓ Help', callbackData: { action: 'help' } },
-    ];
-    
-    const keyboard = createOptimizedKeyboard(buttons);
-    
-    await updateOrSendMessage(bot, userInfo.chatId, welcome, keyboard, userInfo.userId, 'main_menu');
+    await dispatch('start', context);
     
     logFunctionEnd('startCommand', {}, { userId: userInfo.userId });
   } catch (error) {
@@ -128,7 +114,18 @@ bot.command('help', async (ctx) => {
     const userInfo = extractUserInfo(ctx);
     logFunctionStart('helpCommand', { userId: userInfo.userId });
     
-    await handleHelp(bot, userInfo);
+    // Use auto-discovery router for help action
+    const { dispatch } = await import('./modules/core/smart-router');
+    
+    const context: HandlerContext = {
+      ctx,
+      user: {
+        id: userInfo.userId as UserId,
+        username: userInfo.username || 'Unknown'
+      }
+    };
+    
+    await dispatch('help', context);
     
     logFunctionEnd('helpCommand', {}, { userId: userInfo.userId });
   } catch (error) {
@@ -143,7 +140,18 @@ bot.command('balance', async (ctx) => {
     const userInfo = extractUserInfo(ctx);
     logFunctionStart('balanceCommand', { userId: userInfo.userId });
     
-    await handleBalance(bot, userInfo);
+    // Use auto-discovery router for balance action
+    const { dispatch } = await import('./modules/core/smart-router');
+    
+    const context: HandlerContext = {
+      ctx,
+      user: {
+        id: userInfo.userId as UserId,
+        username: userInfo.username || 'Unknown'
+      }
+    };
+    
+    await dispatch('balance', context);
     
     logFunctionEnd('balanceCommand', {}, { userId: userInfo.userId });
   } catch (error) {
@@ -158,7 +166,18 @@ bot.command('freecoin', async (ctx) => {
     const userInfo = extractUserInfo(ctx);
     logFunctionStart('freecoinCommand', { userId: userInfo.userId });
     
-    await handleFreeCoin(bot, userInfo);
+    // Use auto-discovery router for freecoin action
+    const { dispatch } = await import('./modules/core/smart-router');
+    
+    const context: HandlerContext = {
+      ctx,
+      user: {
+        id: userInfo.userId as UserId,
+        username: userInfo.username || 'Unknown'
+      }
+    };
+    
+    await dispatch('financial.freecoin', context);
     
     logFunctionEnd('freecoinCommand', {}, { userId: userInfo.userId });
   } catch (error) {
@@ -220,8 +239,8 @@ bot.callbackQuery(/.*"action":"back".*/, async (ctx) => {
     const welcome = `🧠 <b>Welcome to GameHub - Trivia Edition!</b>\n\n🎯 Challenge your friends in competitive 2-player trivia games!\n\n💰 Earn and claim daily Coins with /freecoin!\n\n🎯 Choose an action below:`;
     
     const buttons = [
-      { text: '🧠 Start Trivia', callbackData: { action: 'startgame' } },
-      { text: '🪙 Free Coin', callbackData: { action: 'freecoin' } },
+      { text: '🧠 Start Trivia', callbackData: { action: 'games.start' } },
+      { text: '🪙 Free Coin', callbackData: { action: 'financial.freecoin' } },
       { text: '💰 Balance', callbackData: { action: 'balance' } },
       { text: '❓ Help', callbackData: { action: 'help' } },
     ];
@@ -238,7 +257,7 @@ bot.callbackQuery(/.*"action":"back".*/, async (ctx) => {
 });
 
 // Handle main menu callback queries with specific patterns
-bot.callbackQuery(/.*"action":"startgame".*/, async (ctx) => {
+bot.callbackQuery(/.*"action":"games\.start".*/, async (ctx) => {
   try {
     const userInfo = extractUserInfo(ctx);
     logFunctionStart('menu_startgame', { 
@@ -248,7 +267,19 @@ bot.callbackQuery(/.*"action":"startgame".*/, async (ctx) => {
     });
     
     await answerCallbackQuery(bot, ctx.callbackQuery.id);
-    await handleStartGame(bot, userInfo);
+    
+    // Use auto-discovery router for startgame action
+    const { dispatch } = await import('./modules/core/smart-router');
+    
+    const context: HandlerContext = {
+      ctx,
+      user: {
+        id: userInfo.userId as UserId,
+        username: userInfo.username || 'Unknown'
+      }
+    };
+    
+    await dispatch('games.start', context);
     
     logFunctionEnd('menu_startgame', {}, { 
       userId: userInfo.userId, 
@@ -288,7 +319,7 @@ bot.callbackQuery(/.*"action":"startgame".*/, async (ctx) => {
 //   }
 // });
 
-bot.callbackQuery(/.*"action":"freecoin".*/, async (ctx) => {
+bot.callbackQuery(/.*"action":"financial\.freecoin".*/, async (ctx) => {
   try {
     const userInfo = extractUserInfo(ctx);
     logFunctionStart('menu_freecoin', { 
@@ -298,7 +329,19 @@ bot.callbackQuery(/.*"action":"freecoin".*/, async (ctx) => {
     });
     
     await answerCallbackQuery(bot, ctx.callbackQuery.id);
-    await handleFreeCoin(bot, userInfo);
+    
+    // Use auto-discovery router for freecoin action
+    const { dispatch } = await import('./modules/core/smart-router');
+    
+    const context: HandlerContext = {
+      ctx,
+      user: {
+        id: userInfo.userId as UserId,
+        username: userInfo.username || 'Unknown'
+      }
+    };
+    
+    await dispatch('financial.freecoin', context);
     
     logFunctionEnd('menu_freecoin', {}, { 
       userId: userInfo.userId, 
@@ -321,7 +364,19 @@ bot.callbackQuery(/.*"action":"help".*/, async (ctx) => {
     });
     
     await answerCallbackQuery(bot, ctx.callbackQuery.id);
-    await handleHelp(bot, userInfo);
+    
+    // Use auto-discovery router for help action
+    const { dispatch } = await import('./modules/core/smart-router');
+    
+    const context: HandlerContext = {
+      ctx,
+      user: {
+        id: userInfo.userId as UserId,
+        username: userInfo.username || 'Unknown'
+      }
+    };
+    
+    await dispatch('help', context);
     
     logFunctionEnd('menu_help', {}, { 
       userId: userInfo.userId, 
@@ -344,7 +399,19 @@ bot.callbackQuery(/.*"action":"balance".*/, async (ctx) => {
     });
     
     await answerCallbackQuery(bot, ctx.callbackQuery.id);
-    await handleBalance(bot, userInfo);
+    
+    // Use auto-discovery router for balance action
+    const { dispatch } = await import('./modules/core/smart-router');
+    
+    const context: HandlerContext = {
+      ctx,
+      user: {
+        id: userInfo.userId as UserId,
+        username: userInfo.username || 'Unknown'
+      }
+    };
+    
+    await dispatch('balance', context);
     
     logFunctionEnd('menu_balance', {}, { 
       userId: userInfo.userId, 
@@ -514,93 +581,13 @@ bot.callbackQuery(/.*"action":"balance".*/, async (ctx) => {
 //     });
 // };
 
-const handleStartGame = async (bot: Bot, userInfo: { userId: string; chatId: number }) => {
-  const buttons = [
-    { text: '🧠 Trivia Game', callbackData: { action: 'trivia_start' } },
-  ];
-  
-  const keyboard = createOptimizedKeyboard(buttons, true);
-  
-  await updateOrSendMessage(bot, userInfo.chatId, 
-    '🎮 <b>GameHub - Trivia Focus</b>\n\n🧠 Challenge your friends in a competitive 2-player trivia game!\n\n6 rounds, 3 questions per round. Test your knowledge across 10 categories.',
-    keyboard, userInfo.userId, 'game_selection'
-  );
-};
+// handleStartGame is now auto-discovered from actions/startgame/index.ts
 
-const handleFreeCoin = async (bot: Bot, userInfo: { userId: string; chatId: number }) => {
-  const { canClaim, nextClaimIn } = await canClaimDaily(userInfo.userId);
-  
-  let message: string;
-  if (canClaim) {
-    await addCoins(userInfo.userId, 20, 'daily free coin');
-    await setLastFreeCoinAt(userInfo.userId);
-    message = `🪙 You claimed <b>+20</b> daily Coins!\n\nCome back tomorrow for more.`;
-  } else {
-    const timeRemaining = formatTimeRemaining(nextClaimIn);
-    message = `⏰ You already claimed today.\n\nCome back in <b>${timeRemaining}</b>.`;
-  }
-  
-  const buttons = [
-    { text: '🪙 Claim Again', callbackData: { action: 'freecoin' } },
-  ];
-  
-  const keyboard = createOptimizedKeyboard(buttons, true);
-  
-  await updateOrSendMessage(bot, userInfo.chatId, message, keyboard, userInfo.userId, 'freecoin');
-};
+// handleFreeCoin is now auto-discovered from actions/freecoin/index.ts
 
-const handleHelp = async (bot: Bot, userInfo: { userId: string; chatId: number }) => {
-  const helpText = `<b>GameHub - Trivia Game</b>\n\n` +
-    `<b>Available Commands:</b>\n\n` +
-    `/start - Start the bot\n` +
-    `/trivia - Start a new trivia game\n` +
-    `/startgame - Start a new game\n` +
-    `/freecoin - Claim your daily free coins\n` +
-    `/help - Show this help message\n` +
-    `/balance - Show your coin balance\n\n` +
-    `<b>How to Play Trivia:</b>\n` +
-    `• 2 players compete in 6 rounds\n` +
-    `• Each round has 3 questions from one category\n` +
-    `• Players take turns choosing categories\n` +
-    `• Fast-paced with 10-second time limits\n` +
-    `• Win: +20 coins, Draw: +10 coins each\n\n` +
-    `<b>Categories:</b>\n` +
-    `🌍 Geography, 📚 Literature, ⚽ Sports,\n` +
-    `🎬 Entertainment, 🔬 Science, 🎨 Art & Culture,\n` +
-    `🍔 Food & Drink, 🌍 History, 🎵 Music, 💻 Technology`;
-  
-  const buttons = [
-    { text: '📋 Commands', callbackData: { action: 'help' } },
-  ];
-  
-  const keyboard = createOptimizedKeyboard(buttons, true);
-  
-  await updateOrSendMessage(bot, userInfo.chatId, helpText, keyboard, userInfo.userId, 'help');
-};
+// handleHelp and handleBalance are now auto-discovered from actions/help/index.ts and actions/balance/index.ts
 
-const handleBalance = async (bot: Bot, userInfo: { userId: string; chatId: number }) => {
-  const user = await getUser(userInfo.userId);
-  const message = `💰 <b>Your Balance:</b>\n\n<b>${user.coins} Coins</b>`;
-  
-  const buttons = [
-    { text: '🪙 Free Coin', callbackData: { action: 'freecoin' } },
-    { text: '🎮 Start Game', callbackData: { action: 'startgame' } },
-  ];
-  
-  const keyboard = createOptimizedKeyboard(buttons, true);
-  
-  await updateOrSendMessage(bot, userInfo.chatId, message, keyboard, userInfo.userId, 'balance');
-};
-
-// Helper function for formatting time
-const formatTimeRemaining = (milliseconds: number): string => {
-  const hours = Math.floor(milliseconds / 3600000);
-  const minutes = Math.floor((milliseconds % 3600000) / 60000);
-  const seconds = Math.floor((milliseconds % 60000) / 1000);
-  
-  const pad = (n: number) => n.toString().padStart(2, '0');
-  return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
-};
+// formatTimeRemaining is now moved to the freecoin action handler
 
 // Error handler
 bot.catch((err) => {
@@ -667,6 +654,7 @@ process.once('SIGTERM', () => gracefulShutdown('SIGTERM'));
 // Start the bot
 startBot(); 
 
+// Inline query handler for sharing games
 bot.on('inline_query', async (ctx) => {
   const query = ctx.inlineQuery.query;
   if (query.startsWith('trivia_')) {
@@ -683,7 +671,7 @@ bot.on('inline_query', async (ctx) => {
           },
           reply_markup: {
             inline_keyboard: [
-              [{ text: '🎮 Join Game', callback_data: JSON.stringify({ a: 'tj', g: gameId }) }]
+              [{ text: '🎮 Join Game', callback_data: JSON.stringify({ action: 'trivia_join', gameId }) }]
             ]
           }
         }
