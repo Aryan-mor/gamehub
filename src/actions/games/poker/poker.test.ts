@@ -30,13 +30,11 @@ describe('Poker Game Routing', () => {
     });
 
     it('should handle unknown module gracefully', async () => {
-      // The function should not throw, but should log an error and send a message
+      // The function should not throw, as auto-discovery router will handle it
       await handlePokerMessage('games.poker.unknown', mockContext);
       
-      // Should send error message to user
-      expect(mockContext.ctx.reply).toHaveBeenCalledWith(
-        'Sorry, there was an error processing your Poker request.'
-      );
+      // Should not send any error message as auto-discovery handles unknown modules
+      expect(mockContext.ctx.reply).not.toHaveBeenCalled();
     });
   });
 }); 
