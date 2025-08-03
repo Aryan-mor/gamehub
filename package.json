@@ -7,7 +7,7 @@
     "dev": "./scripts/dev.sh",
     "build": "tsc",
     "start": "node dist/bot.js",
-    "lint": "eslint src --ext .ts,.tsx",
+    "lint": "eslint src --ext .ts,.tsx --max-warnings 200",
     "test": "vitest",
     "test:ui": "vitest --ui",
     "test:run": "vitest run",

@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabase';
+import { api } from '@/lib/api';
 import { PokerRoom, PlayerId, RoomId } from '../types';
 import { logFunctionStart, logFunctionEnd, logError } from '@/modules/core/logger';
 

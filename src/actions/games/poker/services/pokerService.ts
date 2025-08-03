@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabase';
+import { api } from '@/lib/api';
 import { nanoid } from 'nanoid';
 import { 
   PokerRoom, 

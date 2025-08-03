@@ -77,7 +77,7 @@ export function dealCardsToPlayers(deck: string[], playerCount: number): {
   }
   
   const playerHands: string[][] = [];
-  let remainingDeck = [...deck];
+  const remainingDeck = [...deck];
   
   // Deal 2 cards to each player
   for (let i = 0; i < playerCount; i++) {

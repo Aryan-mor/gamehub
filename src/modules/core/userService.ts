@@ -1,6 +1,6 @@
 import { User } from './types';
 import { logFunctionStart, logFunctionEnd, logError } from './logger';
-import { supabase } from '@/lib/supabase';
+import { api } from '@/lib/api';
 
 export const getUser = async (userId: string): Promise<User> => {
   logFunctionStart('getUser', { userId });

@@ -1,6 +1,6 @@
 import { GameState, GameType, GameStatus, Player, GameResult } from './types';
 import { logFunctionStart, logFunctionEnd, logError } from './logger';
-import { supabase } from '@/lib/supabase';
+import { api } from '@/lib/api';
 
 export const createGame = async (
   gameType: GameType,
