@@ -36,14 +36,12 @@ async function handleGame(context: HandlerContext, query: Record<string, string>
       const currentPlayer = room.players[room.currentPlayerIndex];
       isCurrentPlayerTurn = currentPlayer.id === validatedPlayerId;
       
+      // Use display name (first_name + last_name) instead of username for privacy
+      const displayName = currentPlayer.name || currentPlayer.username || 'Unknown Player';
+      
       turnMessage = isCurrentPlayerTurn 
         ? `\n🎯 <b>It's your turn!</b> Choose your action:`
-                 // Use display name (first_name + last_name) instead of username for privacy
-         const displayName = currentPlayer.name || currentPlayer.username || 'Unknown Player';
-         
-         turnMessage = isCurrentPlayerTurn 
-           ? `\n🎯 <b>It's your turn!</b> Choose your action:`
-           : `\n⏳ <b>Waiting for ${displayName}...</b>`;
+        : `\n⏳ <b>Waiting for ${displayName}...</b>`;
     }
     
     const message = gameStateMessage + turnMessage;

@@ -93,10 +93,11 @@ async function handleKick(context: HandlerContext, query: Record<string, string>
     // Kick the player
     const updatedRoom = await kickPlayerFromRoom(validatedRoomId, validatedTargetPlayerId);
     
-    const message = `👢 <b>بازیکن اخراج شد!</b>\n\n` +
-      // Use display name (first_name + last_name) instead of username for privacy
+    // Use display name (first_name + last_name) instead of username for privacy
     const displayName = targetPlayer.name || targetPlayer.username || 'Unknown Player';
-    `✅ بازیکن <b>${displayName}</b> از روم اخراج شد.\n\n` +
+    
+    const message = `👢 <b>بازیکن اخراج شد!</b>\n\n` +
+      `✅ بازیکن <b>${displayName}</b> از روم اخراج شد.\n\n` +
       `🎯 <b>وضعیت روم:</b>\n` +
       `• بازیکنان: ${updatedRoom.players.length}/${updatedRoom.maxPlayers}\n` +
       `• وضعیت: ${updatedRoom.status}\n\n` +
