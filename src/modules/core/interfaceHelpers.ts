@@ -149,13 +149,19 @@ export const getGameState = (userId: string) => {
 
 // Helper function to clear game state and return to main menu
 export const returnToMainMenu = async (bot: Bot, userInfo: { userId: string; chatId: number }) => {
+  // Import keys from actions for consistency
+  const { key: gamesStartKey } = await import('../../actions/games/start');
+  const { key: freecoinKey } = await import('../../actions/financial/freecoin');
+  const { key: balanceKey } = await import('../../actions/balance');
+  const { key: helpKey } = await import('../../actions/help');
+  
   const welcome = `🧠 <b>Welcome to GameHub - Trivia Edition!</b>\n\n🎯 Challenge your friends in competitive 2-player trivia games!\n\n💰 Earn and claim daily Coins with /freecoin!\n\n🎯 Choose an action below:`;
   
   const buttons = [
-    { text: '🧠 Start Trivia', callbackData: { action: 'startgame' } },
-    { text: '🪙 Free Coin', callbackData: { action: 'freecoin' } },
-    { text: '💰 Balance', callbackData: { action: 'balance' } },
-    { text: '❓ Help', callbackData: { action: 'help' } },
+    { text: '🧠 Start Trivia', callbackData: { action: gamesStartKey } },
+    { text: '🪙 Free Coin', callbackData: { action: freecoinKey } },
+    { text: '💰 Balance', callbackData: { action: balanceKey } },
+    { text: '❓ Help', callbackData: { action: helpKey } },
   ];
   
   const keyboard = createOptimizedKeyboard(buttons);

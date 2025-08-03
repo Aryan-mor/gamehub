@@ -1,6 +1,9 @@
 import { HandlerContext } from '@/modules/core/handler';
 import { isValidUserId } from '@/utils/typeGuards';
 
+// Export the action key for consistency and debugging
+export const key = 'start';
+
 /**
  * Handle /start command
  * Welcome new users and show main menu
@@ -17,6 +20,13 @@ async function handleStart(context: HandlerContext): Promise<void> {
     // Import required services
     const { setUserProfile, getUser, addCoins } = await import('@/modules/core/userService');
     const { createOptimizedKeyboard } = await import('@/modules/core/interfaceHelpers');
+    
+    // Import keys from other actions for consistency
+    const { key: gamesStartKey } = await import('@/actions/games/start');
+    const { key: pokerGameStartKey } = await import('@/actions/games/poker/start');
+    const { key: freecoinKey } = await import('@/actions/financial/freecoin');
+    const { key: balanceKey } = await import('@/actions/balance');
+    const { key: helpKey } = await import('@/actions/help');
     
     // Save user profile
     await setUserProfile(user.id, user.username, user.username || 'Unknown');
@@ -38,10 +48,11 @@ async function handleStart(context: HandlerContext): Promise<void> {
     
     // Create buttons
     const buttons = [
-      { text: '🃏 Start Poker', callbackData: { action: 'games.start' } },
-      { text: '🪙 Free Coin', callbackData: { action: 'financial.freecoin' } },
-      { text: '💰 Balance', callbackData: { action: 'balance' } },
-      { text: '❓ Help', callbackData: { action: 'help' } },
+      { text: '🃏 Start Poker', callbackData: { action: pokerGameStartKey } },
+      { text: '🃏 Start Games', callbackData: { action: gamesStartKey } },
+      { text: '🪙 Free Coin', callbackData: { action: freecoinKey } },
+      { text: '💰 Balance', callbackData: { action: balanceKey } },
+      { text: '❓ Help', callbackData: { action: helpKey } },
     ];
     
     const keyboard = createOptimizedKeyboard(buttons);

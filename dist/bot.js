@@ -77,7 +77,23 @@ bot.use(async (ctx, next) => {
 bot.command('start', async (ctx) => {
     try {
         const userInfo = (0, telegramHelpers_1.extractUserInfo)(ctx);
-        (0, logger_1.logFunctionStart)('startCommand', { userId: userInfo.userId });
+        const startPayload = ctx.message?.text?.split(' ')[1];
+        (0, logger_1.logFunctionStart)('startCommand', { userId: userInfo.userId, startPayload });
+        if (startPayload && startPayload.startsWith('room_')) {
+            const roomId = startPayload.substring(5);
+            console.log(`Processing room join via start payload: ${roomId}`);
+            const { dispatch } = await Promise.resolve().then(() => __importStar(require('./modules/core/smart-router')));
+            const context = {
+                ctx,
+                user: {
+                    id: userInfo.userId,
+                    username: userInfo.username || 'Unknown'
+                }
+            };
+            await dispatch('games.poker.room.join', context, { roomId, isDirectLink: 'true' });
+            (0, logger_1.logFunctionEnd)('startCommand', {}, { userId: userInfo.userId, action: 'roomJoin' });
+            return;
+        }
         const { dispatch } = await Promise.resolve().then(() => __importStar(require('./modules/core/smart-router')));
         const context = {
             ctx,
@@ -87,7 +103,7 @@ bot.command('start', async (ctx) => {
             }
         };
         await dispatch('start', context);
-        (0, logger_1.logFunctionEnd)('startCommand', {}, { userId: userInfo.userId });
+        (0, logger_1.logFunctionEnd)('startCommand', {}, { userId: userInfo.userId, action: 'regular' });
     }
     catch (error) {
         (0, logger_1.logError)('startCommand', error, {});
@@ -212,12 +228,16 @@ bot.callbackQuery(/.*"action":"back".*/, async (ctx) => {
             action: 'back'
         });
         await (0, telegramHelpers_1.answerCallbackQuery)(bot, ctx.callbackQuery.id);
+        const { key: gamesStartKey } = await Promise.resolve().then(() => __importStar(require('./actions/games/start')));
+        const { key: freecoinKey } = await Promise.resolve().then(() => __importStar(require('./actions/financial/freecoin')));
+        const { key: balanceKey } = await Promise.resolve().then(() => __importStar(require('./actions/balance')));
+        const { key: helpKey } = await Promise.resolve().then(() => __importStar(require('./actions/help')));
         const welcome = `🃏 <b>Welcome to GameHub - Poker Edition!</b>\n\n🎯 Challenge your friends in competitive poker games!\n\n💰 Earn and claim daily Coins with /freecoin!\n\n🎯 Choose an action below:`;
         const buttons = [
-            { text: '🃏 Start Poker', callbackData: { action: 'games.start' } },
-            { text: '🪙 Free Coin', callbackData: { action: 'financial.freecoin' } },
-            { text: '💰 Balance', callbackData: { action: 'balance' } },
-            { text: '❓ Help', callbackData: { action: 'help' } },
+            { text: '🃏 Start Poker', callbackData: { action: gamesStartKey } },
+            { text: '🪙 Free Coin', callbackData: { action: freecoinKey } },
+            { text: '💰 Balance', callbackData: { action: balanceKey } },
+            { text: '❓ Help', callbackData: { action: helpKey } },
         ];
         const keyboard = (0, interfaceHelpers_1.createOptimizedKeyboard)(buttons);
         await (0, interfaceHelpers_1.updateOrSendMessage)(bot, userInfo.chatId, welcome, keyboard, userInfo.userId, 'main_menu');
@@ -254,6 +274,107 @@ bot.callbackQuery(/.*"action":"games\.start".*/, async (ctx) => {
     }
     catch (error) {
         (0, logger_1.logError)('menu_startgame', error, {});
+        await (0, telegramHelpers_1.answerCallbackQuery)(bot, ctx.callbackQuery.id, '❌ Processing failed');
+    }
+});
+bot.callbackQuery(/.*"action":"games\.poker\.start".*/, async (ctx) => {
+    try {
+        const userInfo = (0, telegramHelpers_1.extractUserInfo)(ctx);
+        (0, logger_1.logFunctionStart)('menu_poker_start', {
+            userId: userInfo.userId,
+            action: 'poker_start',
+            context: 'game_selection'
+        });
+        await (0, telegramHelpers_1.answerCallbackQuery)(bot, ctx.callbackQuery.id);
+        const { dispatch } = await Promise.resolve().then(() => __importStar(require('./modules/core/smart-router')));
+        const context = {
+            ctx,
+            user: {
+                id: userInfo.userId,
+                username: userInfo.username || 'Unknown'
+            }
+        };
+        await dispatch('games.poker.start', context);
+        (0, logger_1.logFunctionEnd)('menu_poker_start', {}, {
+            userId: userInfo.userId,
+            action: 'poker_start',
+            context: 'game_selection'
+        });
+    }
+    catch (error) {
+        (0, logger_1.logError)('menu_poker_start', error, {});
+        await (0, telegramHelpers_1.answerCallbackQuery)(bot, ctx.callbackQuery.id, '❌ Processing failed');
+    }
+});
+bot.callbackQuery(/.*"action":"games\.poker\.room\..*/, async (ctx) => {
+    try {
+        const userInfo = (0, telegramHelpers_1.extractUserInfo)(ctx);
+        const data = (0, telegramHelpers_1.parseCallbackData)(ctx.callbackQuery.data || '');
+        const action = data.action;
+        (0, logger_1.logFunctionStart)('poker_room_action', {
+            userId: userInfo.userId,
+            action: action,
+            context: 'poker_room',
+            roomId: data.roomId || 'none'
+        });
+        await (0, telegramHelpers_1.answerCallbackQuery)(bot, ctx.callbackQuery.id);
+        const { dispatch } = await Promise.resolve().then(() => __importStar(require('./modules/core/smart-router')));
+        const context = {
+            ctx,
+            user: {
+                id: userInfo.userId,
+                username: userInfo.username || 'Unknown'
+            }
+        };
+        const query = {};
+        if (data.roomId)
+            query.roomId = data.roomId;
+        if (data.amount)
+            query.amount = data.amount;
+        if (data.userId)
+            query.userId = data.userId;
+        context.query = query;
+        await dispatch(action, context);
+        (0, logger_1.logFunctionEnd)('poker_room_action', {}, {
+            userId: userInfo.userId,
+            action: action,
+            context: 'poker_room'
+        });
+    }
+    catch (error) {
+        (0, logger_1.logError)('poker_room_action', error, {});
+        await (0, telegramHelpers_1.answerCallbackQuery)(bot, ctx.callbackQuery.id, '❌ Processing failed');
+    }
+});
+bot.callbackQuery(/^[a-z0-9]{2,4}(\?.*)?$/, async (ctx) => {
+    try {
+        const userInfo = (0, telegramHelpers_1.extractUserInfo)(ctx);
+        const callbackData = ctx.callbackQuery.data || '';
+        (0, logger_1.logFunctionStart)('poker_compact_action', {
+            userId: userInfo.userId,
+            callbackData,
+            context: 'poker_compact'
+        });
+        await (0, telegramHelpers_1.answerCallbackQuery)(bot, ctx.callbackQuery.id);
+        const { dispatch, parseCallbackData } = await Promise.resolve().then(() => __importStar(require('./modules/core/compact-router')));
+        const context = {
+            ctx,
+            user: {
+                id: userInfo.userId,
+                username: userInfo.username || 'Unknown'
+            }
+        };
+        const { code, params } = parseCallbackData(callbackData);
+        context.query = params;
+        await dispatch(code, context, params);
+        (0, logger_1.logFunctionEnd)('poker_compact_action', {}, {
+            userId: userInfo.userId,
+            code,
+            context: 'poker_compact'
+        });
+    }
+    catch (error) {
+        (0, logger_1.logError)('poker_compact_action', error, {});
         await (0, telegramHelpers_1.answerCallbackQuery)(bot, ctx.callbackQuery.id, '❌ Processing failed');
     }
 });
@@ -352,6 +473,8 @@ const startBot = async () => {
     (0, logger_1.logFunctionStart)('startBot', {});
     try {
         console.log('🚀 Starting GameHub bot...');
+        await Promise.resolve().then(() => __importStar(require('./actions/games/poker')));
+        console.log('✅ Poker handlers self-registered with compact router');
         await bot.api.setMyCommands([
             { command: 'start', description: 'Start the bot' },
             { command: 'startgame', description: 'Start a new game' },
@@ -391,6 +514,31 @@ const gracefulShutdown = (signal) => {
 process.once('SIGINT', () => gracefulShutdown('SIGINT'));
 process.once('SIGTERM', () => gracefulShutdown('SIGTERM'));
 startBot();
+bot.on('message', async (ctx) => {
+    try {
+        if (!ctx.message?.text) {
+            return;
+        }
+        const userInfo = (0, telegramHelpers_1.extractUserInfo)(ctx);
+        const text = ctx.message.text;
+        const { isUserInRoomCreationForm, handleRoomNameInput } = await Promise.resolve().then(() => __importStar(require('./actions/games/poker/room/create/textHandler')));
+        if (isUserInRoomCreationForm(userInfo.userId.toString())) {
+            const handled = await handleRoomNameInput({
+                ctx,
+                user: {
+                    id: userInfo.userId,
+                    username: userInfo.username || 'Unknown'
+                }
+            }, text);
+            if (handled) {
+                return;
+            }
+        }
+    }
+    catch (error) {
+        (0, logger_1.logError)('messageHandler', error, {});
+    }
+});
 bot.on('inline_query', async (ctx) => {
     const query = ctx.inlineQuery.query;
     if (query.startsWith('trivia_')) {

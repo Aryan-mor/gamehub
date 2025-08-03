@@ -1,10 +1,66 @@
 
 import { Bot, Context } from 'grammy';
-import { CallbackData } from './types';
+
+/**
+ * Try to edit message text first, fallback to sending new message
+ * This provides a consistent way to update messages across the app
+ */
+export async function tryEditMessageText(
+  ctx: { editMessageText?: (text: string, options?: any) => Promise<any>; reply?: (text: string, options?: any) => Promise<any> },
+  text: string,
+  options?: any
+): Promise<any> {
+  if (ctx.editMessageText) {
+    try {
+      return await ctx.editMessageText(text, options);
+    } catch (error) {
+      console.log('Failed to edit message, falling back to reply:', error);
+      // Fallback to reply if edit fails
+      if (ctx.reply) {
+        return await ctx.reply(text, options);
+      }
+      throw error;
+    }
+  } else if (ctx.reply) {
+    // No edit capability, use reply
+    return await ctx.reply(text, options);
+  } else {
+    throw new Error('Neither editMessageText nor reply is available');
+  }
+}
+
+/**
+ * Try to edit message reply markup first, fallback to sending new message
+ * This provides a consistent way to update message keyboards across the app
+ */
+export async function tryEditMessageReplyMarkup(
+  ctx: { editMessageReplyMarkup?: (replyMarkup: any) => Promise<any>; reply?: (text: string, options?: any) => Promise<any> },
+  replyMarkup: any,
+  fallbackText?: string,
+  fallbackOptions?: any
+): Promise<any> {
+  if (ctx.editMessageReplyMarkup) {
+    try {
+      return await ctx.editMessageReplyMarkup(replyMarkup);
+    } catch (error) {
+      console.log('Failed to edit message reply markup, falling back to reply:', error);
+      // Fallback to reply if edit fails
+      if (ctx.reply && fallbackText) {
+        return await ctx.reply(fallbackText, { ...fallbackOptions, reply_markup: replyMarkup });
+      }
+      throw error;
+    }
+  } else if (ctx.reply && fallbackText) {
+    // No edit capability, use reply
+    return await ctx.reply(fallbackText, { ...fallbackOptions, reply_markup: replyMarkup });
+  } else {
+    throw new Error('Neither editMessageReplyMarkup nor reply is available');
+  }
+}
 
 export const createInlineKeyboard = (buttons: Array<{
   text: string;
-  callbackData: CallbackData;
+  callbackData: any;
 }>): { inline_keyboard: Array<Array<{ text: string; callback_data: string }>> } => {
   return {
     inline_keyboard: buttons.map(button => [{
@@ -14,9 +70,9 @@ export const createInlineKeyboard = (buttons: Array<{
   };
 };
 
-export const parseCallbackData = (data: string): CallbackData => {
+export const parseCallbackData = (data: string): any => {
   try {
-    return JSON.parse(data) as CallbackData;
+    return JSON.parse(data) as any;
   } catch {
     return { action: data };
   }

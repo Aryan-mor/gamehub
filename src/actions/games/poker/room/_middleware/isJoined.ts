@@ -1,40 +1,34 @@
 import { HandlerContext } from '@/modules/core/handler';
 import { Middleware } from '@/modules/core/middleware';
-import { validateUser } from '../../utils/validateUser';
-import { getRoomId } from '../../utils/getRoomId';
+import { validateUser } from '@/actions/games/poker/_utils/validateUser';
+import { getRoomId } from '@/actions/games/poker/_utils/getRoomId';
+import { getPokerRoom } from '../../services/pokerService';
+import { RoomId, PlayerId } from '../../types';
+import { logFunctionStart, logFunctionEnd, logError } from '@/modules/core/logger';
 
 /**
  * Middleware to check if user is joined in the current room
  */
 export const isJoined: Middleware = async (ctx: HandlerContext, query: Record<string, string>, next: () => Promise<void>) => {
+  logFunctionStart('isJoined', { query });
+  
   try {
     const user = validateUser(ctx);
     const roomId = getRoomId(query);
     
-    // TODO: Implement actual room membership check
-    // This would typically involve:
-    // 1. Fetching the room from database/cache
-    // 2. Checking if user is in the room's player list
-    // 3. Validating room state (active, not finished, etc.)
-    
-    // For now, we'll simulate the check
-    // In a real implementation, you would do something like:
-    // const room = await getRoom(roomId);
-    // if (!room || !room.players.includes(user.id)) {
-    //   throw new Error('You are not a member of this room');
-    // }
-    
     console.log(`Validating user ${user.id} is joined in room ${roomId}`);
     
-    // Simulate validation - replace with actual room membership check
-    const isUserJoined = await validateUserJoined(user.id, roomId);
+    // Validate room membership
+    const isUserJoined = await validateUserJoined(user.id as PlayerId, roomId as RoomId);
     
     if (!isUserJoined) {
-      throw new Error('You must be a member of this room to perform this action');
+      throw new Error('شما عضو این روم نیستید');
     }
     
+    logFunctionEnd('isJoined', {}, { userId: user.id, roomId });
     await next();
   } catch (error) {
+    logError('isJoined', error as Error, { query });
     // Re-throw the error to stop middleware chain
     throw error;
   }
@@ -42,19 +36,26 @@ export const isJoined: Middleware = async (ctx: HandlerContext, query: Record<st
 
 /**
  * Validate if user is joined in the specified room
- * TODO: Replace with actual implementation
  */
-async function validateUserJoined(userId: string, roomId: string): Promise<boolean> {
-  // TODO: Implement actual room membership validation
-  // This is a placeholder implementation
-  // In reality, you would:
-  // 1. Query your database/cache for the room
-  // 2. Check if userId is in the room's players array
-  // 3. Verify room is active and not finished
+async function validateUserJoined(userId: PlayerId, roomId: RoomId): Promise<boolean> {
+  logFunctionStart('validateUserJoined', { userId, roomId });
   
-  console.log(`Checking if user ${userId} is joined in room ${roomId}`);
-  
-  // For now, return true to allow the action
-  // Replace this with actual validation logic
-  return true;
+  try {
+    // Fetch the room from database
+    const room = await getPokerRoom(roomId);
+    
+    if (!room) {
+      logFunctionEnd('validateUserJoined', false, { userId, roomId });
+      return false;
+    }
+    
+    // Check if user is in the room's player list
+    const isJoined = room.players.some(player => player.id === userId);
+    
+    logFunctionEnd('validateUserJoined', isJoined, { userId, roomId });
+    return isJoined;
+  } catch (error) {
+    logError('validateUserJoined', error as Error, { userId, roomId });
+    return false;
+  }
 } 

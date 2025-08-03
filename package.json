@@ -29,6 +29,7 @@
     "dotenv": "^16.4.5",
     "firebase": "^11.10.0",
     "grammy": "^1.37.0",
+    "nanoid": "^5.1.5",
     "node-fetch": "2",
     "pino": "^9.7.0",
     "pino-pretty": "^13.0.0",
@@ -37,6 +38,7 @@
   "devDependencies": {
     "@eslint/eslintrc": "^3",
     "@testing-library/jest-dom": "^6.6.3",
+    "@types/nanoid": "^3.0.0",
     "@types/node": "^20",
     "@types/node-fetch": "^2.6.12",
     "@typescript-eslint/eslint-plugin": "^8.37.0",

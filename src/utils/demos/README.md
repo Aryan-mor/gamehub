@@ -44,7 +44,7 @@ npx tsx src/demos/demo-auto-discovery.ts
 
 **اجرا**:
 ```bash
-npx tsx src/utils/demos/demo-router.ts
+npx tsx src/_utils/demos/demo-router.ts
 ```
 
 ### 🎯 `demo-start-action.ts`
@@ -58,7 +58,7 @@ npx tsx src/utils/demos/demo-router.ts
 
 **اجرا**:
 ```bash
-npx tsx src/utils/demos/demo-start-action.ts
+npx tsx src/_utils/demos/demo-start-action.ts
 ```
 
 ### 🐛 `test-auto-discovery.ts`
@@ -102,19 +102,19 @@ npx tsx src/demos/test-auto-discovery.ts
 ### اجرای همه Demo ها
 ```bash
 # Test type system
-npx tsx src/utils/demos/demo-type-system.ts
+npx tsx src/_utils/demos/demo-type-system.ts
 
 # Test auto-discovery
-npx tsx src/utils/demos/demo-auto-discovery.ts
+npx tsx src/_utils/demos/demo-auto-discovery.ts
 
 # Test router
-npx tsx src/utils/demos/demo-router.ts
+npx tsx src/_utils/demos/demo-router.ts
 
 # Test start action
-npx tsx src/utils/demos/demo-start-action.ts
+npx tsx src/_utils/demos/demo-start-action.ts
 
 # Debug auto-discovery
-npx tsx src/utils/demos/test-auto-discovery.ts
+npx tsx src/_utils/demos/test-auto-discovery.ts
 ```
 
 ### اضافه کردن Demo جدید

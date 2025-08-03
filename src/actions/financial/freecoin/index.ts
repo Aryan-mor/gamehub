@@ -1,9 +1,12 @@
 import { HandlerContext } from '@/modules/core/handler';
 import { isValidUserId } from '@/utils/typeGuards';
 
+// Export the action key for consistency and debugging
+export const key = 'financial.freecoin';
+
 /**
  * Handle freecoin action
- * Claim daily free coins
+ * Give user daily free coins
  */
 async function handleFreeCoin(context: HandlerContext): Promise<void> {
   const { user, ctx } = context;
@@ -15,38 +18,53 @@ async function handleFreeCoin(context: HandlerContext): Promise<void> {
   
   try {
     // Import required services
-    const { canClaimDaily, addCoins, setLastFreeCoinAt } = await import('@/modules/core/userService');
-    const { createOptimizedKeyboard } = await import('@/modules/core/interfaceHelpers');
+    const { getUser, addCoins, setLastFreeCoinAt } = await import('@/modules/core/userService');
     
-    // Check if user can claim daily coins
-    const { canClaim, nextClaimIn } = await canClaimDaily(user.id);
+    // Get user data
+    const userData = await getUser(user.id);
     
-    let message: string;
+    // Check if user can claim free coins
+    const now = new Date();
+    const lastClaim = userData.lastFreeCoinAt ? new Date(userData.lastFreeCoinAt) : null;
+    const canClaim = !lastClaim || 
+      (now.getTime() - lastClaim.getTime()) >= 24 * 60 * 60 * 1000; // 24 hours
+    
     if (canClaim) {
+      // Add coins and update last claim time
       await addCoins(user.id, 20, 'daily free coin');
       await setLastFreeCoinAt(user.id);
-      message = `🪙 You claimed <b>+20</b> daily Coins!\n\nCome back tomorrow for more.`;
+      
+      const successMessage = `🎉 <b>Free Coins Claimed!</b>\n\n` +
+        `✅ You received <b>20 coins</b>!\n\n` +
+        `💰 <b>New Balance:</b> ${userData.coins + 20} coins\n\n` +
+        `⏰ <b>Next Claim:</b> Available in 24 hours\n\n` +
+        `💡 <b>Tip:</b> Use these coins to play poker and win more!`;
+      
+      if (ctx.reply) {
+        await ctx.reply(successMessage, { 
+          parse_mode: 'HTML'
+        });
+      }
     } else {
-      const timeRemaining = formatTimeRemaining(nextClaimIn);
-      message = `⏰ You already claimed today.\n\nCome back in <b>${timeRemaining}</b>.`;
-    }
-    
-    const buttons = [
-      { text: '🪙 Claim Again', callbackData: { action: 'financial.freecoin' } },
-    ];
-    
-    const keyboard = createOptimizedKeyboard(buttons, true);
-    
-    // Send message
-    if (ctx.reply) {
-      await ctx.reply(message, { 
-        parse_mode: 'HTML',
-        reply_markup: keyboard 
-      });
+      // Calculate time until next claim
+      const nextClaim = new Date(lastClaim!.getTime() + 24 * 60 * 60 * 1000);
+      const hoursLeft = Math.ceil((nextClaim.getTime() - now.getTime()) / (60 * 60 * 1000));
+      
+      const waitMessage = `⏰ <b>Free Coins Not Available</b>\n\n` +
+        `❌ You've already claimed your daily coins today.\n\n` +
+        `⏳ <b>Next Claim:</b> Available in ${hoursLeft} hours\n\n` +
+        `💰 <b>Current Balance:</b> ${userData.coins} coins\n\n` +
+        `💡 <b>Tip:</b> Play poker to earn more coins!`;
+      
+      if (ctx.reply) {
+        await ctx.reply(waitMessage, { 
+          parse_mode: 'HTML'
+        });
+      }
     }
     
   } catch (error) {
-    console.error('FreeCoin action error:', error);
+    console.error('Freecoin action error:', error);
     
     // Fallback message
     if (ctx.reply) {
@@ -54,15 +72,5 @@ async function handleFreeCoin(context: HandlerContext): Promise<void> {
     }
   }
 }
-
-// Helper function for formatting time
-const formatTimeRemaining = (milliseconds: number): string => {
-  const hours = Math.floor(milliseconds / 3600000);
-  const minutes = Math.floor((milliseconds % 3600000) / 60000);
-  const seconds = Math.floor((milliseconds % 60000) / 1000);
-  
-  const pad = (n: number): string => n.toString().padStart(2, '0');
-  return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
-};
 
 export default handleFreeCoin; 

@@ -1,5 +1,9 @@
 import { HandlerContext } from '@/modules/core/handler';
 import { isValidUserId } from '@/utils/typeGuards';
+import { tryEditMessageText } from '@/modules/core/telegramHelpers';
+
+// Export the action key for consistency and debugging
+export const key = 'games.start';
 
 /**
  * Handle startgame action
@@ -17,23 +21,23 @@ async function handleStartGame(context: HandlerContext): Promise<void> {
     // Import required services
     const { createOptimizedKeyboard } = await import('@/modules/core/interfaceHelpers');
     
+    // Import poker start key for consistency
+    const { key: pokerStartKey } = await import('../poker/start');
+    
     // Create game selection buttons
     const buttons = [
-      { text: '🃏 Poker Game', callbackData: { action: 'games.poker.start' } },
+      { text: '🃏 Poker Game', callbackData: { action: pokerStartKey } },
     ];
     
     const keyboard = createOptimizedKeyboard(buttons, true);
     
-    // Send game selection message
-    if (ctx.reply) {
-      await ctx.reply(
-        '🎮 <b>GameHub - Poker Focus</b>\n\n🃏 Challenge your friends in competitive poker games!\n\nJoin rooms, play Texas Hold\'em, and compete for coins.',
-        { 
-          parse_mode: 'HTML',
-          reply_markup: keyboard 
-        }
-      );
-    }
+    const message = '🎮 <b>GameHub - Poker Focus</b>\n\n🃏 Challenge your friends in competitive poker games!\n\nJoin rooms, play Texas Hold\'em, and compete for coins.';
+    
+    // Use the helper function to try editing first, then fallback to reply
+    await tryEditMessageText(ctx, message, { 
+      parse_mode: 'HTML',
+      reply_markup: keyboard 
+    });
     
   } catch (error) {
     console.error('StartGame action error:', error);

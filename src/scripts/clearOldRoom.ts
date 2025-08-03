@@ -1,0 +1,20 @@
+// This script will be run manually to clear the old room
+// Run this in the bot context
+
+import { deletePokerRoom } from '../actions/games/poker/services/pokerService';
+
+async function clearOldRoom() {
+  try {
+    const oldRoomId = 'room_1754095606992_4xn';
+    console.log(`🗑️ Deleting old room: ${oldRoomId}`);
+    
+    await deletePokerRoom(oldRoomId);
+    
+    console.log('✅ Old room deleted successfully');
+  } catch (error) {
+    console.error('❌ Error deleting old room:', error);
+  }
+}
+
+// Export for manual execution
+export { clearOldRoom }; 

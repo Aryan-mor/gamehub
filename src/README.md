@@ -56,13 +56,13 @@ import { registerModule } from '@/modules/core/smart-router';
 
 ### از actions به utils
 ```typescript
-import { RoomId, UserId } from '@/utils/types';
-import { createRoomId } from '@/utils/typeGuards';
+import { RoomId, UserId } from '@/_utils/types';
+import { createRoomId } from '@/_utils/typeGuards';
 ```
 
 ### از modules به utils
 ```typescript
-import { UserId } from '@/utils/types';
+import { UserId } from '@/_utils/types';
 ```
 
 ## 🚀 نحوه استفاده

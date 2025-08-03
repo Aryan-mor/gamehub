@@ -2,12 +2,13 @@ import 'dotenv/config';
 import { Bot } from 'grammy';
 import { InlineQueryResult } from 'grammy/types';
 import { logFunctionStart, logFunctionEnd, logError } from './modules/core/logger';
-import { extractUserInfo, sendMessage, answerCallbackQuery } from './modules/core/telegramHelpers';
+import { extractUserInfo, sendMessage, answerCallbackQuery, parseCallbackData } from './modules/core/telegramHelpers';
 import { getActiveGamesForUser } from './modules/core/gameService';
 import { 
   createOptimizedKeyboard, 
   updateOrSendMessage
 } from './modules/core/interfaceHelpers';
+import { setMessageUpdater } from './modules/core/messageUpdater';
 // Archived games are no longer imported - using new auto-discovery router system
 import { HandlerContext } from './modules/core/handler';
 import { UserId } from './utils/types';
@@ -28,8 +29,14 @@ import { UserId } from './utils/types';
 // import { registerBowlingHandlers } from './games/bowling';
 
 const token = process.env.TELEGRAM_BOT_TOKEN;
+const botUsername = process.env.TELEGRAM_BOT_USERNAME;
+
 if (!token) {
   throw new Error('TELEGRAM_BOT_TOKEN is required');
+}
+
+if (!botUsername) {
+  throw new Error('TELEGRAM_BOT_USERNAME is required');
 }
 
 // Validate token format
@@ -64,13 +71,51 @@ bot.use(async (ctx, next) => {
   }
 });
 
+// Add active game redirect middleware (early in the chain)
+bot.use(async (ctx, next) => {
+  try {
+    // Import and run active game redirect middleware
+    const { activeGameRedirect } = await import('./actions/games/poker/room/_middleware/active_game_redirect');
+    await activeGameRedirect(ctx);
+    
+    // If the message was handled by active game redirect, don't continue
+    if ((ctx as any).handled) {
+      console.log(`🎮 MESSAGE HANDLED BY ACTIVE GAME REDIRECT`);
+      return;
+    }
+    
+    await next();
+  } catch (error) {
+    console.error('Error in active game redirect middleware:', error);
+    await next(); // Continue with normal processing
+  }
+});
+
 // Game handlers are now auto-discovered through the smart router system
 
 // Simple callback logging (without interfering with handlers)
 bot.use(async (ctx, next) => {
+  // Log ALL incoming updates for debugging
+  console.log(`🔍 INCOMING UPDATE:`);
+  console.log(`  Update type: ${ctx.update.message ? 'message' : ctx.update.callback_query ? 'callback_query' : 'other'}`);
+  console.log(`  User ID: ${ctx.from?.id}`);
+  console.log(`  Username: ${ctx.from?.username}`);
+  console.log(`  Chat ID: ${ctx.chat?.id}`);
+  
   if (ctx.callbackQuery) {
-    console.log(`🔘 Callback received from ${ctx.from?.id} (${ctx.from?.username}): ${ctx.callbackQuery.data || 'No data'}`);
+    console.log(`🔘 Callback data: ${ctx.callbackQuery.data || 'No data'}`);
   }
+  
+  if (ctx.message?.text) {
+    console.log(`📨 Message text: ${ctx.message.text}`);
+  }
+  
+  if (ctx.message?.from) {
+    console.log(`👤 Message from: ${ctx.message.from.first_name} ${ctx.message.from.last_name || ''} (@${ctx.message.from.username || 'no username'})`);
+  }
+  
+  console.log(`---`);
+  
   await next();
 });
 // Temporarily disabled other games to focus on trivia
@@ -82,13 +127,102 @@ bot.use(async (ctx, next) => {
 
 
 
+// Helper function to handle room join
+async function handleRoomJoin(ctx: any, userInfo: any, roomId: string, format: string) {
+  console.log(`🎯 PROCESSING ROOM JOIN VIA ${format.toUpperCase()}:`);
+  console.log(`  Room ID: ${roomId}`);
+  console.log(`  User ID: ${userInfo.userId}`);
+  console.log(`  Username: ${userInfo.username}`);
+  console.log(`  Chat ID: ${ctx.chat?.id}`);
+  console.log(`  Message Type: ${ctx.message?.text}`);
+  console.log(`  Full Context:`, {
+    chatId: ctx.chat?.id,
+    userId: ctx.from?.id,
+    messageText: ctx.message?.text,
+    startPayload: ctx.message?.text?.split(' ')[1]
+  });
+  
+  // Import and call the join handler directly
+  const handleJoin = (await import('./actions/games/poker/room/join')).default;
+  
+  const context: HandlerContext = {
+    ctx,
+    user: {
+      id: userInfo.userId as UserId,
+      username: userInfo.username || 'Unknown'
+    }
+  };
+  
+  // Call join handler with direct link flag
+  try {
+    console.log(`📞 Calling handleJoin for room ${roomId}...`);
+    await handleJoin(context, { roomId, isDirectLink: 'true' });
+    console.log(`✅ Successfully called handleJoin for room ${roomId}`);
+  } catch (error) {
+    console.error(`❌ Error calling handleJoin for room ${roomId}:`, error);
+    await ctx.reply('❌ خطا در ورود به روم. لطفاً دوباره تلاش کنید.');
+  }
+}
+
 // Handle /start command using auto-discovery router
 bot.command('start', async (ctx) => {
   try {
     const userInfo = extractUserInfo(ctx);
-    logFunctionStart('startCommand', { userId: userInfo.userId });
+    const startPayload = ctx.message?.text?.split(' ')[1]; // Get payload after /start
     
-    // Use auto-discovery router for start action
+    console.log(`🔍 START COMMAND RECEIVED:`);
+    console.log(`  User ID: ${userInfo.userId}`);
+    console.log(`  Username: ${userInfo.username}`);
+    console.log(`  Full message: ${ctx.message?.text}`);
+    console.log(`  Start payload: ${startPayload}`);
+    
+    logFunctionStart('startCommand', { userId: userInfo.userId, startPayload });
+    
+    // Check if this is a room join request (new format: gprs_)
+    if (startPayload && startPayload.startsWith('gprs_')) {
+      const roomId = startPayload.substring(5); // Remove 'gprs_' prefix (5 characters)
+      console.log(`🎯 DETECTED ROOM JOIN REQUEST VIA START: ${roomId}`);
+      console.log(`🎯 ORIGINAL PAYLOAD: ${startPayload}`);
+      console.log(`🎯 EXTRACTED ROOM ID: ${roomId}`);
+      await handleRoomJoin(ctx, userInfo, roomId, 'gprs');
+      logFunctionEnd('startCommand', {}, { userId: userInfo.userId, action: 'roomJoin' });
+      return;
+    }
+    
+    // Check if this is a room join request (legacy format: jgpr_room_)
+    if (startPayload && startPayload.startsWith('jgpr_room_')) {
+      const roomId = startPayload.substring(5); // Remove 'jgpr_' prefix to get the full room ID
+      console.log(`🎯 DETECTED ROOM JOIN REQUEST VIA START: ${roomId}`);
+      console.log(`🎯 ORIGINAL PAYLOAD: ${startPayload}`);
+      console.log(`🎯 EXTRACTED ROOM ID: ${roomId}`);
+      await handleRoomJoin(ctx, userInfo, roomId, 'jgpr_room');
+      logFunctionEnd('startCommand', {}, { userId: userInfo.userId, action: 'roomJoin' });
+      return;
+    }
+    
+    // Check if this is a room join request (legacy format: jgpr_)
+    if (startPayload && startPayload.startsWith('jgpr_') && !startPayload.startsWith('jgpr_room_')) {
+      // Legacy format without room_ prefix
+      const roomId = startPayload.substring(5); // Remove 'jgpr_' prefix (5 characters)
+      console.log(`🎯 DETECTED ROOM JOIN REQUEST VIA START: ${roomId}`);
+      console.log(`🎯 ORIGINAL PAYLOAD: ${startPayload}`);
+      console.log(`🎯 EXTRACTED ROOM ID: ${roomId}`);
+      console.log(`🎯 USER INFO:`, { userId: userInfo.userId, username: userInfo.username });
+      await handleRoomJoin(ctx, userInfo, roomId, 'jgpr');
+      logFunctionEnd('startCommand', {}, { userId: userInfo.userId, action: 'roomJoin' });
+      return;
+    }
+    
+    // Check if this is a room join request (legacy format: room_)
+    if (startPayload && startPayload.startsWith('room_')) {
+      const roomId = startPayload.substring(5); // Remove 'room_' prefix
+      console.log(`🎯 DETECTED ROOM JOIN REQUEST VIA START: ${roomId}`);
+      await handleRoomJoin(ctx, userInfo, roomId, 'room');
+      logFunctionEnd('startCommand', {}, { userId: userInfo.userId, action: 'roomJoin' });
+      return;
+    }
+    
+    // Use auto-discovery router for regular start action
     const { dispatch } = await import('./modules/core/smart-router');
     
     const context: HandlerContext = {
@@ -101,12 +235,14 @@ bot.command('start', async (ctx) => {
     
     await dispatch('start', context);
     
-    logFunctionEnd('startCommand', {}, { userId: userInfo.userId });
+    logFunctionEnd('startCommand', {}, { userId: userInfo.userId, action: 'regular' });
   } catch (error) {
     logError('startCommand', error as Error, {});
     await ctx.reply('🎮 Welcome to GameHub!\n\nUse /help to see available commands.');
   }
 });
+
+
 
 // Handle /help command
 bot.command('help', async (ctx) => {
@@ -133,6 +269,8 @@ bot.command('help', async (ctx) => {
     await ctx.reply('❌ Failed to show help.');
   }
 });
+
+
 
 // Handle /balance command
 bot.command('balance', async (ctx) => {
@@ -212,6 +350,8 @@ bot.command('poker', async (ctx) => {
   }
 });
 
+
+
 // Handle /games command
 bot.command('games', async (ctx) => {
   try {
@@ -261,14 +401,21 @@ bot.callbackQuery(/.*"action":"back".*/, async (ctx) => {
     
     await answerCallbackQuery(bot, ctx.callbackQuery.id);
     
+    // Import keys from actions for consistency
+    const { key: gamesStartKey } = await import('./actions/games/start');
+    const { key: freecoinKey } = await import('./actions/financial/freecoin');
+    const { key: balanceKey } = await import('./actions/balance');
+    const { key: helpKey } = await import('./actions/help');
+    
     // Return to main menu
     const welcome = `🃏 <b>Welcome to GameHub - Poker Edition!</b>\n\n🎯 Challenge your friends in competitive poker games!\n\n💰 Earn and claim daily Coins with /freecoin!\n\n🎯 Choose an action below:`;
     
+    // Create buttons
     const buttons = [
-      { text: '🃏 Start Poker', callbackData: { action: 'games.start' } },
-      { text: '🪙 Free Coin', callbackData: { action: 'financial.freecoin' } },
-      { text: '💰 Balance', callbackData: { action: 'balance' } },
-      { text: '❓ Help', callbackData: { action: 'help' } },
+      { text: '🃏 Start Poker', callbackData: { action: gamesStartKey } },
+      { text: '🪙 Free Coin', callbackData: { action: freecoinKey } },
+      { text: '💰 Balance', callbackData: { action: balanceKey } },
+      { text: '❓ Help', callbackData: { action: helpKey } },
     ];
     
     const keyboard = createOptimizedKeyboard(buttons);
@@ -314,6 +461,137 @@ bot.callbackQuery(/.*"action":"games\.start".*/, async (ctx) => {
     });
   } catch (error) {
     logError('menu_startgame', error as Error, {});
+    await answerCallbackQuery(bot, ctx.callbackQuery.id, '❌ Processing failed');
+  }
+});
+
+// Handle poker start callback query
+bot.callbackQuery(/.*"action":"games\.poker\.start".*/, async (ctx) => {
+  try {
+    const userInfo = extractUserInfo(ctx);
+    logFunctionStart('menu_poker_start', { 
+      userId: userInfo.userId, 
+      action: 'poker_start',
+      context: 'game_selection'
+    });
+    
+    await answerCallbackQuery(bot, ctx.callbackQuery.id);
+    
+    // Use auto-discovery router for poker start action
+    const { dispatch } = await import('./modules/core/smart-router');
+    
+    const context: HandlerContext = {
+      ctx,
+      user: {
+        id: userInfo.userId as UserId,
+        username: userInfo.username || 'Unknown'
+      }
+    };
+    
+    await dispatch('games.poker.start', context);
+    
+    logFunctionEnd('menu_poker_start', {}, { 
+      userId: userInfo.userId, 
+      action: 'poker_start',
+      context: 'game_selection'
+    });
+  } catch (error) {
+    logError('menu_poker_start', error as Error, {});
+    await answerCallbackQuery(bot, ctx.callbackQuery.id, '❌ Processing failed');
+  }
+});
+
+// Handle poker room actions callback query (legacy format)
+bot.callbackQuery(/.*"action":"games\.poker\.room\..*/, async (ctx) => {
+  try {
+    const userInfo = extractUserInfo(ctx);
+    const data = parseCallbackData(ctx.callbackQuery.data || '');
+    const action = data.action;
+    
+    logFunctionStart('poker_room_action', { 
+      userId: userInfo.userId, 
+      action: action,
+      context: 'poker_room',
+      roomId: data.roomId || 'none'
+    });
+    
+    await answerCallbackQuery(bot, ctx.callbackQuery.id);
+    
+    // Use auto-discovery router for poker room actions
+    const { dispatch } = await import('./modules/core/smart-router');
+    
+    const context: HandlerContext = {
+      ctx,
+      user: {
+        id: userInfo.userId as UserId,
+        username: userInfo.username || 'Unknown'
+      }
+    };
+    
+    // Extract query parameters from callback data
+    const query: Record<string, string> = {};
+    if (data.roomId) query.roomId = data.roomId;
+    if (data.amount) query.amount = data.amount;
+    if (data.userId) query.userId = data.userId;
+    
+    // Add query to context
+    (context as any).query = query;
+    
+    await dispatch(action, context);
+    
+    logFunctionEnd('poker_room_action', {}, { 
+      userId: userInfo.userId, 
+      action: action,
+      context: 'poker_room'
+    });
+  } catch (error) {
+    logError('poker_room_action', error as Error, {});
+    await answerCallbackQuery(bot, ctx.callbackQuery.id, '❌ Processing failed');
+  }
+});
+
+// Handle compact poker actions (new format)
+bot.callbackQuery(/^[a-z0-9]{2,5}(\?.*)?$/, async (ctx) => {
+  try {
+    const userInfo = extractUserInfo(ctx);
+    const callbackData = ctx.callbackQuery.data || '';
+    
+    logFunctionStart('poker_compact_action', { 
+      userId: userInfo.userId, 
+      callbackData,
+      context: 'poker_compact'
+    });
+    
+    await answerCallbackQuery(bot, ctx.callbackQuery.id);
+    
+    // Use compact router for poker actions
+    const { dispatch, parseCallbackData } = await import('./modules/core/compact-router');
+    
+    const context: HandlerContext = {
+      ctx,
+      user: {
+        id: userInfo.userId as UserId,
+        username: userInfo.username || 'Unknown'
+      }
+    };
+    
+    // Parse compact callback data
+    const { code, params } = parseCallbackData(callbackData);
+    
+    console.log(`Parsed callback data: code=${code}, params=`, params);
+    
+    // Add params to context
+    (context as any).query = params;
+    
+    await dispatch(code, context, params);
+    
+    logFunctionEnd('poker_compact_action', {}, { 
+      userId: userInfo.userId, 
+      code,
+      context: 'poker_compact'
+    });
+  } catch (error) {
+    logError('poker_compact_action', error as Error, {});
     await answerCallbackQuery(bot, ctx.callbackQuery.id, '❌ Processing failed');
   }
 });
@@ -628,6 +906,15 @@ const startBot = async (): Promise<void> => {
   try {
     console.log('🚀 Starting GameHub bot...');
     
+    // Initialize MessageUpdater
+    setMessageUpdater(bot);
+    console.log('✅ MessageUpdater initialized');
+    
+    // Initialize poker handlers (self-registering)
+    await import('./actions/games/poker');
+    
+    console.log('✅ Poker handlers self-registered with compact router');
+    
     // Set bot commands
     await bot.api.setMyCommands([
       { command: 'start', description: 'Start the bot' },
@@ -673,6 +960,11 @@ const gracefulShutdown = (signal: string): void => {
   process.exit(0);
 };
 
+// Helper function to generate invite links
+export function generateInviteLink(roomId: string): string {
+  return `https://t.me/${botUsername}?start=jgpr_${roomId}`;
+}
+
 // Handle shutdown signals
 process.once('SIGINT', () => gracefulShutdown('SIGINT'));
 process.once('SIGTERM', () => gracefulShutdown('SIGTERM'));
@@ -680,9 +972,47 @@ process.once('SIGTERM', () => gracefulShutdown('SIGTERM'));
 // Start the bot
 startBot(); 
 
+// Text message handler for form inputs
+bot.on('message', async (ctx) => {
+  try {
+    // Only handle text messages
+    if (!ctx.message?.text) {
+      return;
+    }
+    
+    const userInfo = extractUserInfo(ctx);
+    const text = ctx.message.text;
+    
+    // Check if user is in room creation form
+    const { isUserInRoomCreationForm, handleRoomNameInput } = await import('./actions/games/poker/room/create/textHandler');
+    
+    if (isUserInRoomCreationForm(userInfo.userId.toString())) {
+      const handled = await handleRoomNameInput({
+        ctx,
+        user: {
+          id: userInfo.userId as UserId,
+          username: userInfo.username || 'Unknown'
+        }
+      }, text);
+      
+      if (handled) {
+        return; // Message was handled by form
+      }
+    }
+    
+    // If not handled by form, ignore the message (commands are handled separately)
+    
+  } catch (error) {
+    logError('messageHandler', error as Error, {});
+    // Don't reply to avoid spam - just log the error
+  }
+});
+
 // Inline query handler for sharing games
 bot.on('inline_query', async (ctx) => {
   const query = ctx.inlineQuery.query;
+  
+  // Handle trivia game sharing
   if (query.startsWith('trivia_')) {
     const gameId = query.substring(7); // Remove "trivia_" prefix to get full game ID
     if (gameId) {
@@ -698,6 +1028,30 @@ bot.on('inline_query', async (ctx) => {
           reply_markup: {
             inline_keyboard: [
               [{ text: '🎮 Join Game', callback_data: JSON.stringify({ action: 'trivia_join', gameId }) }]
+            ]
+          }
+        }
+      ];
+      await ctx.answerInlineQuery(results, { cache_time: 0 });
+    }
+  }
+  
+  // Handle poker room sharing
+  if (query.startsWith('join_room_')) {
+    const roomId = query.substring(10); // Remove "join_room_" prefix
+    if (roomId) {
+      const results: InlineQueryResult[] = [
+        {
+          type: 'article',
+          id: `share_poker_${roomId}`,
+          title: '🎮 Join Poker Room',
+          input_message_content: {
+            message_text: `🎮 <b>Join Poker Game!</b>\n\nClick below to join this exciting poker room!`,
+            parse_mode: 'HTML',
+          },
+          reply_markup: {
+            inline_keyboard: [
+              [{ text: '🎮 Join Room', url: `https://t.me/${botUsername}?start=jgpr_${roomId}` }]
             ]
           }
         }

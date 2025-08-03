@@ -1,5 +1,12 @@
 import { HandlerContext } from '@/modules/core/handler';
 import { isValidUserId } from '@/utils/typeGuards';
+import { generateMainMenuKeyboard } from '../buttonHelpers';
+import { tryEditMessageText } from '@/modules/core/telegramHelpers';
+import { register } from '@/modules/core/compact-router';
+import { POKER_ACTIONS } from '../compact-codes';
+
+// Export the action key for consistency and debugging
+export const key = 'games.poker.start';
 
 /**
  * Handle poker.start action
@@ -14,9 +21,6 @@ async function handlePokerStart(context: HandlerContext): Promise<void> {
   }
   
   try {
-    // Import required services
-    const { createOptimizedKeyboard } = await import('@/modules/core/interfaceHelpers');
-    
     const message = `🎰 <b>Poker Game Hub</b>\n\n` +
       `Welcome to Texas Hold'em Poker!\n\n` +
       `🃏 <b>Available Actions:</b>\n` +
@@ -29,24 +33,14 @@ async function handlePokerStart(context: HandlerContext): Promise<void> {
       `• Best 5-card hand wins\n\n` +
       `🎯 Choose an action below:`;
     
-    // Create poker action buttons
-    const buttons = [
-      { text: '🏠 Create Room', callbackData: { action: 'games.poker.room.create' } },
-      { text: '🚪 Join Room', callbackData: { action: 'games.poker.room.join' } },
-      { text: '📋 List Rooms', callbackData: { action: 'games.poker.room.list' } },
-      { text: '❓ Poker Help', callbackData: { action: 'games.poker.help' } },
-      { text: '🔙 Back to Menu', callbackData: { action: 'back' } },
-    ];
+    // Generate dynamic keyboard using the new button system
+    const keyboard = generateMainMenuKeyboard();
     
-    const keyboard = createOptimizedKeyboard(buttons, true);
-    
-    // Send poker start message
-    if (ctx.reply) {
-      await ctx.reply(message, { 
-        parse_mode: 'HTML',
-        reply_markup: keyboard 
-      });
-    }
+    // Use the helper function to try editing first, then fallback to reply
+    await tryEditMessageText(ctx, message, { 
+      parse_mode: 'HTML',
+      reply_markup: keyboard 
+    });
     
   } catch (error) {
     console.error('Poker start action error:', error);
@@ -57,5 +51,8 @@ async function handlePokerStart(context: HandlerContext): Promise<void> {
     }
   }
 }
+
+// Self-register with compact router
+register(POKER_ACTIONS.START, handlePokerStart, 'Start Poker Game');
 
 export default handlePokerStart; 

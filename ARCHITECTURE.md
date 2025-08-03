@@ -108,7 +108,7 @@ All handlers follow this pattern:
 ```typescript
 import { HandlerContext } from '@/core/handler';
 import { RoomId, UserId } from '@/types';
-import { createRoomId, assertValidUserId } from '@/utils/typeGuards';
+import { createRoomId, assertValidUserId } from '@/_utils/typeGuards';
 
 async function handleAction(context: HandlerContext, query: Record<string, string>): Promise<void> {
   const { user } = context;
@@ -283,7 +283,7 @@ export default handleAction;
 // src/games/poker/room/bet/index.ts
 import { HandlerContext } from '@/core/handler';
 import { RoomId, UserId } from '@/types';
-import { createRoomId, assertValidUserId, isValidRoomId } from '@/utils/typeGuards';
+import { createRoomId, assertValidUserId, isValidRoomId } from '@/_utils/typeGuards';
 
 interface BetQuery {
   roomId: string; // Will be validated as RoomId
