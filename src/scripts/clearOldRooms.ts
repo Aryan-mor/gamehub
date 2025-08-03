@@ -1,26 +1,37 @@
-import { ref, get, remove } from 'firebase/database';
-import { database } from '../modules/core/firebase';
+import { supabase } from '@/lib/supabase';
 
 async function clearOldRooms() {
   try {
     console.log('🔍 Searching for old rooms with maxPlayers: 8...');
     
-    const roomsRef = ref(database, 'pokerRooms');
-    const snapshot = await get(roomsRef);
+    const { data: rooms, error } = await supabase
+      .from('rooms')
+      .select('*')
+      .eq('game_type', 'poker')
+      .eq('max_players', 8);
     
-    if (!snapshot.exists()) {
+    if (error) {
+      console.error('❌ Error fetching rooms:', error);
+      return;
+    }
+    
+    if (!rooms || rooms.length === 0) {
       console.log('✅ No rooms found');
       return;
     }
     
-    const rooms = snapshot.val();
     let deletedCount = 0;
     
-    for (const [roomId, room] of Object.entries(rooms)) {
-      const roomData = room as any;
-      if (roomData.maxPlayers === 8) {
-        console.log(`🗑️ Deleting old room: ${roomId} (maxPlayers: ${roomData.maxPlayers})`);
-        await remove(ref(database, `pokerRooms/${roomId}`));
+    for (const room of rooms) {
+      console.log(`🗑️ Deleting old room: ${room.room_id} (maxPlayers: ${room.max_players})`);
+      const { error: deleteError } = await supabase
+        .from('rooms')
+        .delete()
+        .eq('id', room.id);
+      
+      if (deleteError) {
+        console.error(`❌ Error deleting room ${room.room_id}:`, deleteError);
+      } else {
         deletedCount++;
       }
     }

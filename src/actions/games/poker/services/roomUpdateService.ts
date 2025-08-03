@@ -77,25 +77,40 @@ export class RoomUpdateService {
       if (updates.length === 0) return null;
 
       let message = '';
+      let hasValidUpdates = false;
       
       for (const update of updates) {
         switch (update.action) {
           case 'player_joined':
-            message += `👋 ${update.playerName} به روم پیوست\n`;
+            // Check if player is still in the room
+            const joinedPlayer = room.players.find(p => p.id === update.playerId);
+            if (joinedPlayer) {
+              message += `👋 ${update.playerName} به روم پیوست\n`;
+              hasValidUpdates = true;
+            }
             break;
           case 'player_left':
-            message += `🚪 ${update.playerName} روم را ترک کرد\n`;
-            break;
-          case 'player_ready':
-            message += `✅ ${update.playerName} آماده شد\n`;
+            // Check if player is no longer in the room
+            const leftPlayer = room.players.find(p => p.id === update.playerId);
+            if (!leftPlayer) {
+              message += `🚪 ${update.playerName} روم را ترک کرد\n`;
+              hasValidUpdates = true;
+            }
             break;
           case 'room_full':
-            message += `🎉 روم پر شد! همه بازیکنان حاضر هستند\n`;
+            // Only show room_full if room is actually full
+            if (room.players.length >= room.maxPlayers) {
+              message += `🎉 روم پر شد! همه بازیکنان حاضر هستند\n`;
+              hasValidUpdates = true;
+            }
             break;
         }
       }
 
-      return message.trim();
+      // Clear old updates after processing
+      this.clearUpdatesForRoom(room.id);
+
+      return hasValidUpdates ? message.trim() : null;
     } catch (error) {
       logError('getNotificationMessage', error);
       return null;

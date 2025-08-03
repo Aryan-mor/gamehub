@@ -224,17 +224,7 @@ export function generateWaitingRoomKeyboard(roomId: string, canStart: boolean): 
 } {
   const buttons: Array<Array<{ text: string; callback_data: string }>> = [];
   
-  // Ready/Not Ready toggle
-  buttons.push([
-    {
-      text: '✅ آماده هستم',
-      callback_data: `gprdy?roomId=${roomId}`
-    },
-    {
-      text: '⏸️ آماده نیستم',
-      callback_data: `gpnr?roomId=${roomId}`
-    }
-  ]);
+  // Ready/Not Ready buttons removed - players are automatically ready
   
   // Start game button (only for creator when ready)
   if (canStart) {

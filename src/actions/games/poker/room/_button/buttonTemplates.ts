@@ -48,14 +48,7 @@ export const pokerButtonTemplates = {
     text: '🎮 شروع بازی',
     callback_data: POKER_ACTIONS.START_GAME
   },
-  ready: {
-    text: '✅ آماده',
-    callback_data: POKER_ACTIONS.READY
-  },
-  notReady: {
-    text: '❌ آماده نیستم',
-    callback_data: POKER_ACTIONS.NOT_READY
-  },
+  // Ready/Not Ready buttons removed - players are automatically ready
   
   // Game action buttons
   fold: {

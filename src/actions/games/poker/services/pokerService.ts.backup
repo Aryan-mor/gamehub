@@ -1,0 +1,510 @@
+import { supabase } from '@/lib/supabase';
+import { nanoid } from 'nanoid';
+import { 
+  PokerRoom, 
+  RoomId, 
+  PlayerId, 
+  PokerPlayer, 
+  CreateRoomRequest, 
+  JoinRoomRequest,
+  RoomStatus 
+} from '../types';
+import { logFunctionStart, logFunctionEnd, logError } from '@/modules/core/logger';
+
+/**
+ * Create a new poker room
+ */
+export const createPokerRoom = async (
+  request: CreateRoomRequest,
+  creatorId: PlayerId,
+  creatorName: string,
+  creatorUsername?: string,
+  creatorChatId?: number
+): Promise<PokerRoom> => {
+  logFunctionStart('createPokerRoom', { request, creatorId });
+  
+  try {
+    if (!database) throw new Error('Firebase not initialized');
+    
+    const roomId = `room_${nanoid(12)}` as RoomId;
+    const now = Date.now();
+    
+    const creator: PokerPlayer = {
+      id: creatorId,
+      name: creatorName,
+      username: creatorUsername,
+      chips: 1000, // Default starting chips
+      betAmount: 0,
+      totalBet: 0,
+      isReady: true,
+      isFolded: false,
+      isAllIn: false,
+      isDealer: true,
+      cards: [],
+      joinedAt: now,
+      chatId: creatorChatId // Store creator's chatId
+    };
+    
+    const room: PokerRoom = {
+      id: roomId,
+      name: request.name,
+      status: 'waiting',
+      players: [creator],
+      currentPlayerIndex: 0,
+      dealerIndex: 0,
+      smallBlindIndex: 0,
+      bigBlindIndex: 0,
+      pot: 0,
+      currentBet: 0,
+      minRaise: request.smallBlind * 2, // Big blind is 2x small blind
+      deck: [],
+      communityCards: [],
+      bettingRound: 'preflop',
+      smallBlind: request.smallBlind,
+      bigBlind: request.smallBlind * 2,
+      minPlayers: 2,
+      maxPlayers: request.maxPlayers,
+      isPrivate: request.isPrivate,
+      turnTimeoutSec: request.turnTimeoutSec,
+      createdBy: creatorId,
+      createdAt: now,
+      updatedAt: now
+    };
+    
+    const roomRef = ref(database, `pokerRooms/${roomId}`);
+    await set(roomRef, room);
+    
+    logFunctionEnd('createPokerRoom', room, { request, creatorId });
+    return room;
+  } catch (error) {
+    logError('createPokerRoom', error as Error, { request, creatorId });
+    throw error;
+  }
+};
+
+/**
+ * Get a poker room by ID
+ */
+export const getPokerRoom = async (roomId: RoomId): Promise<PokerRoom | null> => {
+  logFunctionStart('getPokerRoom', { roomId });
+  
+  try {
+    if (!database) throw new Error('Firebase not initialized');
+    
+    const roomRef = ref(database, `pokerRooms/${roomId}`);
+    const snapshot = await get(roomRef);
+    
+    if (!snapshot.exists()) {
+      logFunctionEnd('getPokerRoom', null, { roomId });
+      return null;
+    }
+    
+    const room = snapshot.val() as PokerRoom;
+    logFunctionEnd('getPokerRoom', room, { roomId });
+    return room;
+  } catch (error) {
+    logError('getPokerRoom', error as Error, { roomId });
+    throw error;
+  }
+};
+
+/**
+ * Update a poker room
+ */
+export const updatePokerRoom = async (
+  roomId: RoomId,
+  updates: Partial<PokerRoom>
+): Promise<PokerRoom> => {
+  logFunctionStart('updatePokerRoom', { roomId, updates });
+  
+  try {
+    if (!database) throw new Error('Firebase not initialized');
+    
+    const roomRef = ref(database, `pokerRooms/${roomId}`);
+    const updateData = {
+      ...updates,
+      updatedAt: Date.now(),
+    };
+    
+    await update(roomRef, updateData);
+    
+    const updatedRoom = await getPokerRoom(roomId);
+    if (!updatedRoom) {
+      throw new Error('Room not found after update');
+    }
+    
+    logFunctionEnd('updatePokerRoom', updatedRoom, { roomId, updates });
+    return updatedRoom;
+  } catch (error) {
+    logError('updatePokerRoom', error as Error, { roomId, updates });
+    throw error;
+  }
+};
+
+/**
+ * Join a poker room
+ */
+export const joinPokerRoom = async (request: JoinRoomRequest): Promise<PokerRoom> => {
+  logFunctionStart('joinPokerRoom', { request });
+  
+  try {
+    const room = await getPokerRoom(request.roomId);
+    if (!room) {
+      throw new Error('Room not found');
+    }
+    
+    if (room.status !== 'waiting') {
+      throw new Error('Room is not accepting players');
+    }
+    
+    if (room.players.length >= room.maxPlayers) {
+      throw new Error('Room is full');
+    }
+    
+    if (room.players.some(p => p.id === request.playerId)) {
+      throw new Error('Player already in room');
+    }
+    
+    const newPlayer: PokerPlayer = {
+      id: request.playerId,
+      name: request.playerName,
+      username: request.username || request.playerName,
+      chips: request.chips,
+      betAmount: 0,
+      totalBet: 0,
+      isReady: false,
+      isFolded: false,
+      isAllIn: false,
+      isDealer: false,
+      cards: [],
+      joinedAt: Date.now(),
+      chatId: request.chatId // Store chatId for message updates
+    };
+
+    console.log(`👤 CREATING NEW PLAYER:`, {
+      id: newPlayer.id,
+      name: newPlayer.name,
+      username: newPlayer.username,
+      originalRequest: {
+        playerName: request.playerName,
+        username: request.username
+      }
+    });
+    
+    const updatedRoom: PokerRoom = {
+      ...room,
+      players: [...room.players, newPlayer],
+      updatedAt: Date.now()
+    };
+    
+    return await updatePokerRoom(room.id, updatedRoom);
+  } catch (error) {
+    logError('joinPokerRoom', error as Error, { request });
+    throw error;
+  }
+};
+
+/**
+ * Leave a poker room
+ */
+export const leavePokerRoom = async (roomId: RoomId, playerId: PlayerId): Promise<PokerRoom> => {
+  logFunctionStart('leavePokerRoom', { roomId, playerId });
+  
+  try {
+    const room = await getPokerRoom(roomId);
+    if (!room) {
+      throw new Error('Room not found');
+    }
+    
+    const playerIndex = room.players.findIndex(p => p.id === playerId);
+    if (playerIndex === -1) {
+      throw new Error('Player not in room');
+    }
+    
+    const updatedPlayers = room.players.filter(p => p.id !== playerId);
+    
+    // If no players left, delete the room
+    if (updatedPlayers.length === 0) {
+      await deletePokerRoom(roomId);
+      throw new Error('Room deleted - no players left');
+    }
+    
+    // If room creator left, transfer ownership to first remaining player
+    let updatedRoom = {
+      ...room,
+      players: updatedPlayers,
+      updatedAt: Date.now()
+    };
+    
+    if (room.createdBy === playerId) {
+      updatedRoom.createdBy = updatedPlayers[0].id;
+    }
+    
+    // Adjust indices if needed
+    if (playerIndex <= room.dealerIndex && room.dealerIndex > 0) {
+      updatedRoom.dealerIndex = room.dealerIndex - 1;
+    }
+    if (playerIndex <= room.smallBlindIndex && room.smallBlindIndex > 0) {
+      updatedRoom.smallBlindIndex = room.smallBlindIndex - 1;
+    }
+    if (playerIndex <= room.bigBlindIndex && room.bigBlindIndex > 0) {
+      updatedRoom.bigBlindIndex = room.bigBlindIndex - 1;
+    }
+    if (playerIndex <= room.currentPlayerIndex && room.currentPlayerIndex > 0) {
+      updatedRoom.currentPlayerIndex = room.currentPlayerIndex - 1;
+    }
+    
+    return await updatePokerRoom(roomId, updatedRoom);
+  } catch (error) {
+    logError('leavePokerRoom', error as Error, { roomId, playerId });
+    throw error;
+  }
+};
+
+/**
+ * Delete a poker room
+ */
+export const deletePokerRoom = async (roomId: RoomId): Promise<void> => {
+  logFunctionStart('deletePokerRoom', { roomId });
+  
+  try {
+    if (!database) throw new Error('Firebase not initialized');
+    
+    const roomRef = ref(database, `pokerRooms/${roomId}`);
+    await remove(roomRef);
+    
+    logFunctionEnd('deletePokerRoom', {}, { roomId });
+  } catch (error) {
+    logError('deletePokerRoom', error as Error, { roomId });
+    throw error;
+  }
+};
+
+/**
+ * Get all active rooms
+ */
+export const getActivePokerRooms = async (): Promise<PokerRoom[]> => {
+  logFunctionStart('getActivePokerRooms');
+  
+  try {
+    if (!database) throw new Error('Firebase not initialized');
+    
+    const roomsRef = ref(database, 'pokerRooms');
+    const snapshot = await get(roomsRef);
+    
+    if (!snapshot.exists()) {
+      logFunctionEnd('getActivePokerRooms', [], {});
+      return [];
+    }
+    
+    const rooms = snapshot.val() as Record<string, PokerRoom>;
+    const activeRooms = Object.values(rooms).filter(
+      room => room.status === 'waiting' || room.status === 'playing'
+    );
+    
+    logFunctionEnd('getActivePokerRooms', activeRooms, {});
+    return activeRooms;
+  } catch (error) {
+    logError('getActivePokerRooms', error as Error, {});
+    throw error;
+  }
+};
+
+/**
+ * Get rooms for a specific player
+ */
+export const getPokerRoomsForPlayer = async (playerId: PlayerId): Promise<PokerRoom[]> => {
+  logFunctionStart('getPokerRoomsForPlayer', { playerId });
+  
+  try {
+    const allRooms = await getActivePokerRooms();
+    const playerRooms = allRooms.filter(room => 
+      room.players.some(p => p.id === playerId)
+    );
+    
+    logFunctionEnd('getPokerRoomsForPlayer', playerRooms, { playerId });
+    return playerRooms;
+  } catch (error) {
+    logError('getPokerRoomsForPlayer', error as Error, { playerId });
+    throw error;
+  }
+};
+
+/**
+ * Update player ready status
+ */
+export const updatePlayerReadyStatus = async (
+  roomId: RoomId,
+  playerId: PlayerId,
+  isReady: boolean
+): Promise<PokerRoom> => {
+  logFunctionStart('updatePlayerReadyStatus', { roomId, playerId, isReady });
+  
+  try {
+    const room = await getPokerRoom(roomId);
+    if (!room) {
+      throw new Error('Room not found');
+    }
+    
+    const playerIndex = room.players.findIndex(p => p.id === playerId);
+    if (playerIndex === -1) {
+      throw new Error('Player not in room');
+    }
+    
+    const updatedPlayers = [...room.players];
+    updatedPlayers[playerIndex] = {
+      ...updatedPlayers[playerIndex],
+      isReady
+    };
+    
+    const updatedRoom = {
+      ...room,
+      players: updatedPlayers,
+      updatedAt: Date.now()
+    };
+    
+    return await updatePokerRoom(roomId, updatedRoom);
+  } catch (error) {
+    logError('updatePlayerReadyStatus', error as Error, { roomId, playerId, isReady });
+    throw error;
+  }
+};
+
+/**
+ * Kick a player from the room (creator only)
+ */
+export const kickPlayerFromRoom = async (roomId: RoomId, targetPlayerId: PlayerId): Promise<PokerRoom> => {
+  logFunctionStart('kickPlayerFromRoom', { roomId, targetPlayerId });
+  
+  try {
+    const room = await getPokerRoom(roomId);
+    if (!room) {
+      throw new Error('Room not found');
+    }
+    
+    const playerIndex = room.players.findIndex(p => p.id === targetPlayerId);
+    if (playerIndex === -1) {
+      throw new Error('Player not in room');
+    }
+    
+    const updatedPlayers = room.players.filter(p => p.id !== targetPlayerId);
+    
+    // If no players left, delete the room
+    if (updatedPlayers.length === 0) {
+      await deletePokerRoom(roomId);
+      throw new Error('Room deleted - no players left');
+    }
+    
+    const updatedRoom = {
+      ...room,
+      players: updatedPlayers,
+      updatedAt: Date.now()
+    };
+    
+    // Adjust indices if needed
+    if (playerIndex <= room.dealerIndex && room.dealerIndex > 0) {
+      updatedRoom.dealerIndex = room.dealerIndex - 1;
+    }
+    if (playerIndex <= room.smallBlindIndex && room.smallBlindIndex > 0) {
+      updatedRoom.smallBlindIndex = room.smallBlindIndex - 1;
+    }
+    if (playerIndex <= room.bigBlindIndex && room.bigBlindIndex > 0) {
+      updatedRoom.bigBlindIndex = room.bigBlindIndex - 1;
+    }
+    if (playerIndex <= room.currentPlayerIndex && room.currentPlayerIndex > 0) {
+      updatedRoom.currentPlayerIndex = room.currentPlayerIndex - 1;
+    }
+    
+    return await updatePokerRoom(roomId, updatedRoom);
+  } catch (error) {
+    logError('kickPlayerFromRoom', error as Error, { roomId, targetPlayerId });
+    throw error;
+  }
+};
+
+/**
+ * Update player information in a room
+ */
+export const updatePlayerInfo = async (
+  roomId: RoomId,
+  playerId: PlayerId,
+  updates: Partial<Pick<PokerPlayer, 'name' | 'username' | 'chatId'>>
+): Promise<PokerRoom> => {
+  logFunctionStart('updatePlayerInfo', { roomId, playerId, updates });
+  
+  try {
+    const room = await getPokerRoom(roomId);
+    if (!room) {
+      throw new Error('Room not found');
+    }
+    
+    const playerIndex = room.players.findIndex(p => p.id === playerId);
+    if (playerIndex === -1) {
+      throw new Error('Player not found in room');
+    }
+    
+    // Update player information
+    const updatedPlayers = [...room.players];
+    const originalPlayer = updatedPlayers[playerIndex];
+    updatedPlayers[playerIndex] = {
+      ...originalPlayer,
+      ...updates
+    };
+    
+    console.log(`🔄 UPDATING PLAYER INFO:`, {
+      roomId,
+      playerId,
+      originalPlayer: {
+        id: originalPlayer.id,
+        name: originalPlayer.name,
+        username: originalPlayer.username,
+        chatId: originalPlayer.chatId
+      },
+      updates,
+      updatedPlayer: {
+        id: updatedPlayers[playerIndex].id,
+        name: updatedPlayers[playerIndex].name,
+        username: updatedPlayers[playerIndex].username,
+        chatId: updatedPlayers[playerIndex].chatId
+      }
+    });
+    
+    console.log(`🔄 UPDATED PLAYERS ARRAY:`, updatedPlayers.map(p => ({
+      id: p.id,
+      name: p.name,
+      username: p.username,
+      chatId: p.chatId
+    })));
+    
+    console.log(`🔄 FINAL UPDATED ROOM:`, {
+      roomId,
+      players: updatedPlayers.map(p => ({
+        id: p.id,
+        name: p.name,
+        username: p.username,
+        chatId: p.chatId
+      }))
+    });
+    
+    console.log(`🔄 UPDATING FIREBASE WITH:`, {
+      roomId,
+      players: updatedPlayers.map(p => ({
+        id: p.id,
+        name: p.name,
+        username: p.username,
+        chatId: p.chatId
+      }))
+    });
+    
+    const updatedRoom = {
+      ...room,
+      players: updatedPlayers,
+      updatedAt: Date.now()
+    };
+    
+    return await updatePokerRoom(roomId, updatedRoom);
+  } catch (error) {
+    logError('updatePlayerInfo', error as Error, { roomId, playerId, updates });
+    throw error;
+  }
+}; 

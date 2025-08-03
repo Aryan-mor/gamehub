@@ -9,6 +9,7 @@ import { defaultFormState } from '../../_utils/formStateManager';
 import { CreateRoomRequest, CreateRoomFormData } from '../../types';
 import { register } from '@/modules/core/compact-router';
 import { POKER_ACTIONS } from '../../compact-codes';
+import { storePlayerMessage } from '../../services/roomMessageService';
 
 
 // Export the action key for consistency and debugging
@@ -238,16 +239,7 @@ async function handleConfirmCreate(context: HandlerContext, _query: Record<strin
 
     const keyboard = {
       inline_keyboard: [
-        [
-          {
-            text: '✅ آماده هستم',
-            callback_data: `gprdy?roomId=${room.id}`
-          },
-          {
-            text: '⏸️ آماده نیستم',
-            callback_data: `gpnr?roomId=${room.id}`
-          }
-        ],
+        // Ready/Not Ready buttons removed - players are automatically ready
         [
           {
             text: '👥 دعوت دوستان',
@@ -267,10 +259,20 @@ async function handleConfirmCreate(context: HandlerContext, _query: Record<strin
       ]
     };
 
-    await tryEditMessageText(ctx, message, {
+    const sentMessage = await tryEditMessageText(ctx, message, {
       parse_mode: 'HTML',
       reply_markup: keyboard
     });
+    
+    // Store the message ID for future updates
+    if (sentMessage && sentMessage.message_id) {
+      try {
+        await storePlayerMessage(room.id, user.id, sentMessage.message_id, ctx.chat?.id || 0);
+        console.log(`💾 Stored message ID ${sentMessage.message_id} for room creator ${user.id}`);
+      } catch (error) {
+        console.error('Failed to store message ID for room creator:', error);
+      }
+    }
     
   } catch (error) {
     console.error('Room creation confirmation error:', error);

@@ -13,8 +13,7 @@ import {
 } from '../_utils/cardUtils';
 import { getPokerRoom, updatePokerRoom } from './pokerService';
 import { logFunctionStart, logFunctionEnd, logError } from '@/modules/core/logger';
-import { ref, get, set } from 'firebase/database';
-import { database } from '@/modules/core/firebase';
+import { supabase } from '@/lib/supabase';
 
 /**
  * Get detailed game result display

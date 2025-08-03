@@ -1,1 +1,0 @@
-{"version":3,"file":"handleTurn.d.ts","sourceRoot":"","sources":["../../../src/games/dice/handleTurn.ts"],"names":[],"mappings":"AAIA,OAAO,EAAgB,cAAc,EAAE,MAAM,SAAS,CAAC;AAEvD,eAAO,MAAM,cAAc,GACzB,QAAQ,MAAM,EACd,aAAa,MAAM,KAClB,OAAO,CAAC;IACT,OAAO,EAAE,OAAO,CAAC;IACjB,MAAM,CAAC,EAAE,cAAc,CAAC;IACxB,KAAK,CAAC,EAAE,MAAM,CAAC;CAChB,CA8EA,CAAC"}

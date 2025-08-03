@@ -1,1 +1,0 @@
-{"version":3,"file":"handleTurn.d.ts","sourceRoot":"","sources":["../../../src/games/football/handleTurn.ts"],"names":[],"mappings":"AAIA,OAAO,EAAoB,kBAAkB,EAAE,MAAM,SAAS,CAAC;AAE/D,eAAO,MAAM,kBAAkB,GAC7B,QAAQ,MAAM,EACd,OAAO,MAAM,KACZ,OAAO,CAAC;IACT,OAAO,EAAE,OAAO,CAAC;IACjB,MAAM,CAAC,EAAE,kBAAkB,CAAC;IAC5B,KAAK,CAAC,EAAE,MAAM,CAAC;CAChB,CAqFA,CAAC"}

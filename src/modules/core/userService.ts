@@ -1,33 +1,81 @@
 import { User } from './types';
 import { logFunctionStart, logFunctionEnd, logError } from './logger';
-import { ref, get, set, update } from 'firebase/database';
-import { database } from './firebase';
+import { supabase } from '@/lib/supabase';
 
 export const getUser = async (userId: string): Promise<User> => {
   logFunctionStart('getUser', { userId });
   
   try {
-    if (!database) throw new Error('Firebase not initialized');
+    // First try to get user from users table
+    const { data: userData, error: userError } = await supabase
+      .from('users')
+      .select('*')
+      .eq('telegram_id', userId)
+      .single();
     
-    const userRef = ref(database, `users/${userId}`);
-    const snapshot = await get(userRef);
+    if (userError && userError.code !== 'PGRST116') {
+      throw userError;
+    }
     
-    if (!snapshot.exists()) {
-      const newUser: User = {
+    if (!userData) {
+      // Create new user
+      const newUser = {
+        telegram_id: userId,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+      
+      const { data: createdUser, error: createError } = await supabase
+        .from('users')
+        .insert(newUser)
+        .select()
+        .single();
+      
+      if (createError) throw createError;
+      
+      // Create wallet for new user
+      const { error: walletError } = await supabase
+        .from('wallets')
+        .insert({
+          user_id: createdUser.id,
+          balance: 0,
+        });
+      
+      if (walletError) throw walletError;
+      
+      const user: User = {
         id: userId,
         coins: 0,
         createdAt: Date.now(),
         updatedAt: Date.now(),
       };
       
-      await set(userRef, newUser);
-      logFunctionEnd('getUser', newUser, { userId });
-      return newUser;
+      logFunctionEnd('getUser', user, { userId });
+      return user;
     }
     
-    const userData = snapshot.val() as User;
-    logFunctionEnd('getUser', userData, { userId });
-    return userData;
+    // Get wallet balance
+    const { data: walletData, error: walletError } = await supabase
+      .from('wallets')
+      .select('balance')
+      .eq('user_id', userData.id)
+      .single();
+    
+    if (walletError && walletError.code !== 'PGRST116') {
+      throw walletError;
+    }
+    
+    const user: User = {
+      id: userId,
+      coins: walletData?.balance || 0,
+      createdAt: new Date(userData.created_at).getTime(),
+      updatedAt: new Date(userData.updated_at).getTime(),
+      username: userData.username,
+      name: userData.first_name,
+    };
+    
+    logFunctionEnd('getUser', user, { userId });
+    return user;
   } catch (error) {
     logError('getUser', error as Error, { userId });
     throw error;
@@ -42,19 +90,50 @@ export const addCoins = async (
   logFunctionStart('addCoins', { userId, amount, reason });
   
   try {
-    if (!database) throw new Error('Firebase not initialized');
+    // Get user first
+    const { data: userData, error: userError } = await supabase
+      .from('users')
+      .select('id')
+      .eq('telegram_id', userId)
+      .single();
     
-    const userRef = ref(database, `users/${userId}`);
-    const snapshot = await get(userRef);
-    const currentCoins = snapshot.exists() ? (snapshot.val()?.coins || 0) : 0;
-    const newCoins = currentCoins + amount;
+    if (userError) throw userError;
     
-    await update(userRef, {
-      coins: newCoins,
-      updatedAt: Date.now(),
-    });
+    // Get current wallet balance
+    const { data: walletData, error: walletError } = await supabase
+      .from('wallets')
+      .select('balance')
+      .eq('user_id', userData.id)
+      .single();
     
-    logFunctionEnd('addCoins', { newBalance: newCoins }, { userId, amount, reason });
+    if (walletError) throw walletError;
+    
+    const currentBalance = walletData?.balance || 0;
+    const newBalance = currentBalance + amount;
+    
+    // Update wallet balance
+    const { error: updateError } = await supabase
+      .from('wallets')
+      .update({ balance: newBalance })
+      .eq('user_id', userData.id);
+    
+    if (updateError) throw updateError;
+    
+    // Record transaction
+    const { error: transactionError } = await supabase
+      .from('transactions')
+      .insert({
+        user_id: userData.id,
+        transaction_type: 'credit',
+        amount: amount,
+        balance_before: currentBalance,
+        balance_after: newBalance,
+        description: reason,
+      });
+    
+    if (transactionError) throw transactionError;
+    
+    logFunctionEnd('addCoins', { newBalance }, { userId, amount, reason });
   } catch (error) {
     logError('addCoins', error as Error, { userId, amount, reason });
     throw error;
@@ -69,18 +148,50 @@ export const deductCoins = async (
   logFunctionStart('deductCoins', { userId, amount, reason });
   
   try {
-    if (!database) throw new Error('Firebase not initialized');
+    // Get user first
+    const { data: userData, error: userError } = await supabase
+      .from('users')
+      .select('id')
+      .eq('telegram_id', userId)
+      .single();
     
-    const userRef = ref(database, `users/${userId}`);
-    const snapshot = await get(userRef);
-    const currentCoins = snapshot.exists() ? (snapshot.val()?.coins || 0) : 0;
+    if (userError) throw userError;
     
-    if (currentCoins >= amount) {
-      const newCoins = currentCoins - amount;
-      await update(userRef, {
-        coins: newCoins,
-        updatedAt: Date.now(),
-      });
+    // Get current wallet balance
+    const { data: walletData, error: walletError } = await supabase
+      .from('wallets')
+      .select('balance')
+      .eq('user_id', userData.id)
+      .single();
+    
+    if (walletError) throw walletError;
+    
+    const currentBalance = walletData?.balance || 0;
+    
+    if (currentBalance >= amount) {
+      const newBalance = currentBalance - amount;
+      
+      // Update wallet balance
+      const { error: updateError } = await supabase
+        .from('wallets')
+        .update({ balance: newBalance })
+        .eq('user_id', userData.id);
+      
+      if (updateError) throw updateError;
+      
+      // Record transaction
+      const { error: transactionError } = await supabase
+        .from('transactions')
+        .insert({
+          user_id: userData.id,
+          transaction_type: 'debit',
+          amount: amount,
+          balance_before: currentBalance,
+          balance_after: newBalance,
+          description: reason,
+        });
+      
+      if (transactionError) throw transactionError;
       
       logFunctionEnd('deductCoins', { success: true }, { userId, amount, reason });
       return true;
@@ -101,9 +212,16 @@ export const canClaimDaily = async (userId: string): Promise<{
   logFunctionStart('canClaimDaily', { userId });
   
   try {
-    const user = await getUser(userId);
+    const { data: userData, error } = await supabase
+      .from('users')
+      .select('last_free_coin_at')
+      .eq('telegram_id', userId)
+      .single();
+    
+    if (error) throw error;
+    
     const now = Date.now();
-    const lastClaim = user.lastFreeCoinAt || 0;
+    const lastClaim = userData?.last_free_coin_at ? new Date(userData.last_free_coin_at).getTime() : 0;
     const dayInMs = 24 * 60 * 60 * 1000;
     const timeSinceLastClaim = now - lastClaim;
     const canClaim = timeSinceLastClaim >= dayInMs;
@@ -122,13 +240,15 @@ export const setLastFreeCoinAt = async (userId: string): Promise<void> => {
   logFunctionStart('setLastFreeCoinAt', { userId });
   
   try {
-    if (!database) throw new Error('Firebase not initialized');
+    const { error } = await supabase
+      .from('users')
+      .update({
+        last_free_coin_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq('telegram_id', userId);
     
-    const userRef = ref(database, `users/${userId}`);
-    await update(userRef, {
-      lastFreeCoinAt: Date.now(),
-      updatedAt: Date.now(),
-    });
+    if (error) throw error;
     
     logFunctionEnd('setLastFreeCoinAt', {}, { userId });
   } catch (error) {
@@ -145,17 +265,19 @@ export const setUserProfile = async (
   logFunctionStart('setUserProfile', { userId, username, name });
   
   try {
-    if (!database) throw new Error('Firebase not initialized');
-    
-    const updateData: Partial<User> = {
-      updatedAt: Date.now(),
+    const updateData: any = {
+      updated_at: new Date().toISOString(),
     };
     
     if (username !== undefined) updateData.username = username;
-    if (name !== undefined) updateData.name = name;
+    if (name !== undefined) updateData.first_name = name;
     
-    const userRef = ref(database, `users/${userId}`);
-    await update(userRef, updateData);
+    const { error } = await supabase
+      .from('users')
+      .update(updateData)
+      .eq('telegram_id', userId);
+    
+    if (error) throw error;
     
     logFunctionEnd('setUserProfile', {}, { userId, username, name });
   } catch (error) {

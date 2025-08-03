@@ -1,36 +1,45 @@
-import { ref, get, remove } from 'firebase/database';
-import { database } from '../modules/core/firebase';
+import { supabase } from '@/lib/supabase';
 
 async function clearAllRooms() {
   try {
     console.log('🗑️ Clearing all poker rooms...');
     
-    const roomsRef = ref(database, 'pokerRooms');
-    const snapshot = await get(roomsRef);
+    const { data: rooms, error } = await supabase
+      .from('rooms')
+      .select('*')
+      .eq('game_type', 'poker');
     
-    if (!snapshot.exists()) {
+    if (error) {
+      console.error('❌ Error fetching rooms:', error);
+      return;
+    }
+    
+    if (!rooms || rooms.length === 0) {
       console.log('✅ No rooms found');
       return;
     }
     
-    const rooms = snapshot.val();
-    const roomIds = Object.keys(rooms);
+    console.log(`📊 Found ${rooms.length} rooms to delete:`);
     
-    console.log(`📊 Found ${roomIds.length} rooms to delete:`);
-    
-    for (const roomId of roomIds) {
-      const room = rooms[roomId];
-      console.log(`🗑️ Deleting room: ${roomId}`);
+    for (const room of rooms) {
+      console.log(`🗑️ Deleting room: ${room.room_id}`);
       console.log(`   - Name: ${room.name}`);
-      console.log(`   - Players: ${room.players?.length || 0}`);
-      console.log(`   - Max Players: ${room.maxPlayers}`);
       console.log(`   - Status: ${room.status}`);
+      console.log(`   - Max Players: ${room.max_players}`);
       
-      await remove(ref(database, `pokerRooms/${roomId}`));
-      console.log(`✅ Deleted: ${roomId}`);
+      const { error: deleteError } = await supabase
+        .from('rooms')
+        .delete()
+        .eq('id', room.id);
+      
+      if (deleteError) {
+        console.error(`❌ Error deleting room ${room.room_id}:`, deleteError);
+      } else {
+        console.log(`✅ Deleted: ${room.room_id}`);
+      }
     }
     
-    console.log(`🎉 Successfully deleted ${roomIds.length} rooms`);
+    console.log(`🎉 Successfully deleted ${rooms.length} rooms`);
     
   } catch (error) {
     console.error('❌ Error clearing rooms:', error);

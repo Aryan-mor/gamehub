@@ -23,11 +23,15 @@
     "bot:control": "./scripts/bot-control.sh",
     "export:bot-config": "ts-node src/scripts/exportBotConfig.ts",
     "set:bot-commands": "ts-node src/scripts/setBotCommands.ts",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "migrate:supabase": "tsx scripts/migrate-to-supabase.ts",
+    "test:supabase": "tsx scripts/test-supabase-connection.ts",
+    "fix:chat-id": "tsx scripts/fix-chat-id.ts",
+    "fix:chat-id-simple": "tsx scripts/fix-chat-id-simple.ts"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.39.0",
     "dotenv": "^16.4.5",
-    "firebase": "^11.10.0",
     "grammy": "^1.37.0",
     "nanoid": "^5.1.5",
     "node-fetch": "2",

@@ -1,1 +1,0 @@
-{"version":3,"file":"startGame.d.ts","sourceRoot":"","sources":["../../../src/games/blackjack/startGame.ts"],"names":[],"mappings":"AAIA,OAAO,EAAqB,cAAc,EAAQ,MAAM,SAAS,CAAC;AA6ClE,eAAO,MAAM,kBAAkB,GAC7B,QAAQ,MAAM,EACd,OAAO,cAAc,KACpB,OAAO,CAAC;IACT,OAAO,EAAE,OAAO,CAAC;IACjB,MAAM,CAAC,EAAE,MAAM,CAAC;IAChB,KAAK,CAAC,EAAE,MAAM,CAAC;CAChB,CAqEA,CAAC"}

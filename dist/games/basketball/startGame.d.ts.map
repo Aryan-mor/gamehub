@@ -1,1 +1,0 @@
-{"version":3,"file":"startGame.d.ts","sourceRoot":"","sources":["../../../src/games/basketball/startGame.ts"],"names":[],"mappings":"AAIA,OAAO,EAAsB,eAAe,EAAE,MAAM,SAAS,CAAC;AAE9D,eAAO,MAAM,mBAAmB,GAC9B,QAAQ,MAAM,EACd,OAAO,eAAe,KACrB,OAAO,CAAC;IACT,OAAO,EAAE,OAAO,CAAC;IACjB,MAAM,CAAC,EAAE,MAAM,CAAC;IAChB,KAAK,CAAC,EAAE,MAAM,CAAC;CAChB,CA4DA,CAAC"}

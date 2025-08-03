@@ -1,1 +1,0 @@
-{"version":3,"file":"handleTurn.d.ts","sourceRoot":"","sources":["../../../src/games/basketball/handleTurn.ts"],"names":[],"mappings":"AAIA,OAAO,EAAsB,oBAAoB,EAAE,MAAM,SAAS,CAAC;AAEnE,eAAO,MAAM,oBAAoB,GAC/B,QAAQ,MAAM,EACd,OAAO,OAAO,GAAG,MAAM,KACtB,OAAO,CAAC;IACT,OAAO,EAAE,OAAO,CAAC;IACjB,MAAM,CAAC,EAAE,oBAAoB,CAAC;IAC9B,KAAK,CAAC,EAAE,MAAM,CAAC;CAChB,CAoFA,CAAC"}

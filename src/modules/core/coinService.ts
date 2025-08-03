@@ -1,6 +1,5 @@
 import { logFunctionStart, logFunctionEnd, logError } from './logger';
-import { ref, get, update, push } from 'firebase/database';
-import { database } from './firebase';
+import { supabase } from '@/lib/supabase';
 
 export const adjustCoins = async (
   userId: string,
@@ -11,23 +10,55 @@ export const adjustCoins = async (
   logFunctionStart('adjustCoins', { userId, amount, reason, gameId });
   
   try {
-    if (!database) throw new Error('Firebase not initialized');
+    // Get user first
+    const { data: userData, error: userError } = await supabase
+      .from('users')
+      .select('id')
+      .eq('telegram_id', userId)
+      .single();
     
-    const userRef = ref(database, `users/${userId}`);
-    const snapshot = await get(userRef);
-    const currentCoins = snapshot.exists() ? (snapshot.val()?.coins || 0) : 0;
-    const newCoins = currentCoins + amount;
+    if (userError) throw userError;
     
-    if (newCoins < 0) {
+    // Get current wallet balance
+    const { data: walletData, error: walletError } = await supabase
+      .from('wallets')
+      .select('balance')
+      .eq('user_id', userData.id)
+      .single();
+    
+    if (walletError) throw walletError;
+    
+    const currentBalance = walletData?.balance || 0;
+    const newBalance = currentBalance + amount;
+    
+    if (newBalance < 0) {
       throw new Error('Insufficient balance');
     }
     
-    await update(userRef, {
-      coins: newCoins,
-      updatedAt: Date.now(),
-    });
+    // Update wallet balance
+    const { error: updateError } = await supabase
+      .from('wallets')
+      .update({ balance: newBalance })
+      .eq('user_id', userData.id);
     
-    logFunctionEnd('adjustCoins', { newBalance: newCoins }, { userId, amount, reason, gameId });
+    if (updateError) throw updateError;
+    
+    // Record transaction
+    const { error: transactionError } = await supabase
+      .from('transactions')
+      .insert({
+        user_id: userData.id,
+        transaction_type: amount > 0 ? 'credit' : 'debit',
+        amount: Math.abs(amount),
+        balance_before: currentBalance,
+        balance_after: newBalance,
+        description: reason,
+        reference_id: gameId,
+      });
+    
+    if (transactionError) throw transactionError;
+    
+    logFunctionEnd('adjustCoins', { newBalance }, { userId, amount, reason, gameId });
   } catch (error) {
     logError('adjustCoins', error as Error, { userId, amount, reason, gameId });
     throw error;
@@ -38,16 +69,31 @@ export const getUserCoins = async (userId: string): Promise<number> => {
   logFunctionStart('getUserCoins', { userId });
   
   try {
-    if (!database) throw new Error('Firebase not initialized');
+    const { data: userData, error: userError } = await supabase
+      .from('users')
+      .select('id')
+      .eq('telegram_id', userId)
+      .single();
     
-    const userRef = ref(database, `users/${userId}`);
-    const snapshot = await get(userRef);
+    if (userError && userError.code !== 'PGRST116') {
+      throw userError;
+    }
     
-    if (!snapshot.exists()) {
+    if (!userData) {
       return 0;
     }
     
-    const coins = snapshot.val()?.coins || 0;
+    const { data: walletData, error: walletError } = await supabase
+      .from('wallets')
+      .select('balance')
+      .eq('user_id', userData.id)
+      .single();
+    
+    if (walletError && walletError.code !== 'PGRST116') {
+      throw walletError;
+    }
+    
+    const coins = walletData?.balance || 0;
     logFunctionEnd('getUserCoins', { userId, coins });
     return coins;
   } catch (error) {
@@ -94,13 +140,36 @@ export const logTransfer = async (transfer: {
   logFunctionStart('logTransfer', transfer);
   
   try {
-    if (!database) throw new Error('Firebase not initialized');
+    // Get user IDs for from and to
+    const { data: fromUser, error: fromError } = await supabase
+      .from('users')
+      .select('id')
+      .eq('telegram_id', transfer.fromId)
+      .single();
     
-    const transfersRef = ref(database, 'transfers');
-    await push(transfersRef, {
-      ...transfer,
-      timestamp: Date.now(),
-    });
+    const { data: toUser, error: toError } = await supabase
+      .from('users')
+      .select('id')
+      .eq('telegram_id', transfer.toId)
+      .single();
+    
+    if (fromError && transfer.fromId !== 'system') throw fromError;
+    if (toError) throw toError;
+    
+    // Log transfer in transactions table
+    const { error: transactionError } = await supabase
+      .from('transactions')
+      .insert({
+        user_id: toUser.id,
+        transaction_type: 'transfer',
+        amount: transfer.amount,
+        balance_before: 0, // Will be calculated from wallet
+        balance_after: 0,  // Will be calculated from wallet
+        description: `${transfer.reason} from ${transfer.fromId}`,
+        reference_id: transfer.gameId,
+      });
+    
+    if (transactionError) throw transactionError;
     
     logFunctionEnd('logTransfer', {}, transfer);
   } catch (error) {

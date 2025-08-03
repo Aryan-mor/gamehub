@@ -1,5 +1,4 @@
-import { ref, set, get, remove } from 'firebase/database';
-import { database } from '@/modules/core/firebase';
+import { supabase } from '@/lib/supabase';
 import { PokerRoom, PlayerId, RoomId } from '../types';
 import { logFunctionStart, logFunctionEnd, logError } from '@/modules/core/logger';
 
@@ -30,7 +29,6 @@ export async function storePlayerMessage(
   try {
     logFunctionStart('storePlayerMessage', { roomId, playerId, messageId, chatId });
     
-    const messageRef = ref(database, `roomMessages/${roomId}/${playerId}`);
     const message: RoomMessage = {
       roomId,
       playerId,
@@ -39,7 +37,18 @@ export async function storePlayerMessage(
       timestamp: Date.now()
     };
     
-    await set(messageRef, message);
+    const { error } = await supabase
+      .from('room_messages')
+      .upsert({
+        room_id: roomId,
+        user_id: playerId,
+        message_id: messageId,
+        chat_id: chatId, // Use BIGINT directly
+        timestamp: new Date().toISOString()
+      });
+    
+    if (error) throw error;
+    
     logFunctionEnd('storePlayerMessage', {}, { success: true });
   } catch (error) {
     logError('storePlayerMessage', error);
@@ -57,11 +66,25 @@ export async function getPlayerMessage(
   try {
     logFunctionStart('getPlayerMessage', { roomId, playerId });
     
-    const messageRef = ref(database, `roomMessages/${roomId}/${playerId}`);
-    const snapshot = await get(messageRef);
+    const { data, error } = await supabase
+      .from('room_messages')
+      .select('*')
+      .eq('room_id', roomId)
+      .eq('user_id', playerId)
+      .single();
     
-    if (snapshot.exists()) {
-      const message = snapshot.val() as RoomMessage;
+    if (error && error.code !== 'PGRST116') {
+      throw error;
+    }
+    
+    if (data) {
+      const message: RoomMessage = {
+        roomId: data.room_id,
+        playerId: data.user_id,
+        messageId: data.message_id,
+        chatId: data.chat_id,
+        timestamp: new Date(data.timestamp).getTime()
+      };
       logFunctionEnd('getPlayerMessage', {}, { message });
       return message;
     }
@@ -81,17 +104,23 @@ export async function getAllRoomMessages(roomId: RoomId): Promise<RoomMessage[]>
   try {
     logFunctionStart('getAllRoomMessages', { roomId });
     
-    const messagesRef = ref(database, `roomMessages/${roomId}`);
-    const snapshot = await get(messagesRef);
+    const { data, error } = await supabase
+      .from('room_messages')
+      .select('*')
+      .eq('room_id', roomId);
     
-    if (snapshot.exists()) {
-      const messages = Object.values(snapshot.val()) as RoomMessage[];
-      logFunctionEnd('getAllRoomMessages', {}, { count: messages.length });
-      return messages;
-    }
+    if (error) throw error;
     
-    logFunctionEnd('getAllRoomMessages', {}, { count: 0 });
-    return [];
+    const messages: RoomMessage[] = data.map(item => ({
+      roomId: item.room_id,
+      playerId: item.user_id,
+      messageId: item.message_id,
+      chatId: item.chat_id,
+      timestamp: new Date(item.timestamp).getTime()
+    }));
+    
+    logFunctionEnd('getAllRoomMessages', {}, { count: messages.length });
+    return messages;
   } catch (error) {
     logError('getAllRoomMessages', error);
     return [];
@@ -108,8 +137,13 @@ export async function removePlayerMessage(
   try {
     logFunctionStart('removePlayerMessage', { roomId, playerId });
     
-    const messageRef = ref(database, `roomMessages/${roomId}/${playerId}`);
-    await remove(messageRef);
+    const { error } = await supabase
+      .from('room_messages')
+      .delete()
+      .eq('room_id', roomId)
+      .eq('user_id', playerId);
+    
+    if (error) throw error;
     
     logFunctionEnd('removePlayerMessage', {}, { success: true });
   } catch (error) {
@@ -129,15 +163,9 @@ export async function storeRoomNotification(
   try {
     logFunctionStart('storeRoomNotification', { roomId, type });
     
-    const notificationRef = ref(database, `roomNotifications/${roomId}/${Date.now()}`);
-    const notification: RoomNotification = {
-      roomId,
-      type,
-      data,
-      timestamp: Date.now()
-    };
+    // For now, just log the notification since we don't have a notifications table
+    console.log(`📢 Room Notification [${roomId}]: ${type}`, data);
     
-    await set(notificationRef, notification);
     logFunctionEnd('storeRoomNotification', {}, { success: true });
   } catch (error) {
     logError('storeRoomNotification', error);

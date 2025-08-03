@@ -131,7 +131,7 @@ async function handleWaitingRoomState(
     }).join('\n')}\n\n` +
     `📊 <b>وضعیت شما:</b>\n` +
     `• سکه‌ها: ${player.chips}\n` +
-    `• آماده: ${player.isReady ? '✅ بله' : '⏸️ خیر'}\n\n`;
+    `• آماده: ✅ بله (اتوماتیک)\n\n`;
   
   let keyboard;
   if (isCreator) {
@@ -144,8 +144,8 @@ async function handleWaitingRoomState(
         `همه بازیکنان آماده هستند. می‌توانید بازی را شروع کنید.`;
       keyboard = generateWaitingRoomKeyboard(room.id, true); // Show start button
     } else if (isRoomFull) {
-      message += `⏳ <b>در انتظار آماده شدن بازیکنان</b>\n` +
-        `روم پر شده است. منتظر آماده شدن همه بازیکنان هستیم.`;
+      message += `⏳ <b>در انتظار شروع بازی</b>\n` +
+        `روم پر شده است. منتظر شروع بازی توسط سازنده هستیم.`;
       keyboard = generateWaitingRoomKeyboard(room.id, false);
     } else {
       message += `⏳ <b>در انتظار بازیکنان</b>\n` +

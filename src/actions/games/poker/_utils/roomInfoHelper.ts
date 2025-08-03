@@ -56,9 +56,8 @@ export function getRoomInfoForUser(room: PokerRoom, userId: PlayerId): string {
   
   // Room status specific info
   if (room.status === 'waiting') {
-    const readyPlayers = room.players.filter(p => p.isReady).length;
-    message += `⏳ <b>وضعیت آماده‌سازی:</b>\n`;
-    message += `• بازیکنان آماده: ${readyPlayers}/${room.players.length}\n`;
+    message += `⏳ <b>وضعیت روم:</b>\n`;
+    message += `• بازیکنان: ${room.players.length}/${room.maxPlayers}\n`;
     message += `• حداقل مورد نیاز: ${room.minPlayers} بازیکن\n\n`;
     
     if (isCreator && room.players.length >= room.minPlayers) {

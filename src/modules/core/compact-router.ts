@@ -45,12 +45,28 @@ class CompactRouter {
    * Dispatch a compact action
    */
   async dispatch(code: string, context: HandlerContext, query: Record<string, string> = {}): Promise<void> {
+    console.log(`🔍 COMPACT ROUTER DISPATCH:`);
+    console.log(`  Code: ${code}`);
+    console.log(`  Query:`, query);
+    console.log(`  User ID: ${context.user.id}`);
+    
     const handler = this.codeToHandler.get(code);
     if (!handler) {
+      console.error(`❌ NO HANDLER FOUND FOR COMPACT CODE: ${code}`);
+      console.log(`📋 AVAILABLE CODES:`, this.getCodes());
       throw new Error(`No handler found for compact code: ${code}`);
     }
 
-    await handler(context, query);
+    console.log(`✅ HANDLER FOUND FOR CODE: ${code}`);
+    console.log(`🚀 EXECUTING HANDLER: ${code}`);
+    
+    try {
+      await handler(context, query);
+      console.log(`✅ HANDLER EXECUTED SUCCESSFULLY: ${code}`);
+    } catch (error) {
+      console.error(`❌ HANDLER EXECUTION FAILED: ${code}`, error);
+      throw error;
+    }
   }
 
   /**

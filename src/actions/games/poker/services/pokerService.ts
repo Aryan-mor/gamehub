@@ -1,5 +1,4 @@
-import { ref, get, set, update, remove, query, orderByChild, equalTo } from 'firebase/database';
-import { database } from '@/modules/core/firebase';
+import { supabase } from '@/lib/supabase';
 import { nanoid } from 'nanoid';
 import { 
   PokerRoom, 
@@ -25,7 +24,14 @@ export const createPokerRoom = async (
   logFunctionStart('createPokerRoom', { request, creatorId });
   
   try {
-    if (!database) throw new Error('Firebase not initialized');
+    // Get user UUID from telegram_id
+    const { data: userData, error: userError } = await supabase
+      .from('users')
+      .select('id')
+      .eq('telegram_id', creatorId)
+      .single();
+    
+    if (userError) throw userError;
     
     const roomId = `room_${nanoid(12)}` as RoomId;
     const now = Date.now();
@@ -43,7 +49,7 @@ export const createPokerRoom = async (
       isDealer: true,
       cards: [],
       joinedAt: now,
-      chatId: creatorChatId // Store creator's chatId
+      chatId: creatorChatId
     };
     
     const room: PokerRoom = {
@@ -57,7 +63,7 @@ export const createPokerRoom = async (
       bigBlindIndex: 0,
       pot: 0,
       currentBet: 0,
-      minRaise: request.smallBlind * 2, // Big blind is 2x small blind
+      minRaise: request.smallBlind * 2,
       deck: [],
       communityCards: [],
       bettingRound: 'preflop',
@@ -72,8 +78,41 @@ export const createPokerRoom = async (
       updatedAt: now
     };
     
-    const roomRef = ref(database, `pokerRooms/${roomId}`);
-    await set(roomRef, room);
+    // Create room in database
+    const { data: roomData, error: roomError } = await supabase
+      .from('rooms')
+      .insert({
+        room_id: roomId,
+        name: request.name,
+        game_type: 'poker',
+        status: 'waiting',
+        created_by: userData.id, // Use UUID instead of telegram_id
+        max_players: request.maxPlayers,
+        stake_amount: request.smallBlind,
+        settings: {
+          smallBlind: request.smallBlind,
+          bigBlind: request.smallBlind * 2,
+          isPrivate: request.isPrivate,
+          turnTimeoutSec: request.turnTimeoutSec
+        },
+        is_private: request.isPrivate
+      })
+      .select()
+      .single();
+    
+    if (roomError) throw roomError;
+    
+    // Add creator as player
+    const { error: playerError } = await supabase
+      .from('room_players')
+      .insert({
+        room_id: roomData.id,
+        user_id: userData.id, // Use UUID instead of telegram_id
+        is_ready: true,
+        player_data: creator
+      });
+    
+    if (playerError) throw playerError;
     
     logFunctionEnd('createPokerRoom', room, { request, creatorId });
     return room;
@@ -90,17 +129,68 @@ export const getPokerRoom = async (roomId: RoomId): Promise<PokerRoom | null> =>
   logFunctionStart('getPokerRoom', { roomId });
   
   try {
-    if (!database) throw new Error('Firebase not initialized');
+    const { data: roomData, error: roomError } = await supabase
+      .from('rooms')
+      .select('*')
+      .eq('room_id', roomId)
+      .single();
     
-    const roomRef = ref(database, `pokerRooms/${roomId}`);
-    const snapshot = await get(roomRef);
+    if (roomError && roomError.code !== 'PGRST116') {
+      throw roomError;
+    }
     
-    if (!snapshot.exists()) {
+    if (!roomData) {
       logFunctionEnd('getPokerRoom', null, { roomId });
       return null;
     }
     
-    const room = snapshot.val() as PokerRoom;
+    // Get players
+    const { data: playersData, error: playersError } = await supabase
+      .from('room_players')
+      .select('player_data')
+      .eq('room_id', roomData.id);
+    
+    if (playersError) throw playersError;
+    
+    const players = playersData.map(p => p.player_data as PokerPlayer);
+    const settings = roomData.settings as any;
+    
+    // Get creator's telegram_id
+    const { data: creatorData, error: creatorError } = await supabase
+      .from('users')
+      .select('telegram_id')
+      .eq('id', roomData.created_by)
+      .single();
+    
+    if (creatorError) throw creatorError;
+    
+    // Reconstruct room from database data
+    const room: PokerRoom = {
+      id: roomData.room_id as RoomId,
+      name: roomData.name,
+      status: roomData.status as RoomStatus,
+      players: players,
+      currentPlayerIndex: 0,
+      dealerIndex: 0,
+      smallBlindIndex: 0,
+      bigBlindIndex: 0,
+      pot: 0,
+      currentBet: 0,
+      minRaise: settings?.smallBlind * 2 || 100,
+      deck: [],
+      communityCards: [],
+      bettingRound: 'preflop',
+      smallBlind: settings?.smallBlind || 50,
+      bigBlind: settings?.bigBlind || 100,
+      minPlayers: 2,
+      maxPlayers: roomData.max_players,
+      isPrivate: roomData.is_private,
+      turnTimeoutSec: settings?.turnTimeoutSec || 30,
+      createdBy: creatorData.telegram_id.toString() as PlayerId,
+      createdAt: new Date(roomData.created_at).getTime(),
+      updatedAt: new Date(roomData.updated_at).getTime()
+    };
+    
     logFunctionEnd('getPokerRoom', room, { roomId });
     return room;
   } catch (error) {
@@ -119,20 +209,33 @@ export const updatePokerRoom = async (
   logFunctionStart('updatePokerRoom', { roomId, updates });
   
   try {
-    if (!database) throw new Error('Firebase not initialized');
+    const { data: roomData, error: roomError } = await supabase
+      .from('rooms')
+      .select('settings')
+      .eq('room_id', roomId)
+      .single();
     
-    const roomRef = ref(database, `pokerRooms/${roomId}`);
-    const updateData = {
-      ...updates,
-      updatedAt: Date.now(),
-    };
+    if (roomError) throw roomError;
     
-    await update(roomRef, updateData);
+    const settings = roomData.settings as any;
+    const currentRoom = settings?.room as PokerRoom;
     
-    const updatedRoom = await getPokerRoom(roomId);
-    if (!updatedRoom) {
-      throw new Error('Room not found after update');
-    }
+    const updatedRoom = { ...currentRoom, ...updates, updatedAt: Date.now() };
+    
+    const { error: updateError } = await supabase
+      .from('rooms')
+      .update({
+        status: updates.status || roomData.status,
+        created_by: updates.createdBy || roomData.created_by,
+        settings: {
+          ...settings,
+          room: updatedRoom
+        },
+        updated_at: new Date().toISOString()
+      })
+      .eq('room_id', roomId);
+    
+    if (updateError) throw updateError;
     
     logFunctionEnd('updatePokerRoom', updatedRoom, { roomId, updates });
     return updatedRoom;
@@ -149,13 +252,42 @@ export const joinPokerRoom = async (request: JoinRoomRequest): Promise<PokerRoom
   logFunctionStart('joinPokerRoom', { request });
   
   try {
+    // Get or create user first
+    const { data: userData, error: userError } = await supabase
+      .from('users')
+      .select('id')
+      .eq('telegram_id', request.playerId)
+      .single();
+    
+    let userId: string;
+    if (userError && userError.code === 'PGRST116') {
+      // User doesn't exist, create new user
+      const { data: newUser, error: createError } = await supabase
+        .from('users')
+        .insert({
+          telegram_id: request.playerId,
+          username: request.playerUsername,
+          first_name: request.playerName?.split(' ')[0] || 'Unknown',
+          last_name: request.playerName?.split(' ').slice(1).join(' ') || 'User'
+        })
+        .select('id')
+        .single();
+      
+      if (createError) throw createError;
+      userId = newUser.id;
+    } else if (userError) {
+      throw userError;
+    } else {
+      userId = userData.id;
+    }
+    
     const room = await getPokerRoom(request.roomId);
     if (!room) {
       throw new Error('Room not found');
     }
     
     if (room.status !== 'waiting') {
-      throw new Error('Room is not accepting players');
+      throw new Error('Room is not waiting for players');
     }
     
     if (room.players.length >= room.maxPlayers) {
@@ -169,36 +301,45 @@ export const joinPokerRoom = async (request: JoinRoomRequest): Promise<PokerRoom
     const newPlayer: PokerPlayer = {
       id: request.playerId,
       name: request.playerName,
-      username: request.username || request.playerName,
-      chips: request.chips,
+      username: request.playerUsername,
+      chips: 1000,
       betAmount: 0,
       totalBet: 0,
-      isReady: false,
+      isReady: true, // Automatically ready when joining
       isFolded: false,
       isAllIn: false,
       isDealer: false,
       cards: [],
       joinedAt: Date.now(),
-      chatId: request.chatId // Store chatId for message updates
+      chatId: request.playerChatId
     };
-
-    console.log(`👤 CREATING NEW PLAYER:`, {
-      id: newPlayer.id,
-      name: newPlayer.name,
-      username: newPlayer.username,
-      originalRequest: {
-        playerName: request.playerName,
-        username: request.username
-      }
+    
+    // Add player to room
+    const { data: roomData } = await supabase
+      .from('rooms')
+      .select('id')
+      .eq('room_id', request.roomId)
+      .single();
+    
+    if (roomData) {
+      const { error: playerError } = await supabase
+        .from('room_players')
+        .insert({
+          room_id: roomData.id,
+          user_id: userId, // Use UUID instead of telegram_id
+          is_ready: true, // Automatically ready when joining
+          player_data: newPlayer
+        });
+      
+      if (playerError) throw playerError;
+    }
+    
+    const updatedRoom = await updatePokerRoom(request.roomId, {
+      players: [...room.players, newPlayer]
     });
     
-    const updatedRoom: PokerRoom = {
-      ...room,
-      players: [...room.players, newPlayer],
-      updatedAt: Date.now()
-    };
-    
-    return await updatePokerRoom(room.id, updatedRoom);
+    logFunctionEnd('joinPokerRoom', updatedRoom, { request });
+    return updatedRoom;
   } catch (error) {
     logError('joinPokerRoom', error as Error, { request });
     throw error;
@@ -211,51 +352,74 @@ export const joinPokerRoom = async (request: JoinRoomRequest): Promise<PokerRoom
 export const leavePokerRoom = async (roomId: RoomId, playerId: PlayerId): Promise<PokerRoom> => {
   logFunctionStart('leavePokerRoom', { roomId, playerId });
   
+  console.log(`🚪 LEAVE POKER ROOM SERVICE CALLED:`);
+  console.log(`  Room ID: ${roomId}`);
+  console.log(`  Player ID: ${playerId}`);
+  
   try {
     const room = await getPokerRoom(roomId);
     if (!room) {
+      console.error(`❌ ROOM NOT FOUND: ${roomId}`);
       throw new Error('Room not found');
     }
     
-    const playerIndex = room.players.findIndex(p => p.id === playerId);
-    if (playerIndex === -1) {
-      throw new Error('Player not in room');
-    }
+    console.log(`✅ ROOM FOUND:`, {
+      id: room.id,
+      name: room.name,
+      status: room.status,
+      createdBy: room.createdBy,
+      playerCount: room.players.length
+    });
     
     const updatedPlayers = room.players.filter(p => p.id !== playerId);
+    const isCreator = room.createdBy === playerId;
     
-    // If no players left, delete the room
-    if (updatedPlayers.length === 0) {
-      await deletePokerRoom(roomId);
-      throw new Error('Room deleted - no players left');
+    // Get user UUID from telegram_id
+    const { data: userData, error: userError } = await supabase
+      .from('users')
+      .select('id')
+      .eq('telegram_id', playerId)
+      .single();
+    
+    if (userError && userError.code !== 'PGRST116') {
+      throw userError;
     }
     
-    // If room creator left, transfer ownership to first remaining player
-    let updatedRoom = {
-      ...room,
-      players: updatedPlayers,
-      updatedAt: Date.now()
+    if (userData) {
+      // Remove player from database
+      const { data: roomData } = await supabase
+        .from('rooms')
+        .select('id')
+        .eq('room_id', roomId)
+        .single();
+      
+      if (roomData) {
+        const { error: playerError } = await supabase
+          .from('room_players')
+          .delete()
+          .eq('room_id', roomData.id)
+          .eq('user_id', userData.id);
+        
+        if (playerError) throw playerError;
+      }
+    }
+    
+    // Prepare updates
+    const updates: Partial<PokerRoom> = {
+      players: updatedPlayers
     };
     
-    if (room.createdBy === playerId) {
-      updatedRoom.createdBy = updatedPlayers[0].id;
+    // If creator left and there are remaining players, transfer ownership
+    if (isCreator && updatedPlayers.length > 0) {
+      const newCreator = updatedPlayers[0]; // First remaining player becomes creator
+      updates.createdBy = newCreator.id;
+      console.log(`🔄 Ownership transferred from ${playerId} to ${newCreator.id}`);
     }
     
-    // Adjust indices if needed
-    if (playerIndex <= room.dealerIndex && room.dealerIndex > 0) {
-      updatedRoom.dealerIndex = room.dealerIndex - 1;
-    }
-    if (playerIndex <= room.smallBlindIndex && room.smallBlindIndex > 0) {
-      updatedRoom.smallBlindIndex = room.smallBlindIndex - 1;
-    }
-    if (playerIndex <= room.bigBlindIndex && room.bigBlindIndex > 0) {
-      updatedRoom.bigBlindIndex = room.bigBlindIndex - 1;
-    }
-    if (playerIndex <= room.currentPlayerIndex && room.currentPlayerIndex > 0) {
-      updatedRoom.currentPlayerIndex = room.currentPlayerIndex - 1;
-    }
+    const updatedRoom = await updatePokerRoom(roomId, updates);
     
-    return await updatePokerRoom(roomId, updatedRoom);
+    logFunctionEnd('leavePokerRoom', updatedRoom, { roomId, playerId });
+    return updatedRoom;
   } catch (error) {
     logError('leavePokerRoom', error as Error, { roomId, playerId });
     throw error;
@@ -269,10 +433,12 @@ export const deletePokerRoom = async (roomId: RoomId): Promise<void> => {
   logFunctionStart('deletePokerRoom', { roomId });
   
   try {
-    if (!database) throw new Error('Firebase not initialized');
+    const { error } = await supabase
+      .from('rooms')
+      .delete()
+      .eq('room_id', roomId);
     
-    const roomRef = ref(database, `pokerRooms/${roomId}`);
-    await remove(roomRef);
+    if (error) throw error;
     
     logFunctionEnd('deletePokerRoom', {}, { roomId });
   } catch (error) {
@@ -282,29 +448,45 @@ export const deletePokerRoom = async (roomId: RoomId): Promise<void> => {
 };
 
 /**
- * Get all active rooms
+ * Get active poker rooms
  */
 export const getActivePokerRooms = async (): Promise<PokerRoom[]> => {
-  logFunctionStart('getActivePokerRooms');
+  logFunctionStart('getActivePokerRooms', {});
   
   try {
-    if (!database) throw new Error('Firebase not initialized');
+    const { data: roomsData, error: roomsError } = await supabase
+      .from('rooms')
+      .select('*')
+      .eq('game_type', 'poker')
+      .in('status', ['waiting', 'playing'])
+      .order('created_at', { ascending: false });
     
-    const roomsRef = ref(database, 'pokerRooms');
-    const snapshot = await get(roomsRef);
+    if (roomsError) throw roomsError;
     
-    if (!snapshot.exists()) {
-      logFunctionEnd('getActivePokerRooms', [], {});
-      return [];
+    const rooms: PokerRoom[] = [];
+    
+    for (const roomData of roomsData) {
+      const settings = roomData.settings as any;
+      const room = settings?.room as PokerRoom;
+      
+      if (room) {
+        // Get players for this room
+        const { data: playersData } = await supabase
+          .from('room_players')
+          .select('player_data')
+          .eq('room_id', roomData.id);
+        
+        if (playersData) {
+          room.players = playersData.map(p => p.player_data as PokerPlayer);
+          room.status = roomData.status as RoomStatus;
+          room.updatedAt = new Date(roomData.updated_at).getTime();
+          rooms.push(room);
+        }
+      }
     }
     
-    const rooms = snapshot.val() as Record<string, PokerRoom>;
-    const activeRooms = Object.values(rooms).filter(
-      room => room.status === 'waiting' || room.status === 'playing'
-    );
-    
-    logFunctionEnd('getActivePokerRooms', activeRooms, {});
-    return activeRooms;
+    logFunctionEnd('getActivePokerRooms', rooms, {});
+    return rooms;
   } catch (error) {
     logError('getActivePokerRooms', error as Error, {});
     throw error;
@@ -312,19 +494,73 @@ export const getActivePokerRooms = async (): Promise<PokerRoom[]> => {
 };
 
 /**
- * Get rooms for a specific player
+ * Get poker rooms for a specific player
  */
 export const getPokerRoomsForPlayer = async (playerId: PlayerId): Promise<PokerRoom[]> => {
   logFunctionStart('getPokerRoomsForPlayer', { playerId });
   
   try {
-    const allRooms = await getActivePokerRooms();
-    const playerRooms = allRooms.filter(room => 
-      room.players.some(p => p.id === playerId)
-    );
+    // Get user UUID from telegram_id
+    const { data: userData, error: userError } = await supabase
+      .from('users')
+      .select('id')
+      .eq('telegram_id', playerId)
+      .single();
     
-    logFunctionEnd('getPokerRoomsForPlayer', playerRooms, { playerId });
-    return playerRooms;
+    if (userError && userError.code !== 'PGRST116') {
+      throw userError;
+    }
+    
+    // If user doesn't exist, return empty array (user hasn't joined any rooms yet)
+    if (!userData) {
+      logFunctionEnd('getPokerRoomsForPlayer', [], { playerId });
+      return [];
+    }
+    
+    const { data: playerRooms, error: playerRoomsError } = await supabase
+      .from('room_players')
+      .select(`
+        room_id,
+        rooms!inner(
+          id,
+          room_id,
+          game_type,
+          status,
+          settings,
+          created_at,
+          updated_at
+        )
+      `)
+      .eq('user_id', userData.id);
+    
+    if (playerRoomsError) throw playerRoomsError;
+    
+    const rooms: PokerRoom[] = [];
+    
+    for (const playerRoom of playerRooms) {
+      const roomData = playerRoom.rooms;
+      const settings = roomData.settings as any;
+      const room = settings?.room as PokerRoom;
+      
+      if (room && roomData.game_type === 'poker') {
+        // Get players for this room
+        const { data: playersData } = await supabase
+          .from('room_players')
+          .select('player_data')
+          .eq('room_id', roomData.id);
+        
+        if (playersData) {
+          room.players = playersData.map(p => p.player_data as PokerPlayer);
+          room.status = roomData.status as RoomStatus;
+          room.updatedAt = new Date(roomData.updated_at).getTime();
+          room.id = roomData.room_id; // Add the room ID
+          rooms.push(room);
+        }
+      }
+    }
+    
+    logFunctionEnd('getPokerRoomsForPlayer', rooms, { playerId });
+    return rooms;
   } catch (error) {
     logError('getPokerRoomsForPlayer', error as Error, { playerId });
     throw error;
@@ -347,24 +583,33 @@ export const updatePlayerReadyStatus = async (
       throw new Error('Room not found');
     }
     
-    const playerIndex = room.players.findIndex(p => p.id === playerId);
-    if (playerIndex === -1) {
-      throw new Error('Player not in room');
+    const updatedPlayers = room.players.map(p => 
+      p.id === playerId ? { ...p, isReady } : p
+    );
+    
+    // Update player ready status in database
+    const { data: roomData } = await supabase
+      .from('rooms')
+      .select('id')
+      .eq('room_id', roomId)
+      .single();
+    
+    if (roomData) {
+      const { error: playerError } = await supabase
+        .from('room_players')
+        .update({ is_ready: isReady })
+        .eq('room_id', roomData.id)
+        .eq('user_id', playerId);
+      
+      if (playerError) throw playerError;
     }
     
-    const updatedPlayers = [...room.players];
-    updatedPlayers[playerIndex] = {
-      ...updatedPlayers[playerIndex],
-      isReady
-    };
+    const updatedRoom = await updatePokerRoom(roomId, {
+      players: updatedPlayers
+    });
     
-    const updatedRoom = {
-      ...room,
-      players: updatedPlayers,
-      updatedAt: Date.now()
-    };
-    
-    return await updatePokerRoom(roomId, updatedRoom);
+    logFunctionEnd('updatePlayerReadyStatus', updatedRoom, { roomId, playerId, isReady });
+    return updatedRoom;
   } catch (error) {
     logError('updatePlayerReadyStatus', error as Error, { roomId, playerId, isReady });
     throw error;
@@ -372,7 +617,7 @@ export const updatePlayerReadyStatus = async (
 };
 
 /**
- * Kick a player from the room (creator only)
+ * Kick player from room
  */
 export const kickPlayerFromRoom = async (roomId: RoomId, targetPlayerId: PlayerId): Promise<PokerRoom> => {
   logFunctionStart('kickPlayerFromRoom', { roomId, targetPlayerId });
@@ -383,40 +628,31 @@ export const kickPlayerFromRoom = async (roomId: RoomId, targetPlayerId: PlayerI
       throw new Error('Room not found');
     }
     
-    const playerIndex = room.players.findIndex(p => p.id === targetPlayerId);
-    if (playerIndex === -1) {
-      throw new Error('Player not in room');
-    }
-    
     const updatedPlayers = room.players.filter(p => p.id !== targetPlayerId);
     
-    // If no players left, delete the room
-    if (updatedPlayers.length === 0) {
-      await deletePokerRoom(roomId);
-      throw new Error('Room deleted - no players left');
+    // Remove player from database
+    const { data: roomData } = await supabase
+      .from('rooms')
+      .select('id')
+      .eq('room_id', roomId)
+      .single();
+    
+    if (roomData) {
+      const { error: playerError } = await supabase
+        .from('room_players')
+        .delete()
+        .eq('room_id', roomData.id)
+        .eq('user_id', targetPlayerId);
+      
+      if (playerError) throw playerError;
     }
     
-    const updatedRoom = {
-      ...room,
-      players: updatedPlayers,
-      updatedAt: Date.now()
-    };
+    const updatedRoom = await updatePokerRoom(roomId, {
+      players: updatedPlayers
+    });
     
-    // Adjust indices if needed
-    if (playerIndex <= room.dealerIndex && room.dealerIndex > 0) {
-      updatedRoom.dealerIndex = room.dealerIndex - 1;
-    }
-    if (playerIndex <= room.smallBlindIndex && room.smallBlindIndex > 0) {
-      updatedRoom.smallBlindIndex = room.smallBlindIndex - 1;
-    }
-    if (playerIndex <= room.bigBlindIndex && room.bigBlindIndex > 0) {
-      updatedRoom.bigBlindIndex = room.bigBlindIndex - 1;
-    }
-    if (playerIndex <= room.currentPlayerIndex && room.currentPlayerIndex > 0) {
-      updatedRoom.currentPlayerIndex = room.currentPlayerIndex - 1;
-    }
-    
-    return await updatePokerRoom(roomId, updatedRoom);
+    logFunctionEnd('kickPlayerFromRoom', updatedRoom, { roomId, targetPlayerId });
+    return updatedRoom;
   } catch (error) {
     logError('kickPlayerFromRoom', error as Error, { roomId, targetPlayerId });
     throw error;
@@ -424,7 +660,7 @@ export const kickPlayerFromRoom = async (roomId: RoomId, targetPlayerId: PlayerI
 };
 
 /**
- * Update player information in a room
+ * Update player info
  */
 export const updatePlayerInfo = async (
   roomId: RoomId,
@@ -439,71 +675,44 @@ export const updatePlayerInfo = async (
       throw new Error('Room not found');
     }
     
-    const playerIndex = room.players.findIndex(p => p.id === playerId);
-    if (playerIndex === -1) {
-      throw new Error('Player not found in room');
+    const updatedPlayers = room.players.map(p => 
+      p.id === playerId ? { ...p, ...updates } : p
+    );
+    
+    // Update player data in database
+    const { data: roomData } = await supabase
+      .from('rooms')
+      .select('id')
+      .eq('room_id', roomId)
+      .single();
+    
+    if (roomData) {
+      const { data: playerData } = await supabase
+        .from('room_players')
+        .select('player_data')
+        .eq('room_id', roomData.id)
+        .eq('user_id', playerId)
+        .single();
+      
+      if (playerData) {
+        const updatedPlayerData = { ...playerData.player_data, ...updates };
+        
+        const { error: playerError } = await supabase
+          .from('room_players')
+          .update({ player_data: updatedPlayerData })
+          .eq('room_id', roomData.id)
+          .eq('user_id', playerId);
+        
+        if (playerError) throw playerError;
+      }
     }
     
-    // Update player information
-    const updatedPlayers = [...room.players];
-    const originalPlayer = updatedPlayers[playerIndex];
-    updatedPlayers[playerIndex] = {
-      ...originalPlayer,
-      ...updates
-    };
-    
-    console.log(`🔄 UPDATING PLAYER INFO:`, {
-      roomId,
-      playerId,
-      originalPlayer: {
-        id: originalPlayer.id,
-        name: originalPlayer.name,
-        username: originalPlayer.username,
-        chatId: originalPlayer.chatId
-      },
-      updates,
-      updatedPlayer: {
-        id: updatedPlayers[playerIndex].id,
-        name: updatedPlayers[playerIndex].name,
-        username: updatedPlayers[playerIndex].username,
-        chatId: updatedPlayers[playerIndex].chatId
-      }
+    const updatedRoom = await updatePokerRoom(roomId, {
+      players: updatedPlayers
     });
     
-    console.log(`🔄 UPDATED PLAYERS ARRAY:`, updatedPlayers.map(p => ({
-      id: p.id,
-      name: p.name,
-      username: p.username,
-      chatId: p.chatId
-    })));
-    
-    console.log(`🔄 FINAL UPDATED ROOM:`, {
-      roomId,
-      players: updatedPlayers.map(p => ({
-        id: p.id,
-        name: p.name,
-        username: p.username,
-        chatId: p.chatId
-      }))
-    });
-    
-    console.log(`🔄 UPDATING FIREBASE WITH:`, {
-      roomId,
-      players: updatedPlayers.map(p => ({
-        id: p.id,
-        name: p.name,
-        username: p.username,
-        chatId: p.chatId
-      }))
-    });
-    
-    const updatedRoom = {
-      ...room,
-      players: updatedPlayers,
-      updatedAt: Date.now()
-    };
-    
-    return await updatePokerRoom(roomId, updatedRoom);
+    logFunctionEnd('updatePlayerInfo', updatedRoom, { roomId, playerId, updates });
+    return updatedRoom;
   } catch (error) {
     logError('updatePlayerInfo', error as Error, { roomId, playerId, updates });
     throw error;

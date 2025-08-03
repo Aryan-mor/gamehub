@@ -1,1 +1,0 @@
-{"version":3,"file":"startGame.d.ts","sourceRoot":"","sources":["../../../src/games/dice/startGame.ts"],"names":[],"mappings":"AAMA,eAAO,MAAM,aAAa,GACxB,QAAQ,MAAM,EACd,OAAO,MAAM,KACZ,OAAO,CAAC;IACT,OAAO,EAAE,OAAO,CAAC;IACjB,MAAM,CAAC,EAAE,MAAM,CAAC;IAChB,KAAK,CAAC,EAAE,MAAM,CAAC;CAChB,CA0DA,CAAC"}

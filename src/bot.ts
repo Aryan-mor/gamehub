@@ -160,7 +160,7 @@ async function handleRoomJoin(ctx: any, userInfo: any, roomId: string, format: s
     console.log(`✅ Successfully called handleJoin for room ${roomId}`);
   } catch (error) {
     console.error(`❌ Error calling handleJoin for room ${roomId}:`, error);
-    await ctx.reply('❌ خطا در ورود به روم. لطفاً دوباره تلاش کنید.');
+    // Don't send error message here - handleJoin will handle it
   }
 }
 
@@ -550,11 +550,72 @@ bot.callbackQuery(/.*"action":"games\.poker\.room\..*/, async (ctx) => {
   }
 });
 
+// Handle games.poker.room.leave callback queries
+bot.callbackQuery(/.*games\.poker\.room\.leave.*/, async (ctx) => {
+  try {
+    const userInfo = extractUserInfo(ctx);
+    const callbackData = ctx.callbackQuery.data || '';
+    
+    console.log(`🔍 GAMES.POKER.ROOM.LEAVE RECEIVED:`);
+    console.log(`  User ID: ${userInfo.userId}`);
+    console.log(`  Callback Data: ${callbackData}`);
+    console.log(`  Chat ID: ${ctx.chat?.id}`);
+    
+    logFunctionStart('games_poker_room_leave', { 
+      userId: userInfo.userId, 
+      callbackData,
+      context: 'games_poker_room_leave'
+    });
+    
+    await answerCallbackQuery(bot, ctx.callbackQuery.id);
+    
+    // Parse the callback data to extract roomId
+    const urlParams = new URLSearchParams(callbackData.split('?')[1] || '');
+    const roomId = urlParams.get('roomId');
+    
+    console.log(`🔍 PARSED ROOM ID: ${roomId}`);
+    
+    if (!roomId) {
+      throw new Error('Room ID not found in callback data');
+    }
+    
+    // Import and call the leave handler directly
+    const handleLeave = (await import('./actions/games/poker/room/leave')).default;
+    
+    const context: HandlerContext = {
+      ctx,
+      user: {
+        id: userInfo.userId as UserId,
+        username: userInfo.username || 'Unknown'
+      }
+    };
+    
+    console.log(`🚀 CALLING LEAVE HANDLER FOR ROOM: ${roomId}`);
+    await handleLeave(context, { roomId });
+    console.log(`✅ LEAVE HANDLER COMPLETED FOR ROOM: ${roomId}`);
+    
+    logFunctionEnd('games_poker_room_leave', {}, { 
+      userId: userInfo.userId, 
+      roomId,
+      context: 'games_poker_room_leave'
+    });
+  } catch (error) {
+    console.error(`❌ GAMES.POKER.ROOM.LEAVE ERROR:`, error);
+    logError('games_poker_room_leave', error as Error, {});
+    await answerCallbackQuery(bot, ctx.callbackQuery.id, '❌ Processing failed');
+  }
+});
+
 // Handle compact poker actions (new format)
 bot.callbackQuery(/^[a-z0-9]{2,5}(\?.*)?$/, async (ctx) => {
   try {
     const userInfo = extractUserInfo(ctx);
     const callbackData = ctx.callbackQuery.data || '';
+    
+    console.log(`🔍 COMPACT POKER ACTION RECEIVED:`);
+    console.log(`  User ID: ${userInfo.userId}`);
+    console.log(`  Callback Data: ${callbackData}`);
+    console.log(`  Chat ID: ${ctx.chat?.id}`);
     
     logFunctionStart('poker_compact_action', { 
       userId: userInfo.userId, 
@@ -578,12 +639,14 @@ bot.callbackQuery(/^[a-z0-9]{2,5}(\?.*)?$/, async (ctx) => {
     // Parse compact callback data
     const { code, params } = parseCallbackData(callbackData);
     
-    console.log(`Parsed callback data: code=${code}, params=`, params);
+    console.log(`🔍 PARSED CALLBACK DATA: code=${code}, params=`, params);
     
     // Add params to context
     (context as any).query = params;
     
+    console.log(`🚀 DISPATCHING TO COMPACT ROUTER: code=${code}`);
     await dispatch(code, context, params);
+    console.log(`✅ COMPACT ROUTER DISPATCH COMPLETED: code=${code}`);
     
     logFunctionEnd('poker_compact_action', {}, { 
       userId: userInfo.userId, 
@@ -591,6 +654,7 @@ bot.callbackQuery(/^[a-z0-9]{2,5}(\?.*)?$/, async (ctx) => {
       context: 'poker_compact'
     });
   } catch (error) {
+    console.error(`❌ COMPACT POKER ACTION ERROR:`, error);
     logError('poker_compact_action', error as Error, {});
     await answerCallbackQuery(bot, ctx.callbackQuery.id, '❌ Processing failed');
   }

@@ -44,17 +44,7 @@ export function generateJoinSuccessKeyboard(
     }
   ]);
   
-  // Add ready/not ready buttons
-  buttons.push([
-    {
-      text: '✅ آماده',
-      callback_data: `games.poker.room.ready?roomId=${room.id}`
-    },
-    {
-      text: '⏸️ آماده نیستم',
-      callback_data: `games.poker.room.notready?roomId=${room.id}`
-    }
-  ]);
+  // Ready/not ready buttons removed - players are automatically ready
   
   // Add leave button
   buttons.push([

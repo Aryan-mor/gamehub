@@ -22,21 +22,43 @@ export async function activeGameRedirect(ctx: Context): Promise<void> {
     
     logFunctionStart('activeGameRedirect', { userId });
     
-    // Skip if this is a callback query (let it be handled normally)
+    // For callback queries, only redirect if it's NOT a room-related action
     if (ctx.callbackQuery) {
-      logFunctionEnd('activeGameRedirect', {}, { userId, reason: 'callback_query' });
-      return;
+      const callbackData = ctx.callbackQuery.data;
+      console.log(`🔍 CALLBACK QUERY DEBUG: "${callbackData}" for user ${userId}`);
+      
+      // Allow room-related actions to be processed normally
+      if (callbackData && (
+        callbackData.startsWith('games.poker.room.leave') ||
+        callbackData.startsWith('games.poker.room.start') ||
+        callbackData.startsWith('games.poker.room.share') ||
+        callbackData.startsWith('games.poker.room.kick') ||
+        callbackData.startsWith('games.poker.room.ready') ||
+        callbackData.startsWith('games.poker.room.notready') ||
+        callbackData.startsWith('games.poker.backToMenu') ||
+        // Compact codes
+        callbackData.startsWith('gpl') || // Leave room
+        callbackData.startsWith('gpsg') || // Start game
+        callbackData.startsWith('gpsh') || // Share room
+        callbackData.startsWith('gpk') || // Kick player
+        callbackData.startsWith('gprd') || // Ready
+        callbackData.startsWith('gpnr') || // Not ready
+        callbackData.startsWith('gpbt') // Back to menu
+      )) {
+        console.log(`✅ ALLOWING ROOM ACTION: "${callbackData}" for user ${userId}`);
+        logFunctionEnd('activeGameRedirect', {}, { userId, reason: 'room_action_callback' });
+        return;
+      }
+      
+      // For other callback queries, redirect to active room
+      console.log(`🎮 ACTIVE GAME REDIRECT: Redirecting callback query "${callbackData}" for user ${userId}`);
     }
     
-    // Skip if this is a command (let it be handled normally)
-    if (ctx.message?.text?.startsWith('/')) {
-      logFunctionEnd('activeGameRedirect', {}, { userId, reason: 'command' });
-      return;
-    }
+    // Don't skip commands anymore - redirect them too if user is in a room
     
-    // Check if user is in any active poker rooms (only 'playing' status, not 'waiting')
+    // Check if user is in any poker rooms (both 'waiting' and 'playing' status)
     const userRooms = await getPokerRoomsForPlayer(userId);
-    const activeRoom = userRooms.find(room => room.status === 'playing');
+    const activeRoom = userRooms.find(room => room.status === 'waiting' || room.status === 'playing');
     
     if (!activeRoom) {
       logFunctionEnd('activeGameRedirect', {}, { userId, reason: 'no_active_game' });
@@ -85,7 +107,7 @@ export async function activeGameRedirect(ctx: Context): Promise<void> {
 export async function isUserInActiveGame(userId: PlayerId): Promise<PlayerState | null> {
   try {
     const userRooms = await getPokerRoomsForPlayer(userId);
-    const activeRoom = userRooms.find(room => room.status === 'playing');
+    const activeRoom = userRooms.find(room => room.status === 'waiting' || room.status === 'playing');
     
     if (!activeRoom) {
       return null;

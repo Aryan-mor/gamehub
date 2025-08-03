@@ -37,6 +37,19 @@ const eslintConfig = [
     },
   },
   {
+    files: ["src/**/*.ts", "src/**/*.tsx"],
+    excludedFiles: ["src/api/**/*"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          paths: ["@/lib/supabase"],
+          message: "Do not import supabase directly outside of /api. Use the API client instead."
+        }
+      ]
+    },
+  },
+  {
     files: ["src/**/*.test.ts", "src/**/*.spec.ts"],
     languageOptions: {
       parser: tsparser,
