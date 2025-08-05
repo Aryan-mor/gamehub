@@ -5,8 +5,8 @@
 
 import { 
   ID, 
-  UserId, 
-  RoomId, 
+  UserId,
+  RoomId,
   GameId, 
   TransactionId, 
   MessageId 
@@ -27,10 +27,10 @@ export function isValidUserId(id: string): id is UserId {
 }
 
 /**
- * Room ID validation - follows pattern: room_{timestamp}_{userId}
+ * Room ID validation - follows pattern: room_{alphanumeric}
  */
 export function isValidRoomId(id: string): id is RoomId {
-  return /^room_\d+_\d+$/.test(id);
+  return /^room_[a-zA-Z0-9]+$/.test(id);
 }
 
 /**

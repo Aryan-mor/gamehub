@@ -42,8 +42,8 @@ export function generateConfirmationKeyboard(roomId: string): {
     inline_keyboard: [
       [
         {
-          text: '📤 اشتراک‌گذاری',
-          switch_inline_query: `join_room_${roomId}`
+          text: '📤 Share Room',
+          callback_data: `games.poker.room.share?roomId=${roomId}`
         }
       ]
     ]
@@ -54,26 +54,20 @@ export function generateConfirmationKeyboard(roomId: string): {
  * Generate invite message keyboard
  */
 export function generateInviteKeyboard(roomId: string): {
-  inline_keyboard: Array<Array<{ text: string; callback_data?: string; url?: string }>>
+  inline_keyboard: Array<Array<{ text: string; callback_data: string }>>
 } {
   return {
     inline_keyboard: [
       [
         {
-          text: '🎮 ورود به میز',
-          url: `https://t.me/${process.env.TELEGRAM_BOT_USERNAME}?start=jgpr_${roomId}`
+          text: '📤 Share Room',
+          callback_data: `games.poker.room.share?roomId=${roomId}`
         }
       ],
       [
         {
-          text: '📤 اشتراک‌گذاری',
-          switch_inline_query: `join_room_${roomId}`
-        }
-      ],
-      [
-        {
-          text: '🔙 بازگشت',
-          callback_data: `gpj?roomId=${roomId}`
+          text: '🔙 Back',
+          callback_data: `games.poker.room.join?roomId=${roomId}`
         }
       ]
     ]

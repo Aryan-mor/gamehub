@@ -1,19 +1,18 @@
+import { Bot } from 'grammy';
 import { PokerRoom, PlayerId } from '../types';
 import { sendMessage } from '@/modules/core/telegramHelpers';
-import { Bot } from 'grammy';
 
 /**
  * Send game start notification to all players
  */
 export async function sendGameStartNotification(
   bot: Bot,
-  room: PokerRoom,
-  message: string
+  room: PokerRoom
 ): Promise<void> {
   try {
     // Send general game start message to all players
     for (const player of room.players) {
-      await sendMessage(bot, player.id.toString(), message, {
+      await sendMessage(bot, parseInt(player.id), '🎮 بازی شروع شد!', {
         parseMode: 'HTML'
       });
     }
@@ -39,13 +38,13 @@ export async function sendPrivateHandMessage(
     
     const handDisplay = player.hand.map(card => getCardDisplay(card)).join(' ');
     
-    const message = `🎮 <b>بازی شروع شد!</b>\n\n` +
+    const _message = `🎮 <b>بازی شروع شد!</b>\n\n` +
       `🃏 <b>کارت‌های شما:</b>\n` +
       `${handDisplay}\n\n` +
       `💰 <b>موجودی:</b> ${player.balance} سکه\n` +
       `🎯 <b>شرط فعلی:</b> ${player.betAmount} سکه`;
     
-    await sendMessage(bot, playerId.toString(), message, {
+    await sendMessage(bot, parseInt(playerId), _message, {
       parseMode: 'HTML'
     });
   } catch (error) {
@@ -72,7 +71,7 @@ export async function sendTurnNotification(
         `• ❌ Fold (تخلیه)\n` +
         `• 💰 Raise (افزایش)`;
       
-      await sendMessage(bot, playerId.toString(), message, {
+      await sendMessage(bot, parseInt(playerId), message, {
         parseMode: 'HTML'
       });
     } else {
@@ -81,7 +80,7 @@ export async function sendTurnNotification(
       const message = `⏳ <b>منتظر ${displayName}...</b>\n\n` +
         `بازیکن فعلی در حال تصمیم‌گیری است.`;
       
-      await sendMessage(bot, playerId.toString(), message, {
+      await sendMessage(bot, parseInt(playerId), message, {
         parseMode: 'HTML'
       });
     }
@@ -100,7 +99,7 @@ export async function sendGameStateUpdate(
 ): Promise<void> {
   try {
     for (const player of room.players) {
-      await sendMessage(bot, player.id.toString(), updateMessage, {
+      await sendMessage(bot, parseInt(player.id), updateMessage, {
         parseMode: 'HTML'
       });
     }

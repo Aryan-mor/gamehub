@@ -1,4 +1,4 @@
-import { RoomId, PlayerId, GameId, Card, Suit, Rank } from '../types';
+import { Suit, Rank, Card, RoomId, PlayerId, GameId } from '../types';
 
 /**
  * Type guard to check if a string is a valid RoomId
@@ -38,22 +38,26 @@ export function isValidRank(rank: string): rank is Rank {
 /**
  * Type guard to check if an object is a valid Card
  */
-export function isValidCard(card: any): card is Card {
+export function isValidCard(card: unknown): card is Card {
+  if (!card || typeof card !== 'object') {
+    return false;
+  }
+  
+  const cardObj = card as Record<string, unknown>;
+  
   return (
-    card &&
-    typeof card === 'object' &&
-    isValidSuit(card.suit) &&
-    isValidRank(card.rank) &&
-    typeof card.value === 'number' &&
-    card.value >= 2 &&
-    card.value <= 14
+    isValidSuit(cardObj.suit as string) &&
+    isValidRank(cardObj.rank as string) &&
+    typeof cardObj.value === 'number' &&
+    (cardObj.value as number) >= 2 &&
+    (cardObj.value as number) <= 14
   );
 }
 
 /**
  * Type guard to check if an array contains valid Cards
  */
-export function isValidCardArray(cards: any[]): cards is Card[] {
+export function isValidCardArray(cards: unknown[]): cards is Card[] {
   return Array.isArray(cards) && cards.every(isValidCard);
 }
 

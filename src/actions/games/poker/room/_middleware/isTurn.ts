@@ -1,88 +1,63 @@
 import { HandlerContext } from '@/modules/core/handler';
-import { Middleware } from '@/modules/core/middleware';
-import { validateUser } from '@/actions/games/poker/_utils/validateUser';
-import { getRoomId } from '@/actions/games/poker/_utils/getRoomId';
-import { getPokerRoom } from '../../services/pokerService';
-import { RoomId, PlayerId } from '../../types';
 import { logFunctionStart, logFunctionEnd, logError } from '@/modules/core/logger';
+import { getPokerRoom } from '../../services/pokerService';
+import { PlayerId, RoomId } from '../../types';
 
 /**
- * Middleware to check if it's the user's turn in the current room
+ * Extract user info from context
  */
-export const isTurn: Middleware = async (ctx: HandlerContext, query: Record<string, string>, next: () => Promise<void>) => {
-  logFunctionStart('isTurn', { query });
-  
+function extractUserInfo(ctx: HandlerContext): { userId: string; chatId: number } {
+  return {
+    userId: ctx.user.id.toString(),
+    chatId: ctx.ctx.chat?.id || 0
+  };
+}
+
+/**
+ * Extract room ID from query parameters
+ */
+function getRoomIdFromQuery(query: Record<string, string>): string | null {
+  return query.roomId || null;
+}
+
+/**
+ * Middleware to check if it's the user's turn
+ */
+export async function isTurnMiddleware(ctx: HandlerContext, query: Record<string, string>): Promise<boolean> {
   try {
-    const user = validateUser(ctx);
-    const roomId = getRoomId(query);
+    const userInfo = extractUserInfo(ctx);
+    const userId = userInfo.userId as PlayerId;
+    const roomId = getRoomIdFromQuery(query) as RoomId;
     
-    console.log(`Validating if it's user ${user.id}'s turn in room ${roomId}`);
-    
-    // Validate if it's user's turn
-    const isUserTurn = await validateUserTurn(user.id as PlayerId, roomId as RoomId);
-    
-    if (!isUserTurn) {
-      throw new Error('نوبت شما نیست');
+    if (!roomId) {
+      await ctx.ctx.reply('❌ Room ID is required');
+      return false;
     }
     
-    logFunctionEnd('isTurn', {}, { userId: user.id, roomId });
-    await next();
-  } catch (error) {
-    logError('isTurn', error as Error, { query });
-    // Re-throw the error to stop middleware chain
-    throw error;
-  }
-};
-
-/**
- * Validate if it's the user's turn in the specified room
- */
-async function validateUserTurn(userId: PlayerId, roomId: RoomId): Promise<boolean> {
-  logFunctionStart('validateUserTurn', { userId, roomId });
-  
-  try {
-    // Fetch the room from database
+    logFunctionStart('isTurnMiddleware', { userId, roomId });
+    
+    // Get room information
     const room = await getPokerRoom(roomId);
-    
     if (!room) {
-      logFunctionEnd('validateUserTurn', false, { userId, roomId });
+      await ctx.ctx.reply('❌ Room not found');
+      logFunctionEnd('isTurnMiddleware', { isTurn: false, reason: 'room_not_found' }, { userId, roomId });
       return false;
     }
-    
-    // Check if game is active and in playing state
-    if (room.status !== 'playing') {
-      logFunctionEnd('validateUserTurn', false, { userId, roomId, status: room.status });
-      return false;
-    }
-    
-    // Check if there are players in the room
-    if (room.players.length === 0) {
-      logFunctionEnd('validateUserTurn', false, { userId, roomId, playerCount: 0 });
-      return false;
-    }
-    
-    // Check if current player index is valid
-    if (room.currentPlayerIndex < 0 || room.currentPlayerIndex >= room.players.length) {
-      logFunctionEnd('validateUserTurn', false, { userId, roomId, currentPlayerIndex: room.currentPlayerIndex });
-      return false;
-    }
-    
-    // Get current player
-    const currentPlayer = room.players[room.currentPlayerIndex];
     
     // Check if it's the user's turn
-    const isUserTurn = currentPlayer.id === userId;
+    const currentPlayer = room.players[room.currentPlayerIndex];
+    if (!currentPlayer || currentPlayer.id !== userId) {
+      await ctx.ctx.reply('❌ It\'s not your turn');
+      logFunctionEnd('isTurnMiddleware', { isTurn: false, reason: 'not_turn' }, { userId, roomId });
+      return false;
+    }
     
-    logFunctionEnd('validateUserTurn', isUserTurn, { 
-      userId, 
-      roomId, 
-      currentPlayerId: currentPlayer.id,
-      currentPlayerIndex: room.currentPlayerIndex 
-    });
+    logFunctionEnd('isTurnMiddleware', { isTurn: true }, { userId, roomId });
+    return true;
     
-    return isUserTurn;
   } catch (error) {
-    logError('validateUserTurn', error as Error, { userId, roomId });
+    logError('isTurnMiddleware', error as Error, {});
+    await ctx.ctx.reply('❌ Error checking turn');
     return false;
   }
 } 

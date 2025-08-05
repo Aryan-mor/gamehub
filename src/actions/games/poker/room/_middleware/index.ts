@@ -1,3 +1,3 @@
-export { isJoined } from './isJoined';
-export { isNotJoined } from './isNotJoined';
-export { isTurn } from './isTurn'; 
+export { isJoinedMiddleware as isJoined } from './isJoined';
+export { isNotJoinedMiddleware as isNotJoined } from './isNotJoined';
+export { isTurnMiddleware as isTurn } from './isTurn'; 

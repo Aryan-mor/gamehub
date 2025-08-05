@@ -1,9 +1,9 @@
 import { HandlerContext } from '@/modules/core/handler';
 import { tryEditMessageText } from '@/modules/core/telegramHelpers';
 import { generateGameEndKeyboard } from '../../buttonHelpers';
-import { getHandHistory, getGameSummary } from '../../services/gameResultService';
+import { getHandHistory } from '../../services/gameResultService';
 import { getPokerRoom } from '../../services/pokerService';
-import { validateRoomId, validatePlayerId } from '../../_utils/typeGuards';
+import { validateRoomId } from '../../_utils/typeGuards';
 
 // Export the action key for consistency and debugging
 export const key = 'games.poker.room.history';
@@ -12,7 +12,7 @@ export const key = 'games.poker.room.history';
  * Handle hand history display for finished games
  */
 async function handleHistory(context: HandlerContext, query: Record<string, string> = {}): Promise<void> {
-  const { user, ctx } = context;
+  const { ctx } = context;
   const { roomId } = query;
   
   if (!roomId) {
@@ -22,7 +22,6 @@ async function handleHistory(context: HandlerContext, query: Record<string, stri
   try {
     // Validate IDs
     const validatedRoomId = validateRoomId(roomId);
-    const validatedPlayerId = validatePlayerId(user.id.toString());
     
     // Get current room state
     const room = await getPokerRoom(validatedRoomId);

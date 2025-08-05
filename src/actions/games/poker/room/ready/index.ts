@@ -1,9 +1,15 @@
 import { HandlerContext } from '@/modules/core/handler';
 import { tryEditMessageText } from '@/modules/core/telegramHelpers';
-import { generateRoomManagementKeyboard } from '../../buttonHelpers';
-import { updatePlayerReadyStatus, getPokerRoom } from '../../services/pokerService';
-import { validatePlayerId, validateRoomId } from '../../_utils/typeGuards';
-import { handlePokerActiveUser } from '../../_engine/activeUser';
+import { Context } from 'grammy';
+import { 
+  validateRoomIdWithError,
+  validatePlayerIdWithError,
+  generateRoomManagementKeyboard,
+  handlePokerActiveUser
+} from '../../_utils/pokerUtils';
+import { updatePlayerReadyStatus, } from '../../services/pokerService';
+import { } from '../../_utils/typeGuards';
+import { } from '../../_engine/activeUser';
 import { register } from '@/modules/core/compact-router';
 import { POKER_ACTIONS } from '../../compact-codes';
 
@@ -27,8 +33,8 @@ async function handleReady(context: HandlerContext, query: Record<string, string
   
   try {
     // Validate IDs
-    const validatedRoomId = validateRoomId(roomIdParam);
-    const validatedPlayerId = validatePlayerId(user.id.toString());
+    const validatedRoomId = validateRoomIdWithError(roomIdParam);
+    const validatedPlayerId = validatePlayerIdWithError(user.id.toString());
     
     // Update player ready status
     const updatedRoom = await updatePlayerReadyStatus(validatedRoomId, validatedPlayerId, true);
@@ -68,7 +74,7 @@ async function handleReady(context: HandlerContext, query: Record<string, string
           ...ctx,
           chat: { id: otherPlayer.chatId },
           from: { id: parseInt(otherPlayer.id) }
-        };
+        } as unknown as Context;
         
         const playerState = {
           gameType: 'poker' as const,

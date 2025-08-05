@@ -1,8 +1,12 @@
 import { HandlerContext } from '@/modules/core/handler';
 import { tryEditMessageText } from '@/modules/core/telegramHelpers';
-import { generateRoomManagementKeyboard } from '../../buttonHelpers';
-import { updatePlayerReadyStatus, getPokerRoom } from '../../services/pokerService';
-import { validatePlayerId, validateRoomId } from '../../_utils/typeGuards';
+import { 
+  validateRoomIdWithError,
+  validatePlayerIdWithError,
+  generateRoomManagementKeyboard
+} from '../../_utils/pokerUtils';
+import { updatePlayerReadyStatus, } from '../../services/pokerService';
+import { } from '../../_utils/typeGuards';
 import { register } from '@/modules/core/compact-router';
 import { POKER_ACTIONS } from '../../compact-codes';
 
@@ -26,8 +30,8 @@ async function handleNotReady(context: HandlerContext, query: Record<string, str
   
   try {
     // Validate IDs
-    const validatedRoomId = validateRoomId(roomIdParam);
-    const validatedPlayerId = validatePlayerId(user.id.toString());
+    const validatedRoomId = validateRoomIdWithError(roomIdParam);
+    const validatedPlayerId = validatePlayerIdWithError(user.id.toString());
     
     // Update player ready status
     const updatedRoom = await updatePlayerReadyStatus(validatedRoomId, validatedPlayerId, false);

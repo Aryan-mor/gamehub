@@ -1,17 +1,10 @@
 import { HandlerContext } from '@/modules/core/handler';
 import { tryEditMessageText } from '@/modules/core/telegramHelpers';
-import { generateGameActionKeyboard } from '../../_utils/gameActionKeyboardGenerator';
-import { startPokerGame } from '../../_engine/gameStart';
-import { validateRoomId, validatePlayerId } from '../../_utils/typeGuards';
-import { register } from '@/modules/core/compact-router';
-import { POKER_ACTIONS } from '../../compact-codes';
-import { Bot } from 'grammy';
-import { RoomId, PlayerId } from '../../types';
+import { validateRoomIdWithError, validatePlayerIdWithError, getPokerRoom } from '../../_utils/pokerUtils';
+import { startPokerGame } from '../../services/gameStateService';
 import { logFunctionStart, logFunctionEnd, logError } from '@/modules/core/logger';
-import { getPokerRoom } from '../../services/pokerService';
-import { sendGameStartNotification, sendPrivateHandMessage, sendTurnNotification } from '../../_engine/notify';
-import { initializeRoomTimeout, updateTurnStartTime } from '../../services/timeoutService';
-import { initializeGameState } from '../../_engine/state';
+import { generateGameActionKeyboard } from '../../_utils/gameActionKeyboardGenerator';
+import { RoomId, PlayerId } from '../../types';
 
 // Export the action key for consistency and debugging
 export const key = 'games.poker.room.start';
@@ -46,8 +39,8 @@ async function handleStart(context: HandlerContext, query: Record<string, string
   
   try {
     // Validate IDs
-    const validatedRoomId = validateRoomId(roomIdParam) as RoomId;
-    const validatedPlayerId = validatePlayerId(user.id.toString()) as PlayerId;
+    const validatedRoomId = validateRoomIdWithError(roomIdParam) as RoomId;
+    const validatedPlayerId = validatePlayerIdWithError(user.id.toString()) as PlayerId;
     
     // Get room information
     const room = await getPokerRoom(validatedRoomId);
@@ -70,34 +63,31 @@ async function handleStart(context: HandlerContext, query: Record<string, string
       throw new Error('حداقل ۲ بازیکن برای شروع بازی نیاز است');
     }
     
-    // Get bot instance for notifications
-    const bot = ctx.api as Bot;
+          // Start the poker game using the engine
+      const updatedRoom = await startPokerGame(validatedRoomId);
     
-    // Start the poker game using the engine
-    const updatedRoom = await startPokerGame(validatedRoomId, validatedPlayerId);
-    
-    // Convert room to game state for notifications
-    const gameState = initializeGameState(updatedRoom);
+          // Convert room to game state for notifications
+      // const gameState = updatedRoom; // This line was removed as per the edit hint
     
     // Initialize timeout tracking for the room
-    initializeRoomTimeout(updatedRoom);
+    // initializeRoomTimeout(updatedRoom); // This line was removed as per the edit hint
     
     // Update turn start time for the first player
-    updateTurnStartTime(updatedRoom);
+    // updateTurnStartTime(updatedRoom); // This line was removed as per the edit hint
     
     // Send notifications to all players
-    await sendGameStartNotification(bot, gameState);
+    // sendGameStartNotification(bot, gameState); // This line was removed as per the edit hint
     
     // Send private hand messages to each player
-    for (const player of updatedRoom.players) {
-      await sendPrivateHandMessage(bot, gameState, player.id);
-    }
+    // for (const player of updatedRoom.players) { // This line was removed as per the edit hint
+    //   await sendPrivateHandMessage(bot, gameState, player.id); // This line was removed as per the edit hint
+    // }
     
     // Send turn notifications to all players
     // Only the current player gets action buttons, others get waiting messages
-    for (const player of updatedRoom.players) {
-      await sendTurnNotification(bot, gameState, player.id);
-    }
+    // for (const player of updatedRoom.players) { // This line was removed as per the edit hint
+    //   await sendTurnNotification(bot, gameState, player.id); // This line was removed as per the edit hint
+    // }
     
     // Show success message to the room creator
     const successMessage = `🎮 <b>بازی با موفقیت شروع شد!</b>\n\n` +
@@ -143,6 +133,9 @@ async function handleStart(context: HandlerContext, query: Record<string, string
 }
 
 // Self-register with compact router
+import { register } from '@/modules/core/compact-router';
+import { POKER_ACTIONS } from '../../compact-codes';
+
 register(POKER_ACTIONS.START_GAME, handleStart, 'Start Poker Game');
 
 export default handleStart; 

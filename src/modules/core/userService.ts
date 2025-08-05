@@ -1,20 +1,20 @@
 import { User } from './types';
-import { logFunctionStart, logFunctionEnd, logError } from './logger';
 import { api } from '@/lib/api';
+import { logFunctionStart, logFunctionEnd, logError } from './logger';
 
 export const getUser = async (userId: string): Promise<User> => {
   logFunctionStart('getUser', { userId });
   
   try {
     // First try to get user from users table
-    const { data: userData, error: userError } = await supabase
-      .from('users')
-      .select('*')
-      .eq('telegram_id', userId)
-      .single();
-    
-    if (userError && userError.code !== 'PGRST116') {
-      throw userError;
+    let userData;
+    try {
+      userData = await api.users.getByTelegramId(userId);
+    } catch (error: unknown) {
+      if (error && typeof error === 'object' && 'code' in error && error.code !== 'PGRST116') {
+        throw error;
+      }
+      userData = null;
     }
     
     if (!userData) {
@@ -25,23 +25,13 @@ export const getUser = async (userId: string): Promise<User> => {
         updated_at: new Date().toISOString(),
       };
       
-      const { data: createdUser, error: createError } = await supabase
-        .from('users')
-        .insert(newUser)
-        .select()
-        .single();
-      
-      if (createError) throw createError;
+      const createdUser = await api.users.create(newUser);
       
       // Create wallet for new user
-      const { error: walletError } = await supabase
-        .from('wallets')
-        .insert({
-          user_id: createdUser.id,
-          balance: 0,
-        });
-      
-      if (walletError) throw walletError;
+      await api.wallets.create({
+        user_id: createdUser.id,
+        balance: 0,
+      });
       
       const user: User = {
         id: userId,
@@ -55,14 +45,14 @@ export const getUser = async (userId: string): Promise<User> => {
     }
     
     // Get wallet balance
-    const { data: walletData, error: walletError } = await supabase
-      .from('wallets')
-      .select('balance')
-      .eq('user_id', userData.id)
-      .single();
-    
-    if (walletError && walletError.code !== 'PGRST116') {
-      throw walletError;
+    let walletData;
+    try {
+      walletData = await api.wallets.getByUserId(userData.id);
+    } catch (error: unknown) {
+      if (error && typeof error === 'object' && 'code' in error && error.code !== 'PGRST116') {
+        throw error;
+      }
+      walletData = null;
     }
     
     const user: User = {
@@ -91,47 +81,27 @@ export const addCoins = async (
   
   try {
     // Get user first
-    const { data: userData, error: userError } = await supabase
-      .from('users')
-      .select('id')
-      .eq('telegram_id', userId)
-      .single();
-    
-    if (userError) throw userError;
+    const userData = await api.users.getByTelegramId(userId);
+    if (!userData) throw new Error('User not found');
     
     // Get current wallet balance
-    const { data: walletData, error: walletError } = await supabase
-      .from('wallets')
-      .select('balance')
-      .eq('user_id', userData.id)
-      .single();
-    
-    if (walletError) throw walletError;
+    const walletData = await api.wallets.getByUserId(userData.id);
     
     const currentBalance = walletData?.balance || 0;
     const newBalance = currentBalance + amount;
     
     // Update wallet balance
-    const { error: updateError } = await supabase
-      .from('wallets')
-      .update({ balance: newBalance })
-      .eq('user_id', userData.id);
-    
-    if (updateError) throw updateError;
+    await api.wallets.updateBalance(userData.id, newBalance);
     
     // Record transaction
-    const { error: transactionError } = await supabase
-      .from('transactions')
-      .insert({
-        user_id: userData.id,
-        transaction_type: 'credit',
-        amount: amount,
-        balance_before: currentBalance,
-        balance_after: newBalance,
-        description: reason,
-      });
-    
-    if (transactionError) throw transactionError;
+    await api.transactions.create({
+      user_id: userData.id,
+      transaction_type: 'credit',
+      amount: amount,
+      balance_before: currentBalance,
+      balance_after: newBalance,
+      description: reason,
+    });
     
     logFunctionEnd('addCoins', { newBalance }, { userId, amount, reason });
   } catch (error) {
@@ -149,22 +119,11 @@ export const deductCoins = async (
   
   try {
     // Get user first
-    const { data: userData, error: userError } = await supabase
-      .from('users')
-      .select('id')
-      .eq('telegram_id', userId)
-      .single();
-    
-    if (userError) throw userError;
+    const userData = await api.users.getByTelegramId(userId);
+    if (!userData) throw new Error('User not found');
     
     // Get current wallet balance
-    const { data: walletData, error: walletError } = await supabase
-      .from('wallets')
-      .select('balance')
-      .eq('user_id', userData.id)
-      .single();
-    
-    if (walletError) throw walletError;
+    const walletData = await api.wallets.getByUserId(userData.id);
     
     const currentBalance = walletData?.balance || 0;
     
@@ -172,26 +131,17 @@ export const deductCoins = async (
       const newBalance = currentBalance - amount;
       
       // Update wallet balance
-      const { error: updateError } = await supabase
-        .from('wallets')
-        .update({ balance: newBalance })
-        .eq('user_id', userData.id);
-      
-      if (updateError) throw updateError;
+      await api.wallets.updateBalance(userData.id, newBalance);
       
       // Record transaction
-      const { error: transactionError } = await supabase
-        .from('transactions')
-        .insert({
-          user_id: userData.id,
-          transaction_type: 'debit',
-          amount: amount,
-          balance_before: currentBalance,
-          balance_after: newBalance,
-          description: reason,
-        });
-      
-      if (transactionError) throw transactionError;
+      await api.transactions.create({
+        user_id: userData.id,
+        transaction_type: 'debit',
+        amount: amount,
+        balance_before: currentBalance,
+        balance_after: newBalance,
+        description: reason,
+      });
       
       logFunctionEnd('deductCoins', { success: true }, { userId, amount, reason });
       return true;
@@ -212,16 +162,10 @@ export const canClaimDaily = async (userId: string): Promise<{
   logFunctionStart('canClaimDaily', { userId });
   
   try {
-    const { data: userData, error } = await supabase
-      .from('users')
-      .select('last_free_coin_at')
-      .eq('telegram_id', userId)
-      .single();
-    
-    if (error) throw error;
+    const userData = await api.users.getLastFreeCoinAt(userId);
     
     const now = Date.now();
-    const lastClaim = userData?.last_free_coin_at ? new Date(userData.last_free_coin_at).getTime() : 0;
+    const lastClaim = userData?.last_free_coin_at ? new Date(userData.last_free_coin_at as string).getTime() : 0;
     const dayInMs = 24 * 60 * 60 * 1000;
     const timeSinceLastClaim = now - lastClaim;
     const canClaim = timeSinceLastClaim >= dayInMs;
@@ -240,15 +184,10 @@ export const setLastFreeCoinAt = async (userId: string): Promise<void> => {
   logFunctionStart('setLastFreeCoinAt', { userId });
   
   try {
-    const { error } = await supabase
-      .from('users')
-      .update({
-        last_free_coin_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      })
-      .eq('telegram_id', userId);
-    
-    if (error) throw error;
+    await api.users.updateByTelegramId(userId, {
+      last_free_coin_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    });
     
     logFunctionEnd('setLastFreeCoinAt', {}, { userId });
   } catch (error) {
@@ -265,19 +204,14 @@ export const setUserProfile = async (
   logFunctionStart('setUserProfile', { userId, username, name });
   
   try {
-    const updateData: any = {
+    const updateData: Record<string, unknown> = {
       updated_at: new Date().toISOString(),
     };
     
     if (username !== undefined) updateData.username = username;
     if (name !== undefined) updateData.first_name = name;
     
-    const { error } = await supabase
-      .from('users')
-      .update(updateData)
-      .eq('telegram_id', userId);
-    
-    if (error) throw error;
+    await api.users.updateByTelegramId(userId, updateData);
     
     logFunctionEnd('setUserProfile', {}, { userId, username, name });
   } catch (error) {

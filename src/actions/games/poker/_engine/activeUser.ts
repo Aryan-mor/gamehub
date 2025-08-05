@@ -1,11 +1,10 @@
 import { Context } from 'grammy';
 import { logFunctionStart, logFunctionEnd, logError } from '@/modules/core/logger';
-import { extractUserInfo } from '@/modules/core/telegramHelpers';
 import { getMessageUpdater } from '@/modules/core/messageUpdater';
 import { getPokerRoom } from '../services/pokerService';
-import { PokerRoom, PlayerId, RoomId } from '../types';
+import { PokerRoom, PokerPlayer, PlayerId, RoomId } from '../types';
 import { generateGameStateKeyboard, generateWaitingRoomKeyboard } from '../_utils/gameActionKeyboardGenerator';
-import { generateLeaveRoomKeyboard } from '../_utils/joinRoomKeyboardGenerator';
+import { generateErrorKeyboard } from '../_utils/joinRoomKeyboardGenerator';
 import { roomUpdateService } from '../services/roomUpdateService';
 
 interface PlayerState {
@@ -16,11 +15,21 @@ interface PlayerState {
 }
 
 /**
+ * Extract user info from context
+ */
+function extractUserInfo(ctx: Context): { userId: string; chatId: number } {
+  return {
+    userId: ctx.from?.id?.toString() || '0',
+    chatId: ctx.chat?.id || 0
+  };
+}
+
+/**
  * Handle active poker user - show current game state and appropriate actions
  */
 export async function handlePokerActiveUser(
   ctx: Context, 
-  playerState: PlayerState, 
+  _playerState: PlayerState, 
   room: PokerRoom
 ): Promise<void> {
   try {
@@ -54,7 +63,7 @@ export async function handlePokerActiveUser(
     } else if (freshRoom.status === 'playing') {
       await handleActiveGameState(ctx, freshRoom, player, userId);
     } else {
-      await handleGameEndState(ctx, freshRoom, player, userId);
+      await handleGameEndState(ctx, freshRoom, player);
     }
     
     logFunctionEnd('handlePokerActiveUser', {}, { 
@@ -76,7 +85,7 @@ export async function handlePokerActiveUser(
 async function handleWaitingRoomState(
   ctx: Context, 
   room: PokerRoom, 
-  player: any, 
+  player: PokerPlayer, 
   userId: PlayerId
 ): Promise<void> {
   const isCreator = room.createdBy === userId;
@@ -190,12 +199,12 @@ async function handleWaitingRoomState(
 async function handleActiveGameState(
   ctx: Context, 
   room: PokerRoom, 
-  player: any, 
+  player: PokerPlayer, 
   userId: PlayerId
 ): Promise<void> {
   const currentPlayer = room.players[room.currentPlayerIndex];
   const isMyTurn = currentPlayer?.id === userId;
-  const bettingRound = room.bettingRound;
+  // const bettingRound = room.bettingRound; // TODO: Use when needed
   
   let message = `🎮 <b>بازی پوکر در حال اجرا</b>\n\n` +
     `🏠 <b>روم:</b> ${room.name}\n` +
@@ -257,8 +266,7 @@ async function handleActiveGameState(
 async function handleGameEndState(
   ctx: Context, 
   room: PokerRoom, 
-  player: any, 
-  userId: PlayerId
+  player: PokerPlayer
 ): Promise<void> {
   const message = `🏁 <b>بازی تمام شد!</b>\n\n` +
     `🏠 <b>روم:</b> ${room.name}\n` +
@@ -268,7 +276,7 @@ async function handleGameEndState(
     `• وضعیت: ${player.isFolded ? '❌ تا شده' : player.isAllIn ? '🔥 همه چیز' : '✅ فعال'}\n\n` +
     `🎮 برای شروع بازی جدید، از منوی اصلی استفاده کنید.`;
   
-  const keyboard = generateLeaveRoomKeyboard();
+  const keyboard = generateErrorKeyboard(); // Changed from generateLeaveRoomKeyboard()
   
   try {
     const messageUpdater = getMessageUpdater();

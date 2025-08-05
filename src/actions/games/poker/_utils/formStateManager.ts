@@ -1,4 +1,6 @@
-import { CreateRoomFormData } from '../types';
+import { 
+  CreateRoomFormData 
+} from '../types';
 
 /**
  * Form step types
@@ -63,7 +65,7 @@ export function getPreviousStep(currentStep: FormStep): FormStep | null {
 export function updateFormState(
   currentState: FormState,
   field: keyof CreateRoomFormData,
-  value: any
+  value: string | number | boolean
 ): FormState {
   const newData = { ...currentState.data, [field]: value };
   

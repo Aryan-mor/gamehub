@@ -1,8 +1,20 @@
 import { HandlerContext } from '@/modules/core/handler';
 import { tryEditMessageText } from '@/modules/core/telegramHelpers';
 import { register } from '@/modules/core/compact-router';
-import { POKER_ACTIONS, parseFormCallbackData } from '../../compact-codes';
+import { POKER_ACTIONS } from '../../compact-codes';
 import { logFunctionStart, logFunctionEnd, logError } from '@/modules/core/logger';
+import { Context } from 'grammy';
+import { FormState } from '../../_utils/formStateManager';
+
+
+// Global form state storage (shared with other handlers)
+declare global {
+  var formStates: Map<string, FormState>;
+}
+
+if (!global.formStates) {
+  global.formStates = new Map<string, FormState>();
+}
 
 // Export the action key for consistency and debugging
 export const key = 'games.poker.room.create.form';
@@ -18,7 +30,7 @@ async function handleForm(context: HandlerContext, query: Record<string, string>
   
   // For compact router, params are passed directly in query
   // For legacy router, callback_data is passed
-  const { callback_data, s: step, v: value, ...params } = query;
+  const { s: step, v: value } = query;
   
   if (!step || !value) {
     logError('handleForm', new Error('No step or value provided'), { query });
@@ -28,17 +40,34 @@ async function handleForm(context: HandlerContext, query: Record<string, string>
   try {
     console.log(`Processing form step: ${step} = ${value} for user ${user.id}`);
     
-    // Get or create form state
+    // Get or create form state for this user
     const userId = user.id.toString();
     let formState = global.formStates.get(userId);
     
     if (!formState) {
       formState = { 
         step: 'name', 
-        data: {}, 
+        data: {
+          name: '',
+          isPrivate: false,
+          maxPlayers: 2,
+          smallBlind: 1,
+          turnTimeoutSec: 30
+        }, 
         isComplete: false 
       };
       global.formStates.set(userId, formState);
+    }
+    
+    // Ensure formState.data exists
+    if (!formState.data) {
+      formState.data = {
+        name: '',
+        isPrivate: false,
+        maxPlayers: 2,
+        smallBlind: 1,
+        turnTimeoutSec: 30
+      };
     }
     
     // Update form state based on step
@@ -49,9 +78,10 @@ async function handleForm(context: HandlerContext, query: Record<string, string>
         await handlePrivacyStep(ctx, value === 'true');
         break;
       case 'maxPlayers':
-        formState.data.maxPlayers = parseInt(value, 10);
+        const maxPlayersValue = parseInt(value, 10) as 2 | 4 | 6 | 8;
+        formState.data.maxPlayers = maxPlayersValue;
         formState.step = 'maxPlayers';
-        await handleMaxPlayersStep(ctx, parseInt(value, 10));
+        await handleMaxPlayersStep(ctx, maxPlayersValue);
         break;
       case 'smallBlind':
         formState.data.smallBlind = parseInt(value, 10);
@@ -93,7 +123,7 @@ async function handleForm(context: HandlerContext, query: Record<string, string>
 /**
  * Handle privacy step
  */
-async function handlePrivacyStep(ctx: any, isPrivate: boolean): Promise<void> {
+async function handlePrivacyStep(ctx: Context, isPrivate: boolean): Promise<void> {
   const message = `🔒 <b>نوع روم</b>\n\n` +
     `✅ ${isPrivate ? 'خصوصی' : 'عمومی'} انتخاب شد.\n\n` +
     `در مرحله بعدی تعداد حداکثر بازیکنان را انتخاب کنید:`;
@@ -123,8 +153,8 @@ async function handlePrivacyStep(ctx: any, isPrivate: boolean): Promise<void> {
 /**
  * Handle max players step
  */
-async function handleMaxPlayersStep(ctx: any, maxPlayers: number): Promise<void> {
-  const message = `👥 <b>حداکثر بازیکنان</b>\n\n` +
+async function handleMaxPlayersStep(ctx: Context, maxPlayers: number): Promise<void> {
+  const _message = `👥 <b>حداکثر بازیکنان</b>\n\n` +
     `✅ ${maxPlayers} نفر انتخاب شد.\n\n` +
     `در مرحله بعدی مقدار Small Blind را انتخاب کنید:`;
   
@@ -144,7 +174,7 @@ async function handleMaxPlayersStep(ctx: any, maxPlayers: number): Promise<void>
     ]
   };
   
-  await tryEditMessageText(ctx, message, {
+  await tryEditMessageText(ctx, _message, {
     parse_mode: 'HTML',
     reply_markup: keyboard
   });
@@ -153,8 +183,8 @@ async function handleMaxPlayersStep(ctx: any, maxPlayers: number): Promise<void>
 /**
  * Handle small blind step
  */
-async function handleSmallBlindStep(ctx: any, smallBlind: number): Promise<void> {
-  const message = `💰 <b>Small Blind</b>\n\n` +
+async function handleSmallBlindStep(ctx: Context, smallBlind: number): Promise<void> {
+  const _message = `💰 <b>Small Blind</b>\n\n` +
     `✅ ${smallBlind} سکه انتخاب شد.\n\n` +
     `در مرحله بعدی زمان تایم‌اوت را انتخاب کنید:`;
   
@@ -174,7 +204,7 @@ async function handleSmallBlindStep(ctx: any, smallBlind: number): Promise<void>
     ]
   };
   
-  await tryEditMessageText(ctx, message, {
+  await tryEditMessageText(ctx, _message, {
     parse_mode: 'HTML',
     reply_markup: keyboard
   });
@@ -183,8 +213,8 @@ async function handleSmallBlindStep(ctx: any, smallBlind: number): Promise<void>
 /**
  * Handle timeout step
  */
-async function handleTimeoutStep(ctx: any, timeout: number): Promise<void> {
-  const message = `⏱️ <b>زمان تایم‌اوت</b>\n\n` +
+async function handleTimeoutStep(ctx: Context, timeout: number): Promise<void> {
+  const _message = `⏱️ <b>زمان تایم‌اوت</b>\n\n` +
     `✅ ${timeout} ثانیه انتخاب شد.\n\n` +
     `🎉 <b>فرم تکمیل شد!</b>\n\n` +
     `برای ساخت روم روی دکمه زیر کلیک کنید:`;
@@ -203,13 +233,79 @@ async function handleTimeoutStep(ctx: any, timeout: number): Promise<void> {
     ]
   };
   
-  await tryEditMessageText(ctx, message, {
+  await tryEditMessageText(ctx, _message, {
     parse_mode: 'HTML',
     reply_markup: keyboard
   });
 }
 
+/**
+ * Handle room creation confirmation
+ */
+async function handleConfirmCreate(context: HandlerContext): Promise<void> {
+  const { user, ctx } = context;
+  
+  console.log(`Confirming room creation for user ${user.id}`);
+  
+  try {
+    const userId = user.id.toString();
+    const formState = global.formStates.get(userId);
+    
+    if (!formState || !formState.isComplete) {
+      const message = `❌ <b>خطا در تایید روم</b>\n\n` +
+        `فرم تکمیل نشده است. لطفاً ابتدا تمام مراحل را تکمیل کنید.`;
+      
+      await tryEditMessageText(ctx, message, {
+        parse_mode: 'HTML',
+        reply_markup: {
+          inline_keyboard: [[
+            { text: '🔙 بازگشت به منو', callback_data: POKER_ACTIONS.BACK_TO_MENU }
+          ]]
+        }
+      });
+      return;
+    }
+    
+    // Create the room using the form data
+    const pokerService = await import('../../services/pokerService');
+    const { createPokerRoom } = pokerService;
+    
+    const room = await createPokerRoom({
+      name: formState.data.name || '',
+      isPrivate: formState.data.isPrivate || false,
+      maxPlayers: formState.data.maxPlayers || 2,
+      smallBlind: formState.data.smallBlind || 1,
+      turnTimeoutSec: formState.data.turnTimeoutSec || 30
+    }, user.id as any, user.username || 'Unknown', user.username, ctx.chat?.id);
+    
+    // Clear form state
+    global.formStates.delete(userId);
+    
+    // Instead of duplicating room info display, redirect to room info handler
+    // This ensures consistency and avoids code duplication
+    const roomInfoHandler = await import('../info/index');
+    await roomInfoHandler.default(context, { roomId: room.id });
+    
+  } catch (error) {
+    console.error('Room creation confirmation error:', error);
+    
+    const message = `❌ <b>خطا در ساخت روم</b>\n\n` +
+      `متأسفانه مشکلی در ساخت روم پیش آمده.\n` +
+      `لطفاً دوباره تلاش کنید.`;
+    
+    await tryEditMessageText(ctx, message, {
+      parse_mode: 'HTML',
+      reply_markup: {
+        inline_keyboard: [[
+          { text: '🔙 بازگشت به منو', callback_data: POKER_ACTIONS.BACK_TO_MENU }
+        ]]
+      }
+    });
+  }
+}
+
 // Self-register with compact router
 register(POKER_ACTIONS.FORM_STEP, handleForm, 'Room Creation Form');
+register(POKER_ACTIONS.CREATE_ROOM_CONFIRM, handleConfirmCreate, 'Confirm Room Creation');
 
 export default handleForm; 

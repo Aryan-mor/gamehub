@@ -1,7 +1,7 @@
 import { HandlerContext } from '@/modules/core/handler';
 import { tryEditMessageText } from '@/modules/core/telegramHelpers';
 import { generateMainMenuKeyboard } from '../buttonHelpers';
-import { getUser, deductCoins } from '@/modules/core/userService';
+import { deductCoins, getUser } from '@/modules/core/userService';
 import { validateUser } from '../_utils/validateUser';
 import { logFunctionStart, logFunctionEnd, logError } from '@/modules/core/logger';
 
@@ -18,7 +18,7 @@ async function handleStake(context: HandlerContext, query: Record<string, string
   const { amount } = query;
   
   try {
-    const user = validateUser(ctx);
+    const user = validateUser(context);
     
     if (!amount) {
       throw new Error('مبلغ شرط مشخص نشده است');
@@ -42,7 +42,7 @@ async function handleStake(context: HandlerContext, query: Record<string, string
     }
     
     // Deduct coins from user's balance
-    await deductCoins(user.id, stakeAmount);
+    await deductCoins(user.id, stakeAmount, 'Poker stake');
     
     const message = `💰 <b>شرط تنظیم شد!</b>\n\n` +
       `🎯 مبلغ: <b>${stakeAmount} سکه</b>\n` +

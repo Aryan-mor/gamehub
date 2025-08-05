@@ -1,10 +1,10 @@
-import { HandlerContext } from '@/modules/core/handler';
+
 
 /**
  * Poker game module handler
  * Routes poker-related messages to appropriate handlers
  */
-async function handlePokerMessage(messageKey: string, context: HandlerContext): Promise<void> {
+async function handlePokerMessage(messageKey: string): Promise<void> {
   // This is now handled by the compact router
   // The individual handlers register themselves
   throw new Error(`Poker message routing is now handled by compact router: ${messageKey}`);

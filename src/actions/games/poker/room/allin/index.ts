@@ -1,8 +1,12 @@
 import { HandlerContext } from '@/modules/core/handler';
 import { tryEditMessageText } from '@/modules/core/telegramHelpers';
-import { generateGameActionKeyboard } from '../../buttonHelpers';
-import { processBettingAction, getGameStateDisplay } from '../../services/gameStateService';
-import { validateRoomId, validatePlayerId } from '../../_utils/typeGuards';
+import { 
+  validateRoomIdWithError,
+  validatePlayerIdWithError,
+  processBettingAction,
+  getGameStateDisplay,
+  generateGameActionKeyboard
+} from '../../_utils/pokerUtils';
 
 // Export the action key for consistency and debugging
 export const key = 'games.poker.room.allin';
@@ -20,35 +24,18 @@ async function handleAllIn(context: HandlerContext, query: Record<string, string
   
   try {
     // Validate IDs
-    const validatedRoomId = validateRoomId(roomId);
-    const validatedPlayerId = validatePlayerId(user.id.toString());
+    const validatedRoomId = validateRoomIdWithError(roomId);
+    const validatedPlayerId = validatePlayerIdWithError(user.id.toString());
     
     // Process the all-in action
     const updatedRoom = await processBettingAction(validatedRoomId, validatedPlayerId, 'all-in');
     
-    // Get updated game state
-    const gameStateMessage = getGameStateDisplay(updatedRoom, validatedPlayerId);
+    // Generate updated game state display
+    const gameStateDisplay = getGameStateDisplay(updatedRoom, validatedPlayerId);
+    const keyboard = generateGameActionKeyboard(updatedRoom, validatedPlayerId, false);
     
-    // Add action confirmation
-    const actionMessage = `\n🔥 <b>ALL IN!</b>\n\n`;
-    
-    // Check if it's still the player's turn
-    const currentPlayer = updatedRoom.players[updatedRoom.currentPlayerIndex];
-    const isCurrentPlayerTurn = currentPlayer.id === validatedPlayerId;
-    
-    // Use display name (first_name + last_name) instead of username for privacy
-    const displayName = currentPlayer.name || currentPlayer.username || 'Unknown Player';
-    
-    const turnMessage = isCurrentPlayerTurn 
-      ? `\n🎯 <b>It's still your turn!</b> Choose your action:`
-      : `\n⏳ <b>Waiting for ${displayName}...</b>`;
-    
-    const message = gameStateMessage + actionMessage + turnMessage;
-    
-    // Generate appropriate keyboard
-    const keyboard = generateGameActionKeyboard(updatedRoom.id, !isCurrentPlayerTurn);
-    
-    await tryEditMessageText(ctx, message, {
+    // Update the message
+    await tryEditMessageText(ctx, gameStateDisplay, {
       parse_mode: 'HTML',
       reply_markup: keyboard
     });

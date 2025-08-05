@@ -1,19 +1,10 @@
-import { supabase } from '@/lib/supabase';
+import { api } from '@/lib/api';
 
-async function clearOldRooms() {
+async function clearOldRooms(): Promise<void> {
   try {
     console.log('🔍 Searching for old rooms with maxPlayers: 8...');
     
-    const { data: rooms, error } = await supabase
-      .from('rooms')
-      .select('*')
-      .eq('game_type', 'poker')
-      .eq('max_players', 8);
-    
-    if (error) {
-      console.error('❌ Error fetching rooms:', error);
-      return;
-    }
+    const rooms = await api.rooms.getByGameTypeAndMaxPlayers('poker', 8);
     
     if (!rooms || rooms.length === 0) {
       console.log('✅ No rooms found');
@@ -24,15 +15,11 @@ async function clearOldRooms() {
     
     for (const room of rooms) {
       console.log(`🗑️ Deleting old room: ${room.room_id} (maxPlayers: ${room.max_players})`);
-      const { error: deleteError } = await supabase
-        .from('rooms')
-        .delete()
-        .eq('id', room.id);
-      
-      if (deleteError) {
-        console.error(`❌ Error deleting room ${room.room_id}:`, deleteError);
-      } else {
+      try {
+        await api.rooms.delete(room.room_id as string);
         deletedCount++;
+      } catch (deleteError) {
+        console.error(`❌ Error deleting room ${room.room_id}:`, deleteError);
       }
     }
     

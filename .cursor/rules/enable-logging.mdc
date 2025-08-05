@@ -1,0 +1,82 @@
+---
+# Enable Logging Rule
+
+## Overview
+This rule ensures that Pino-based logging is properly implemented and used throughout the codebase with DEBUG support.
+
+## Requirements
+
+### 1. Logger Module (`src/modules/core/logger.ts`)
+- Must export a `logger` instance configured with Pino
+- Must support DEBUG mode via `process.env.DEBUG === 'true'`
+- Must include `loggingMiddleware` for bot integration
+- Must have proper transport configuration with pino-pretty
+
+### 2. Bot Integration (`src/bot.ts`)
+- Must import `loggingMiddleware` from logger module
+- Must use `bot.use(loggingMiddleware)` after bot creation
+- Must be placed early in middleware chain
+
+### 3. Trace Function Utility (`src/utils/traceFn.ts`)
+- Must export `traceFn` for async function debugging
+- Must export `traceFnSync` for sync function debugging
+- Must export `traceMethod` decorator for class methods
+- Must use proper TypeScript generics
+
+### 4. Environment Configuration
+- DEBUG mode: `DEBUG=true` enables debug logging
+- LOG_LEVEL: Controls log level when DEBUG is not set
+- Default level: 'info' when DEBUG=false, 'debug' when DEBUG=true
+
+## Usage Examples
+
+### Basic Logging
+```typescript
+import { logger } from '@/modules/core/logger';
+
+logger.debug('Debug message');
+logger.info('Info message');
+logger.error('Error message');
+```
+
+### Function Tracing
+```typescript
+import { traceFn } from '@/utils/traceFn';
+
+const loadUser = traceFn('loadUser', async (id: number) => {
+  return await db.users.find(id);
+});
+```
+
+### Class Method Tracing
+```typescript
+import { traceMethod } from '@/utils/traceFn';
+
+class UserService {
+  @traceMethod
+  async getUser(id: string) {
+    return await db.users.find(id);
+  }
+}
+```
+
+## Validation Checklist
+- [ ] `src/modules/core/logger.ts` exists and exports logger
+- [ ] `src/bot.ts` imports and uses loggingMiddleware
+- [ ] `src/utils/traceFn.ts` exists with all required exports
+- [ ] DEBUG environment variable is respected
+- [ ] Proper TypeScript types are used throughout
+- [ ] No console.log statements in production code
+- [ ] Error logging includes stack traces
+- [ ] Performance timing is included in middleware
+
+## Common Issues
+- Missing DEBUG environment variable handling
+- Incorrect import paths (should use @/ alias)
+- Not using traceFn for async functions
+- Console.log instead of logger calls
+- Missing error context in log messages
+description:
+globs:
+alwaysApply: true
+---

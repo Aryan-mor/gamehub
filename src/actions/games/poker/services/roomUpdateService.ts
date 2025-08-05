@@ -41,7 +41,7 @@ export class RoomUpdateService {
       
       logFunctionEnd('addUpdate', {}, { queueSize: this.updateQueue.length });
     } catch (error) {
-      logError('addUpdate', error);
+      logError('addUpdate', error as Error);
     }
   }
 
@@ -83,7 +83,7 @@ export class RoomUpdateService {
         switch (update.action) {
           case 'player_joined':
             // Check if player is still in the room
-            const joinedPlayer = room.players.find(p => p.id === update.playerId);
+            const joinedPlayer = room.players.find((p: { id: string }) => p.id === update.playerId);
             if (joinedPlayer) {
               message += `👋 ${update.playerName} به روم پیوست\n`;
               hasValidUpdates = true;
@@ -91,7 +91,7 @@ export class RoomUpdateService {
             break;
           case 'player_left':
             // Check if player is no longer in the room
-            const leftPlayer = room.players.find(p => p.id === update.playerId);
+            const leftPlayer = room.players.find((p: { id: string }) => p.id === update.playerId);
             if (!leftPlayer) {
               message += `🚪 ${update.playerName} روم را ترک کرد\n`;
               hasValidUpdates = true;
@@ -112,7 +112,7 @@ export class RoomUpdateService {
 
       return hasValidUpdates ? message.trim() : null;
     } catch (error) {
-      logError('getNotificationMessage', error);
+      logError('getNotificationMessage', error as Error);
       return null;
     }
   }

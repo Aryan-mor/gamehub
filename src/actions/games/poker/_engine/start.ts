@@ -1,11 +1,8 @@
 import { PokerRoom, RoomId, PlayerId } from '../types';
 import { getPokerRoom, updatePokerRoom } from '../services/pokerService';
-import { initializeGameState, PokerGameState } from './state';
-import { performInitialDeal } from './deal';
-import { sendGameStartNotification, sendPrivateHandMessage, sendTurnNotification } from './notify';
-import { determineGamePositions } from './gameStart';
+import { startPokerGame } from './gameStart';
+import { notifyAllPlayers, notifyPlayer } from './notify';
 import { logFunctionStart, logFunctionEnd, logError } from '@/modules/core/logger';
-import { Bot } from 'grammy';
 
 /**
  * Start the poker game engine
@@ -13,9 +10,8 @@ import { Bot } from 'grammy';
  */
 export async function startPokerGameEngine(
   roomId: RoomId,
-  playerId: PlayerId,
-  bot: Bot
-): Promise<PokerGameState> {
+  playerId: PlayerId
+): Promise<PokerRoom> {
   logFunctionStart('startPokerGameEngine', { roomId, playerId });
   
   try {
@@ -31,71 +27,19 @@ export async function startPokerGameEngine(
       throw new Error(validation.error);
     }
     
-    // Set room status to "playing"
-    const roomWithPlayingStatus = await updatePokerRoom(roomId, {
-      status: 'playing',
-      startedAt: Date.now(),
-      lastActionAt: Date.now(),
-      updatedAt: Date.now()
-    });
-    
-    // Fetch the updated room
-    const updatedRoom = await getPokerRoom(roomId);
-    if (!updatedRoom) {
-      throw new Error('Failed to update room status');
-    }
-    
-    // Determine game positions (dealer, blinds, turn order)
-    const positions = determineGamePositions(updatedRoom.players.length);
-    
-    // Perform initial deal
-    const { updatedPlayers, deck, communityCards } = performInitialDeal(updatedRoom.players);
-    
-    // Post blinds
-    const playersWithBlinds = postBlinds(updatedPlayers, positions, updatedRoom.smallBlind, updatedRoom.bigBlind);
-    
-    // Create final room state with game data
-    const finalRoom: PokerRoom = {
-      ...updatedRoom,
-      status: 'playing',
-      players: playersWithBlinds,
-      deck: deck,
-      communityCards: [],
-      dealerIndex: positions.dealerIndex,
-      smallBlindIndex: positions.smallBlindIndex,
-      bigBlindIndex: positions.bigBlindIndex,
-      currentPlayerIndex: positions.currentTurnIndex,
-      round: 'pre-flop',
-      pot: updatedRoom.smallBlind + updatedRoom.bigBlind,
-      currentBet: updatedRoom.bigBlind,
-      minRaise: updatedRoom.bigBlind,
-      bettingRound: 'preflop',
-      startedAt: Date.now(),
-      lastActionAt: Date.now(),
-      updatedAt: Date.now()
-    };
-    
-    // Save final room state to database
-    const savedRoom = await updatePokerRoom(roomId, finalRoom);
-    
-    // Initialize game state
-    const gameState = initializeGameState(savedRoom);
+    // Start the poker game using the new startPokerGame function
+    const gameRoom = await startPokerGame(roomId);
     
     // Send notifications to all players
-    await sendGameStartNotification(bot, gameState);
+    await notifyAllPlayers(gameRoom, '🎮 Game started!');
     
-    // Send private hand messages to each player
-    for (const player of gameState.players) {
-      await sendPrivateHandMessage(bot, gameState, player.id);
+    // Send private notifications to each player
+    for (const player of gameRoom.players) {
+      await notifyPlayer(player, `🎮 Game started! Your cards: ${player.cards.map(card => `${card.rank}${card.suit.charAt(0)}`).join(' ')}`);
     }
     
-    // Send turn notifications to all players
-    for (const player of gameState.players) {
-      await sendTurnNotification(bot, gameState, player.id);
-    }
-    
-    logFunctionEnd('startPokerGameEngine', gameState, { roomId, playerId });
-    return gameState;
+    logFunctionEnd('startPokerGameEngine', gameRoom, { roomId, playerId });
+    return gameRoom;
     
   } catch (error) {
     logError('startPokerGameEngine', error as Error, { roomId, playerId });
@@ -114,7 +58,7 @@ function validateGameStartConditions(room: PokerRoom, playerId: PlayerId): {
   if (room.createdBy !== playerId) {
     return {
       isValid: false,
-      error: 'فقط سازنده روم می‌تواند بازی را شروع کند.'
+      error: 'Only the room creator can start the game.'
     };
   }
   
@@ -122,27 +66,26 @@ function validateGameStartConditions(room: PokerRoom, playerId: PlayerId): {
   if (room.status !== 'waiting') {
     return {
       isValid: false,
-      error: 'بازی قبلاً شروع شده است.'
+      error: 'Game is already started.'
     };
   }
   
-  // Check minimum players
+  // Check minimum players (at least 2 players)
   if (room.players.length < 2) {
     return {
       isValid: false,
-      error: 'حداقل ۲ بازیکن برای شروع بازی نیاز است.'
+      error: 'Need at least 2 players to start.'
     };
   }
   
   // Check if all players have enough chips for blinds
-  const smallBlind = room.smallBlind;
   const bigBlind = room.bigBlind;
   
   for (const player of room.players) {
     if (player.chips < bigBlind) {
       return {
         isValid: false,
-        error: `بازیکن ${player.name} سکه کافی برای شروع بازی ندارد.`
+        error: `Player ${player.name} doesn't have enough chips to start.`
       };
     }
   }
@@ -151,58 +94,21 @@ function validateGameStartConditions(room: PokerRoom, playerId: PlayerId): {
 }
 
 /**
- * Post small and big blinds
+ * Get current game state
  */
-function postBlinds(
-  players: any[],
-  positions: { smallBlindIndex: number; bigBlindIndex: number },
-  smallBlindAmount: number,
-  bigBlindAmount: number
-): any[] {
-  const updatedPlayers = [...players];
-  
-  // Post small blind
-  const smallBlindPlayer = updatedPlayers[positions.smallBlindIndex];
-  const smallBlindBet = Math.min(smallBlindAmount, smallBlindPlayer.chips);
-  updatedPlayers[positions.smallBlindIndex] = {
-    ...smallBlindPlayer,
-    chips: smallBlindPlayer.chips - smallBlindBet,
-    betAmount: smallBlindBet,
-    totalBet: smallBlindBet,
-    isAllIn: smallBlindBet === smallBlindPlayer.chips
-  };
-  
-  // Post big blind
-  const bigBlindPlayer = updatedPlayers[positions.bigBlindIndex];
-  const bigBlindBet = Math.min(bigBlindAmount, bigBlindPlayer.chips);
-  updatedPlayers[positions.bigBlindIndex] = {
-    ...bigBlindPlayer,
-    chips: bigBlindPlayer.chips - bigBlindBet,
-    betAmount: bigBlindBet,
-    totalBet: bigBlindBet,
-    isAllIn: bigBlindBet === bigBlindPlayer.chips
-  };
-  
-  return updatedPlayers;
-}
-
-/**
- * Get game state for a specific room
- */
-export async function getGameState(roomId: RoomId): Promise<PokerGameState | null> {
+export async function getGameState(roomId: RoomId): Promise<PokerRoom | null> {
   logFunctionStart('getGameState', { roomId });
   
   try {
     const room = await getPokerRoom(roomId);
-    if (!room || room.status === 'waiting') {
+    
+    if (!room) {
+      logFunctionEnd('getGameState', null, { roomId });
       return null;
     }
     
-    const gameState = initializeGameState(room);
-    
-    logFunctionEnd('getGameState', gameState, { roomId });
-    return gameState;
-    
+    logFunctionEnd('getGameState', room, { roomId });
+    return room;
   } catch (error) {
     logError('getGameState', error as Error, { roomId });
     return null;
@@ -214,44 +120,15 @@ export async function getGameState(roomId: RoomId): Promise<PokerGameState | nul
  */
 export async function updateGameStateInDatabase(
   roomId: RoomId,
-  gameState: PokerGameState
+  gameState: PokerRoom
 ): Promise<PokerRoom> {
   logFunctionStart('updateGameStateInDatabase', { roomId });
   
   try {
-    const updatedRoom: PokerRoom = {
-      id: gameState.roomId,
-      name: gameState.roomName,
-      status: gameState.status,
-      players: gameState.players,
-      currentPlayerIndex: gameState.currentTurnIndex,
-      dealerIndex: gameState.dealerIndex,
-      smallBlindIndex: gameState.smallBlindIndex,
-      bigBlindIndex: gameState.bigBlindIndex,
-      pot: gameState.pot,
-      currentBet: gameState.currentBet,
-      minRaise: gameState.minRaise,
-      deck: gameState.deck,
-      communityCards: gameState.communityCards,
-      bettingRound: gameState.bettingRound,
-      smallBlind: gameState.smallBlind,
-      bigBlind: gameState.bigBlind,
-      minPlayers: 2,
-      maxPlayers: gameState.players.length,
-      isPrivate: false, // This should come from original room
-      turnTimeoutSec: gameState.turnTimeoutSec,
-      createdBy: gameState.players[0]?.id || 'unknown',
-      createdAt: gameState.startedAt,
-      updatedAt: gameState.updatedAt,
-      startedAt: gameState.startedAt,
-      lastActionAt: gameState.lastActionAt
-    };
+    const updatedRoom = await updatePokerRoom(roomId, gameState);
     
-    const savedRoom = await updatePokerRoom(roomId, updatedRoom);
-    
-    logFunctionEnd('updateGameStateInDatabase', savedRoom, { roomId });
-    return savedRoom;
-    
+    logFunctionEnd('updateGameStateInDatabase', updatedRoom, { roomId });
+    return updatedRoom;
   } catch (error) {
     logError('updateGameStateInDatabase', error as Error, { roomId });
     throw error;

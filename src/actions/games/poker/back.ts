@@ -7,7 +7,7 @@ import { POKER_ACTIONS } from './compact-codes';
 /**
  * Handle back navigation to main menu
  */
-async function handleBack(context: HandlerContext, _query: Record<string, string> = {}): Promise<void> {
+async function handleBack(context: HandlerContext): Promise<void> {
   const { ctx } = context;
   
   try {

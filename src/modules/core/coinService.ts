@@ -1,5 +1,5 @@
-import { logFunctionStart, logFunctionEnd, logError } from './logger';
 import { api } from '@/lib/api';
+import { logFunctionStart, logFunctionEnd, logError } from './logger';
 
 export const adjustCoins = async (
   userId: string,
@@ -11,22 +11,11 @@ export const adjustCoins = async (
   
   try {
     // Get user first
-    const { data: userData, error: userError } = await supabase
-      .from('users')
-      .select('id')
-      .eq('telegram_id', userId)
-      .single();
-    
-    if (userError) throw userError;
+    const userData = await api.users.getByTelegramId(userId);
     
     // Get current wallet balance
-    const { data: walletData, error: walletError } = await supabase
-      .from('wallets')
-      .select('balance')
-      .eq('user_id', userData.id)
-      .single();
-    
-    if (walletError) throw walletError;
+    if (!userData) throw new Error('User not found');
+    const walletData = await api.wallets.getByUserId(userData.id);
     
     const currentBalance = walletData?.balance || 0;
     const newBalance = currentBalance + amount;
@@ -36,27 +25,17 @@ export const adjustCoins = async (
     }
     
     // Update wallet balance
-    const { error: updateError } = await supabase
-      .from('wallets')
-      .update({ balance: newBalance })
-      .eq('user_id', userData.id);
-    
-    if (updateError) throw updateError;
+    await api.wallets.updateBalance(userData.id, newBalance);
     
     // Record transaction
-    const { error: transactionError } = await supabase
-      .from('transactions')
-      .insert({
+          await api.transactions.create({
         user_id: userData.id,
         transaction_type: amount > 0 ? 'credit' : 'debit',
         amount: Math.abs(amount),
         balance_before: currentBalance,
         balance_after: newBalance,
         description: reason,
-        reference_id: gameId,
       });
-    
-    if (transactionError) throw transactionError;
     
     logFunctionEnd('adjustCoins', { newBalance }, { userId, amount, reason, gameId });
   } catch (error) {
@@ -69,28 +48,25 @@ export const getUserCoins = async (userId: string): Promise<number> => {
   logFunctionStart('getUserCoins', { userId });
   
   try {
-    const { data: userData, error: userError } = await supabase
-      .from('users')
-      .select('id')
-      .eq('telegram_id', userId)
-      .single();
-    
-    if (userError && userError.code !== 'PGRST116') {
-      throw userError;
-    }
-    
-    if (!userData) {
+    let userData;
+    try {
+      userData = await api.users.getByTelegramId(userId);
+    } catch (error: unknown) {
+      if (error && typeof error === 'object' && 'code' in error && error.code !== 'PGRST116') {
+        throw error;
+      }
       return 0;
     }
     
-    const { data: walletData, error: walletError } = await supabase
-      .from('wallets')
-      .select('balance')
-      .eq('user_id', userData.id)
-      .single();
-    
-    if (walletError && walletError.code !== 'PGRST116') {
-      throw walletError;
+    let walletData;
+    try {
+      if (!userData) throw new Error('User not found');
+      walletData = await api.wallets.getByUserId(userData.id);
+    } catch (error: unknown) {
+      if (error && typeof error === 'object' && 'code' in error && error.code !== 'PGRST116') {
+        throw error;
+      }
+      walletData = null;
     }
     
     const coins = walletData?.balance || 0;
@@ -140,36 +116,28 @@ export const logTransfer = async (transfer: {
   logFunctionStart('logTransfer', transfer);
   
   try {
-    // Get user IDs for from and to
-    const { data: fromUser, error: fromError } = await supabase
-      .from('users')
-      .select('id')
-      .eq('telegram_id', transfer.fromId)
-      .single();
+    // Get user ID for to user (fromId can be 'system')
+    if (transfer.fromId !== 'system') {
+      try {
+        await api.users.getByTelegramId(transfer.fromId);
+      } catch (error: unknown) {
+        throw error;
+      }
+    }
     
-    const { data: toUser, error: toError } = await supabase
-      .from('users')
-      .select('id')
-      .eq('telegram_id', transfer.toId)
-      .single();
-    
-    if (fromError && transfer.fromId !== 'system') throw fromError;
-    if (toError) throw toError;
+    const toUser = await api.users.getByTelegramId(transfer.toId);
+    if (!toUser) throw new Error('To user not found');
     
     // Log transfer in transactions table
-    const { error: transactionError } = await supabase
-      .from('transactions')
-      .insert({
-        user_id: toUser.id,
-        transaction_type: 'transfer',
-        amount: transfer.amount,
-        balance_before: 0, // Will be calculated from wallet
-        balance_after: 0,  // Will be calculated from wallet
-        description: `${transfer.reason} from ${transfer.fromId}`,
-        reference_id: transfer.gameId,
-      });
-    
-    if (transactionError) throw transactionError;
+    await api.transactions.create({
+      user_id: toUser.id,
+              transaction_type: 'credit',
+      amount: transfer.amount,
+      balance_before: 0, // Will be calculated from wallet
+      balance_after: 0,  // Will be calculated from wallet
+      description: `${transfer.reason} from ${transfer.fromId}`,
+
+    });
     
     logFunctionEnd('logTransfer', {}, transfer);
   } catch (error) {

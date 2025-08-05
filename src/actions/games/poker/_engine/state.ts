@@ -1,4 +1,4 @@
-import { PokerRoom, PlayerId, RoomId, PokerPlayer, GameRound } from '../types';
+import { PokerRoom, GameRound, RoomId, PokerPlayer, PlayerId } from '../types';
 import { logFunctionStart, logFunctionEnd, logError } from '@/modules/core/logger';
 
 /**
@@ -66,7 +66,7 @@ export function initializeGameState(room: PokerRoom): PokerGameState {
       // Room information
       roomId: room.id,
       roomName: room.name,
-      status: room.status === 'waiting' ? 'active' : room.status,
+      status: room.status === 'waiting' ? 'active' : (room.status === 'cancelled' ? 'finished' : room.status),
       
       // Player positions and roles
       players: room.players,
@@ -83,7 +83,7 @@ export function initializeGameState(room: PokerRoom): PokerGameState {
       
       // Cards
       deck: room.deck as string[],
-      communityCards: room.communityCards || [],
+      communityCards: room.communityCards.map(card => `${card.rank}${card.suit.charAt(0)}`),
       
       // Game metadata
       startedAt: room.startedAt || Date.now(),

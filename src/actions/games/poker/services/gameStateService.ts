@@ -2,20 +2,16 @@ import {
   PokerRoom, 
   RoomId, 
   PlayerId, 
-  PokerPlayer, 
-  BettingRound,
-  HandEvaluation,
-  GameAction,
-  PokerGameResult
-} from '../types';
+  HandType, 
+  Card, 
+  RoomStatus 
+  } from '../types';
 import { 
   createDeck, 
   shuffleDeck, 
   dealCards, 
   findBestHand, 
-  getHandDisplay, 
-  getHandTypeDisplay 
-} from '../_utils/cardUtils';
+  } from '../_utils/cardUtils';
 import { getPokerRoom, updatePokerRoom } from './pokerService';
 import { logFunctionStart, logFunctionEnd, logError } from '@/modules/core/logger';
 
@@ -49,7 +45,7 @@ export const startPokerGame = async (roomId: RoomId): Promise<PokerRoom> => {
     
     // Deal 2 cards to each player
     const updatedPlayers = room.players.map(player => {
-      const { cards, remainingDeck } = dealCards(deck, 2);
+      const { cards } = dealCards(deck, 2);
       return {
         ...player,
         cards,
@@ -194,9 +190,8 @@ export const processBettingAction = async (
         updatedPlayers[playerIndex] = {
           ...player,
           chips: player.chips - callAmount,
-          betAmount: room.currentBet,
+          betAmount: player.betAmount + callAmount,
           totalBet: player.totalBet + callAmount,
-          isAllIn: callAmount === player.chips,
           lastAction: 'call'
         };
         updatedRoom.pot += callAmount;
@@ -206,10 +201,7 @@ export const processBettingAction = async (
         if (!amount || amount <= room.currentBet) {
           throw new Error('Invalid raise amount');
         }
-        if (amount < room.minRaise) {
-          throw new Error(`Minimum raise is ${room.minRaise}`);
-        }
-        if (amount > player.chips + player.betAmount) {
+        if (amount > player.chips) {
           throw new Error('Not enough chips to raise');
         }
         const raiseAmount = amount - player.betAmount;
@@ -218,7 +210,6 @@ export const processBettingAction = async (
           chips: player.chips - raiseAmount,
           betAmount: amount,
           totalBet: player.totalBet + raiseAmount,
-          isAllIn: raiseAmount === player.chips,
           lastAction: 'raise'
         };
         updatedRoom.pot += raiseAmount;
@@ -237,18 +228,20 @@ export const processBettingAction = async (
           lastAction: 'all-in'
         };
         updatedRoom.pot += allInAmount;
-        if (player.betAmount + allInAmount > room.currentBet) {
+        if (player.betAmount + allInAmount > updatedRoom.currentBet) {
           updatedRoom.currentBet = player.betAmount + allInAmount;
           updatedRoom.minRaise = allInAmount;
         }
         break;
+        
+      default:
+        throw new Error('Invalid action');
     }
     
+    updatedRoom.players = updatedPlayers;
+    
     // Move to next player
-    updatedRoom = await moveToNextPlayer({
-      ...updatedRoom,
-      players: updatedPlayers
-    });
+    updatedRoom = await moveToNextPlayer(updatedRoom);
     
     logFunctionEnd('processBettingAction', updatedRoom, { roomId, playerId, action, amount });
     return updatedRoom;
@@ -306,7 +299,7 @@ async function advanceBettingRound(room: PokerRoom): Promise<PokerRoom> {
   switch (room.bettingRound) {
     case 'preflop':
       // Deal flop (3 community cards)
-      const { cards: flopCards, remainingDeck } = dealCards(room.deck, 3);
+      const { cards: flopCards, remainingDeck } = dealCards(room.deck as Card[], 3);
       updatedRoom = {
         ...updatedRoom,
         communityCards: flopCards,
@@ -319,7 +312,7 @@ async function advanceBettingRound(room: PokerRoom): Promise<PokerRoom> {
       
     case 'flop':
       // Deal turn (1 community card)
-      const { cards: turnCard, remainingDeck: deckAfterTurn } = dealCards(updatedRoom.deck, 1);
+      const { cards: turnCard, remainingDeck: deckAfterTurn } = dealCards(updatedRoom.deck as Card[], 1);
       updatedRoom = {
         ...updatedRoom,
         communityCards: [...updatedRoom.communityCards, ...turnCard],
@@ -332,7 +325,7 @@ async function advanceBettingRound(room: PokerRoom): Promise<PokerRoom> {
       
     case 'turn':
       // Deal river (1 community card)
-      const { cards: riverCard, remainingDeck: deckAfterRiver } = dealCards(updatedRoom.deck, 1);
+      const { cards: riverCard, remainingDeck: deckAfterRiver } = dealCards(updatedRoom.deck as Card[], 1);
       updatedRoom = {
         ...updatedRoom,
         communityCards: [...updatedRoom.communityCards, ...riverCard],
@@ -376,7 +369,7 @@ async function endGame(room: PokerRoom): Promise<PokerRoom> {
     
     const updatedRoom = {
       ...room,
-      status: 'finished',
+      status: 'finished' as RoomStatus,
       players: room.players.map(p => 
         p.id === winner.id ? winner : p
       ),
@@ -417,7 +410,7 @@ async function endGame(room: PokerRoom): Promise<PokerRoom> {
   
   const updatedRoom = {
     ...room,
-    status: 'finished',
+    status: 'finished' as RoomStatus,
     players: updatedPlayers,
     endedAt: Date.now(),
     updatedAt: Date.now()
@@ -539,7 +532,7 @@ function getGameDuration(room: PokerRoom): number {
 /**
  * Get hand type display helper
  */
-function getHandTypeDisplay(type: any): string {
+function getHandTypeDisplay(type: HandType): string {
   const displayNames: Record<string, string> = {
     'high-card': 'High Card',
     'pair': 'Pair',
@@ -559,7 +552,7 @@ function getHandTypeDisplay(type: any): string {
 /**
  * Get card display helper
  */
-function getCardDisplay(card: any): string {
+function getCardDisplay(card: Card): string {
   const suitSymbols: Record<string, string> = {
     'hearts': '♥️',
     'diamonds': '♦️',

@@ -11,7 +11,7 @@ export const key = 'games.poker.room.newgame';
 /**
  * Handle new game action in a poker room
  */
-async function handleNewGame(context: HandlerContext, query: Record<string, string> = {}): Promise<void> {
+async function handleNewGame(context: HandlerContext): Promise<void> {
   const { user, ctx } = context;
   
   try {

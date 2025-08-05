@@ -10,7 +10,7 @@ export const key = 'games.poker.stats';
 /**
  * Handle poker statistics display
  */
-async function handleStats(context: HandlerContext, query: Record<string, string> = {}): Promise<void> {
+async function handleStats(context: HandlerContext): Promise<void> {
   const { user, ctx } = context;
   
   try {

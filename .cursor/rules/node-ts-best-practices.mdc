@@ -1,0 +1,60 @@
+---
+alwaysApply: true
+---
+
+# 🧠 Node.js + TypeScript Best Practices
+
+## 👤 Developer Context
+You are a **senior Node.js + TypeScript developer**. You are expected to write clean, scalable, and maintainable code.
+
+## ✅ General Guidelines
+- Your code **must compile with `tsc` without any errors**.
+- Your code **must pass ESLint checks** (use project's ESLint config).
+- Always follow **best practices** in terms of naming, typing, and error handling.
+- Avoid shortcuts, hacks, or "quick fixes".
+
+## 📁 Code Structure
+- **Respect the existing project structure**.
+- Do **not** refactor folder or file structure unless explicitly asked.
+- Do **not** change abstractions or patterns unless instructed.
+- Place new code in the **correct layer** (e.g., service vs controller vs util).
+
+## 🔍 Review Checklist (for yourself)
+Before marking code as ready:
+- [ ] Does `tsc` pass?
+- [ ] Does `eslint` pass?
+- [ ] Does the code follow the architecture?
+- [ ] Is the naming clean and consistent?
+- [ ] Are all types explicitly defined where necessary?
+- [ ] Are imports sorted and used correctly?
+
+## 🔁 Always Apply
+This rule must be applied to **all code suggestions** within this workspace.
+# 🧠 Node.js + TypeScript Best Practices
+
+## 👤 Developer Context
+You are a **senior Node.js + TypeScript developer**. You are expected to write clean, scalable, and maintainable code.
+
+## ✅ General Guidelines
+- Your code **must compile with `tsc` without any errors**.
+- Your code **must pass ESLint checks** (use project's ESLint config).
+- Always follow **best practices** in terms of naming, typing, and error handling.
+- Avoid shortcuts, hacks, or "quick fixes".
+
+## 📁 Code Structure
+- **Respect the existing project structure**.
+- Do **not** refactor folder or file structure unless explicitly asked.
+- Do **not** change abstractions or patterns unless instructed.
+- Place new code in the **correct layer** (e.g., service vs controller vs util).
+
+## 🔍 Review Checklist (for yourself)
+Before marking code as ready:
+- [ ] Does `tsc` pass?
+- [ ] Does `eslint` pass?
+- [ ] Does the code follow the architecture?
+- [ ] Is the naming clean and consistent?
+- [ ] Are all types explicitly defined where necessary?
+- [ ] Are imports sorted and used correctly?
+
+## 🔁 Always Apply
+This rule must be applied to **all code suggestions** within this workspace.

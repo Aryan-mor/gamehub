@@ -1,11 +1,10 @@
 import { 
-  PokerRoom, 
-  RoomId, 
-  PlayerId, 
-  PokerPlayer 
+  PokerRoom,
+  PlayerId,
+  RoomId
 } from '../types';
 import { processBettingAction } from './gameStateService';
-import { getPokerRoom } from './pokerService';
+import { } from './pokerService';
 import { createPlayerTimeoutNotification } from './notificationService';
 import { logFunctionStart, logFunctionEnd, logError } from '@/modules/core/logger';
 
@@ -92,7 +91,7 @@ export function updateTurnStartTime(room: PokerRoom): void {
  */
 export async function checkRoomTimeouts(room: PokerRoom): Promise<{
   timedOutPlayers: PlayerId[];
-  notifications: any[];
+  notifications: Record<string, unknown>[];
 }> {
   logFunctionStart('checkRoomTimeouts', { roomId: room.id });
   
@@ -104,7 +103,7 @@ export async function checkRoomTimeouts(room: PokerRoom): Promise<{
   
   const now = Date.now();
   const timedOutPlayers: PlayerId[] = [];
-  const notifications: any[] = [];
+  const notifications: Record<string, unknown>[] = [];
   
   // Check each player for timeout
   for (const [playerId, playerTimeout] of roomTimeouts) {
@@ -128,13 +127,13 @@ export async function checkRoomTimeouts(room: PokerRoom): Promise<{
         const player = room.players.find(p => p.id === playerId);
         if (player) {
           const notification = createPlayerTimeoutNotification(room, player);
-          notifications.push(notification);
+          notifications.push(notification as unknown as Record<string, unknown>);
+          
+          logFunctionEnd('checkRoomTimeouts', { 
+            timedOutPlayers: [playerId], 
+            notifications: [notification as unknown as Record<string, unknown>] 
+          }, { roomId: room.id });
         }
-        
-        logFunctionEnd('checkRoomTimeouts', { 
-          timedOutPlayers: [playerId], 
-          notifications: [notification] 
-        }, { roomId: room.id });
         
       } catch (error) {
         logError('checkRoomTimeouts', error as Error, { roomId: room.id, playerId });
@@ -193,7 +192,7 @@ export function getPlayerTimeoutStatus(roomId: RoomId, playerId: PlayerId): {
   }
   
   const now = Date.now();
-  const room = getPokerRoom(roomId); // This would need to be async in real implementation
+  // Note: getPokerRoom would need to be async in real implementation
   
   return {
     isActive: playerTimeout.isActive,

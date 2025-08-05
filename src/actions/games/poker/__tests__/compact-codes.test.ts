@@ -3,8 +3,7 @@ import {
   calculateCallbackDataLength, 
   isCallbackDataTooLong,
   generateFormCallbackData,
-  parseFormCallbackData 
-} from '../compact-codes';
+  } from '../compact-codes';
 
 describe('Poker Compact Codes', () => {
   describe('Action Codes', () => {

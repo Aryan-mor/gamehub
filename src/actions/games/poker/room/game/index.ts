@@ -1,6 +1,6 @@
 import { HandlerContext } from '@/modules/core/handler';
 import { tryEditMessageText } from '@/modules/core/telegramHelpers';
-import { generateGameActionKeyboard, generateRaiseAmountKeyboard, generateGameEndKeyboard } from '../../buttonHelpers';
+import { generateRaiseAmountKeyboard, generateGameEndKeyboard, generateGameActionKeyboard } from '../../buttonHelpers';
 import { getGameStateDisplay } from '../../services/gameStateService';
 import { getPokerRoom } from '../../services/pokerService';
 import { validateRoomId, validatePlayerId } from '../../_utils/typeGuards';
@@ -55,7 +55,6 @@ async function handleGame(context: HandlerContext, query: Record<string, string>
       // Player can act - show game actions
       const player = room.players.find(p => p.id === validatedPlayerId);
       if (player) {
-        const canCheck = player.betAmount >= room.currentBet;
         const canRaise = player.chips > 0 && !player.isAllIn;
         
         if (canRaise) {

@@ -1,68 +1,20 @@
-import { PokerRoom, PlayerId } from '../types';
-import { getRoomCapacityInfo } from './roomJoinValidation';
-
 /**
- * Generate keyboard for room after successful join
+ * Generate keyboard for joining rooms
  */
-export function generateJoinSuccessKeyboard(
-  room: PokerRoom,
-  playerId: PlayerId,
-  isCreator: boolean = false
-): {
+export function generateJoinRoomKeyboard(): {
   inline_keyboard: Array<Array<{ text: string; callback_data: string }>>
 } {
-  const capacity = getRoomCapacityInfo(room);
-  const hasMinimumPlayers = room.players.length >= 2;
-  
-  const buttons: Array<Array<{ text: string; callback_data: string }>> = [];
-  
-  // Add invite button if room is not full
-  if (!capacity.isFull) {
-    buttons.push([
-      {
-        text: '➕ دعوت بازیکن جدید',
-        callback_data: `games.poker.room.share?roomId=${room.id}`
-      }
-    ]);
-  }
-  
-  // Add start game button if conditions are met
-  if (capacity.isFull && hasMinimumPlayers && isCreator) {
-    buttons.push([
-      {
-        text: '🚀 شروع بازی',
-        callback_data: `games.poker.room.start?roomId=${room.id}`
-      }
-    ]);
-  }
-  
-  // Add view room info button
-  buttons.push([
-    {
-      text: '📋 مشاهده اطلاعات روم',
-      callback_data: `games.poker.room.info?roomId=${room.id}`
-    }
-  ]);
-  
-  // Ready/not ready buttons removed - players are automatically ready
-  
-  // Add leave button
-  buttons.push([
-    {
-      text: '🚪 خروج از روم',
-      callback_data: `games.poker.room.leave?roomId=${room.id}`
-    }
-  ]);
-  
-  // Add back to menu button
-  buttons.push([
-    {
-      text: '🔙 بازگشت به منو',
-      callback_data: 'games.poker.backToMenu'
-    }
-  ]);
-  
-  return { inline_keyboard: buttons };
+  return {
+    inline_keyboard: [
+      [
+        { text: '🔍 Find Rooms', callback_data: 'games.poker.room.list' },
+        { text: '🏠 Create Room', callback_data: 'games.poker.room.create' }
+      ],
+      [
+        { text: '🔙 Back', callback_data: 'games.poker.start' }
+      ]
+    ]
+  };
 }
 
 /**
@@ -74,40 +26,23 @@ export function generateErrorKeyboard(): {
   return {
     inline_keyboard: [
       [
-        {
-          text: '🔙 بازگشت به منو',
-          callback_data: 'games.poker.backToMenu'
-        }
+        { text: '🔙 Back to Menu', callback_data: 'games.poker.start' }
       ]
     ]
   };
 }
 
 /**
- * Generate room full keyboard
+ * Generate leave room keyboard
  */
-export function generateRoomFullKeyboard(): {
+export function generateLeaveRoomKeyboard(): {
   inline_keyboard: Array<Array<{ text: string; callback_data: string }>>
 } {
   return {
     inline_keyboard: [
       [
-        {
-          text: '📋 مشاهده روم‌های دیگر',
-          callback_data: 'games.poker.room.list'
-        }
-      ],
-      [
-        {
-          text: '🏠 ساخت روم جدید',
-          callback_data: 'games.poker.room.create'
-        }
-      ],
-      [
-        {
-          text: '🔙 بازگشت به منو',
-          callback_data: 'games.poker.backToMenu'
-        }
+        { text: '🚪 Leave Room', callback_data: 'games.poker.room.leave' },
+        { text: '🔙 Back', callback_data: 'games.poker.room.info' }
       ]
     ]
   };

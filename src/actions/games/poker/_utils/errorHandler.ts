@@ -71,8 +71,7 @@ export const ERROR_MESSAGES = {
  * Create a user-friendly error message
  */
 export function createUserFriendlyError(
-  error: Error | PokerGameError,
-  context?: { roomId?: RoomId; playerId?: PlayerId; action?: string }
+  error: Error | PokerGameError
 ): string {
   // If it's already a PokerGameError, use its user-friendly message
   if (error instanceof PokerGameError) {
@@ -226,7 +225,7 @@ export function validateAmountWithError(amount: string | number): number {
 /**
  * Get error context for logging
  */
-export function getErrorContext(error: Error, context?: Record<string, any>): Record<string, any> {
+export function getErrorContext(error: Error, context?: Record<string, unknown>): Record<string, unknown> {
   return {
     errorName: error.name,
     errorMessage: error.message,

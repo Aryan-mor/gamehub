@@ -1,15 +1,30 @@
-import { api } from '@/lib/api';
 import { nanoid } from 'nanoid';
 import { 
   PokerRoom, 
-  RoomId, 
-  PlayerId, 
-  PokerPlayer, 
   CreateRoomRequest, 
   JoinRoomRequest,
-  RoomStatus 
+  RoomStatus,
+  PokerPlayer,
+  PlayerId,
+  RoomId
 } from '../types';
 import { logFunctionStart, logFunctionEnd, logError } from '@/modules/core/logger';
+// eslint-disable-next-line no-restricted-imports
+import { supabase } from '@/lib/supabase';
+import { api } from '@/lib/api';
+
+interface RoomDataRaw {
+  id: string;
+  room_id: string;
+  game_type: string;
+  status: string;
+  settings: Record<string, unknown>;
+  updated_at: string;
+  created_at: string;
+  created_by: string;
+  name: string;
+  max_players: number;
+}
 
 /**
  * Create a new poker room
@@ -153,7 +168,7 @@ export const getPokerRoom = async (roomId: RoomId): Promise<PokerRoom | null> =>
     if (playersError) throw playersError;
     
     const players = playersData.map(p => p.player_data as PokerPlayer);
-    const settings = roomData.settings as any;
+    const settings = roomData.settings as Record<string, unknown>;
     
     // Get creator's telegram_id
     const { data: creatorData, error: creatorError } = await supabase
@@ -176,16 +191,16 @@ export const getPokerRoom = async (roomId: RoomId): Promise<PokerRoom | null> =>
       bigBlindIndex: 0,
       pot: 0,
       currentBet: 0,
-      minRaise: settings?.smallBlind * 2 || 100,
+      minRaise: (settings?.smallBlind as number) * 2 || 100,
       deck: [],
       communityCards: [],
       bettingRound: 'preflop',
-      smallBlind: settings?.smallBlind || 50,
-      bigBlind: settings?.bigBlind || 100,
+      smallBlind: (settings?.smallBlind as number) || 50,
+      bigBlind: (settings?.bigBlind as number) || 100,
       minPlayers: 2,
       maxPlayers: roomData.max_players,
       isPrivate: roomData.is_private,
-      turnTimeoutSec: settings?.turnTimeoutSec || 30,
+      turnTimeoutSec: (settings?.turnTimeoutSec as number) || 30,
       createdBy: creatorData.telegram_id.toString() as PlayerId,
       createdAt: new Date(roomData.created_at).getTime(),
       updatedAt: new Date(roomData.updated_at).getTime()
@@ -217,7 +232,7 @@ export const updatePokerRoom = async (
     
     if (roomError) throw roomError;
     
-    const settings = roomData.settings as any;
+    const settings = roomData.settings as Record<string, unknown>;
     const currentRoom = settings?.room as PokerRoom;
     
     const updatedRoom = { ...currentRoom, ...updates, updatedAt: Date.now() };
@@ -225,8 +240,8 @@ export const updatePokerRoom = async (
     const { error: updateError } = await supabase
       .from('rooms')
       .update({
-        status: updates.status || roomData.status,
-        created_by: updates.createdBy || roomData.created_by,
+        status: updates.status || (roomData as Record<string, unknown>).status,
+        created_by: updates.createdBy || (roomData as Record<string, unknown>).created_by,
         settings: {
           ...settings,
           room: updatedRoom
@@ -266,7 +281,7 @@ export const joinPokerRoom = async (request: JoinRoomRequest): Promise<PokerRoom
         .from('users')
         .insert({
           telegram_id: request.playerId,
-          username: request.playerUsername,
+          username: request.playerName,
           first_name: request.playerName?.split(' ')[0] || 'Unknown',
           last_name: request.playerName?.split(' ').slice(1).join(' ') || 'User'
         })
@@ -301,7 +316,7 @@ export const joinPokerRoom = async (request: JoinRoomRequest): Promise<PokerRoom
     const newPlayer: PokerPlayer = {
       id: request.playerId,
       name: request.playerName,
-      username: request.playerUsername,
+      username: request.playerName,
       chips: 1000,
       betAmount: 0,
       totalBet: 0,
@@ -311,7 +326,7 @@ export const joinPokerRoom = async (request: JoinRoomRequest): Promise<PokerRoom
       isDealer: false,
       cards: [],
       joinedAt: Date.now(),
-      chatId: request.playerChatId
+      chatId: undefined
     };
     
     // Add player to room
@@ -337,6 +352,15 @@ export const joinPokerRoom = async (request: JoinRoomRequest): Promise<PokerRoom
     const updatedRoom = await updatePokerRoom(request.roomId, {
       players: [...room.players, newPlayer]
     });
+    
+    // Send notification to all players in the room
+    try {
+      const { notifyPlayerJoined, updateAllPlayersInRoom } = await import('./roomMessageService');
+      await notifyPlayerJoined(updatedRoom.id, newPlayer.id, newPlayer.name);
+      await updateAllPlayersInRoom(updatedRoom, 'player_joined');
+    } catch (error) {
+      console.error('Failed to send room update notification:', error);
+    }
     
     logFunctionEnd('joinPokerRoom', updatedRoom, { request });
     return updatedRoom;
@@ -418,6 +442,18 @@ export const leavePokerRoom = async (roomId: RoomId, playerId: PlayerId): Promis
     
     const updatedRoom = await updatePokerRoom(roomId, updates);
     
+    // Send notification to all players in the room
+    try {
+      const { notifyPlayerLeft, updateAllPlayersInRoom } = await import('./roomMessageService');
+      const leavingPlayer = room.players.find(p => p.id === playerId);
+      if (leavingPlayer) {
+        await notifyPlayerLeft(updatedRoom.id, playerId, leavingPlayer.name);
+      }
+      await updateAllPlayersInRoom(updatedRoom, 'player_left');
+    } catch (error) {
+      console.error('Failed to send room update notification:', error);
+    }
+    
     logFunctionEnd('leavePokerRoom', updatedRoom, { roomId, playerId });
     return updatedRoom;
   } catch (error) {
@@ -466,7 +502,7 @@ export const getActivePokerRooms = async (): Promise<PokerRoom[]> => {
     const rooms: PokerRoom[] = [];
     
     for (const roomData of roomsData) {
-      const settings = roomData.settings as any;
+      const settings = roomData.settings as Record<string, unknown>;
       const room = settings?.room as PokerRoom;
       
       if (room) {
@@ -500,65 +536,83 @@ export const getPokerRoomsForPlayer = async (playerId: PlayerId): Promise<PokerR
   logFunctionStart('getPokerRoomsForPlayer', { playerId });
   
   try {
-    // Get user UUID from telegram_id
-    const { data: userData, error: userError } = await supabase
-      .from('users')
-      .select('id')
-      .eq('telegram_id', playerId)
-      .single();
-    
-    if (userError && userError.code !== 'PGRST116') {
-      throw userError;
-    }
-    
-    // If user doesn't exist, return empty array (user hasn't joined any rooms yet)
+    // First get user UUID from telegram_id
+    const userData = await api.users.getByTelegramId(playerId);
     if (!userData) {
       logFunctionEnd('getPokerRoomsForPlayer', [], { playerId });
       return [];
     }
-    
-    const { data: playerRooms, error: playerRoomsError } = await supabase
+
+    const { data: playerRooms, error } = await supabase
       .from('room_players')
-      .select(`
-        room_id,
-        rooms!inner(
-          id,
-          room_id,
-          game_type,
-          status,
-          settings,
-          created_at,
-          updated_at
-        )
-      `)
+      .select('rooms:room_id(*)')
       .eq('user_id', userData.id);
-    
-    if (playerRoomsError) throw playerRoomsError;
-    
+
+    if (error) {
+      // If no rooms found, return empty array instead of throwing error
+      if (error.code === 'PGRST116') {
+        logFunctionEnd('getPokerRoomsForPlayer', [], { playerId });
+        return [];
+      }
+      throw error;
+    }
+    if (!playerRooms) return [];
+
     const rooms: PokerRoom[] = [];
-    
+
     for (const playerRoom of playerRooms) {
-      const roomData = playerRoom.rooms;
-      const settings = roomData.settings as any;
-      const room = settings?.room as PokerRoom;
+      const roomData = playerRoom.rooms as unknown as RoomDataRaw;
       
-      if (room && roomData.game_type === 'poker') {
+      if (roomData.game_type === 'poker') {
         // Get players for this room
         const { data: playersData } = await supabase
           .from('room_players')
           .select('player_data')
           .eq('room_id', roomData.id);
-        
+
         if (playersData) {
-          room.players = playersData.map(p => p.player_data as PokerPlayer);
-          room.status = roomData.status as RoomStatus;
-          room.updatedAt = new Date(roomData.updated_at).getTime();
-          room.id = roomData.room_id; // Add the room ID
+          const players = playersData.map(p => p.player_data as PokerPlayer);
+          const settings = roomData.settings as Record<string, unknown>;
+          
+          // Get creator's telegram_id
+          const { data: creatorData } = await supabase
+            .from('users')
+            .select('telegram_id')
+            .eq('id', roomData.created_by)
+            .single();
+          
+          // Reconstruct room from database data
+          const room: PokerRoom = {
+            id: roomData.room_id as RoomId,
+            name: roomData.name,
+            status: roomData.status as RoomStatus,
+            players,
+            currentPlayerIndex: 0,
+            dealerIndex: 0,
+            smallBlindIndex: 0,
+            bigBlindIndex: 0,
+            pot: 0,
+            currentBet: 0,
+            minRaise: (settings.smallBlind as number) * 2,
+            deck: [],
+            communityCards: [],
+            bettingRound: 'preflop',
+            smallBlind: settings.smallBlind as number,
+            bigBlind: settings.bigBlind as number,
+            minPlayers: 2,
+            maxPlayers: roomData.max_players,
+            isPrivate: settings.isPrivate as boolean,
+            turnTimeoutSec: settings.turnTimeoutSec as number,
+            createdBy: creatorData?.telegram_id as PlayerId,
+            createdAt: new Date(roomData.created_at).getTime(),
+            updatedAt: new Date(roomData.updated_at).getTime()
+          };
+          
           rooms.push(room);
         }
       }
     }
-    
+
     logFunctionEnd('getPokerRoomsForPlayer', rooms, { playerId });
     return rooms;
   } catch (error) {
@@ -707,12 +761,12 @@ export const updatePlayerInfo = async (
       }
     }
     
-    const updatedRoom = await updatePokerRoom(roomId, {
+    const _updatedRoom = await updatePokerRoom(roomId, {
       players: updatedPlayers
     });
     
-    logFunctionEnd('updatePlayerInfo', updatedRoom, { roomId, playerId, updates });
-    return updatedRoom;
+    logFunctionEnd('updatePlayerInfo', _updatedRoom, { roomId, playerId, updates });
+    return _updatedRoom;
   } catch (error) {
     logError('updatePlayerInfo', error as Error, { roomId, playerId, updates });
     throw error;

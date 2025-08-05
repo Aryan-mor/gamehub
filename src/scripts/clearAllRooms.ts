@@ -1,18 +1,10 @@
-import { supabase } from '@/lib/supabase';
+import { api } from '@/lib/api';
 
-async function clearAllRooms() {
+async function clearAllRooms(): Promise<void> {
   try {
     console.log('🗑️ Clearing all poker rooms...');
     
-    const { data: rooms, error } = await supabase
-      .from('rooms')
-      .select('*')
-      .eq('game_type', 'poker');
-    
-    if (error) {
-      console.error('❌ Error fetching rooms:', error);
-      return;
-    }
+    const rooms = await api.rooms.getByGameType('poker');
     
     if (!rooms || rooms.length === 0) {
       console.log('✅ No rooms found');
@@ -27,15 +19,11 @@ async function clearAllRooms() {
       console.log(`   - Status: ${room.status}`);
       console.log(`   - Max Players: ${room.max_players}`);
       
-      const { error: deleteError } = await supabase
-        .from('rooms')
-        .delete()
-        .eq('id', room.id);
-      
-      if (deleteError) {
-        console.error(`❌ Error deleting room ${room.room_id}:`, deleteError);
-      } else {
+      try {
+        await api.rooms.delete(room.room_id as string);
         console.log(`✅ Deleted: ${room.room_id}`);
+      } catch (deleteError) {
+        console.error(`❌ Error deleting room ${room.room_id}:`, deleteError);
       }
     }
     

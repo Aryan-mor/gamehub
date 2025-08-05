@@ -1,11 +1,14 @@
 import { HandlerContext } from '@/modules/core/handler';
 import { tryEditMessageText } from '@/modules/core/telegramHelpers';
+import { Context } from 'grammy';
 import { generateMainMenuKeyboard } from '../../buttonHelpers';
-import { leavePokerRoom, getPokerRoom } from '../../services/pokerService';
-import { validateRoomId, validatePlayerId } from '../../_utils/typeGuards';
-import { register } from '@/modules/core/compact-router';
-import { POKER_ACTIONS } from '../../compact-codes';
-import { removePlayerMessage, notifyPlayerLeft, getAllRoomMessages, getPlayerMessage } from '../../services/roomMessageService';
+import { 
+  validateRoomIdWithError,
+  validatePlayerIdWithError,
+  getPokerRoom
+} from '../../_utils/pokerUtils';
+import { leavePokerRoom } from '../../services/pokerService';
+import { getPlayerMessage, removePlayerMessage, notifyPlayerLeft } from '../../services/roomMessageService';
 import { handlePokerActiveUser } from '../../_engine/activeUser';
 
 // Export the action key for consistency and debugging
@@ -26,8 +29,8 @@ async function handleLeave(context: HandlerContext, query: Record<string, string
 
   try {
     // Validate IDs
-    const validatedRoomId = validateRoomId(roomIdParam);
-    const validatedPlayerId = validatePlayerId(user.id.toString());
+    const validatedRoomId = validateRoomIdWithError(roomIdParam);
+    const validatedPlayerId = validatePlayerIdWithError(user.id.toString());
     
     // Get current room state
     const currentRoom = await getPokerRoom(validatedRoomId);
@@ -64,7 +67,7 @@ async function handleLeave(context: HandlerContext, query: Record<string, string
           `• به منوی اصلی بازگردید`;
       } else {
         // Creator left, ownership transferred
-        const newCreator = completeRoom?.players.find(p => p.id === completeRoom.createdBy);
+        completeRoom?.players.find(p => p.id === completeRoom.createdBy);
         message = `🚪 <b>روم ترک شد!</b>\n\n` +
           `✅ شما روم را ترک کردید.\n\n` +
           `📊 <b>مرحله بعد:</b>\n` +
@@ -120,44 +123,27 @@ async function handleLeave(context: HandlerContext, query: Record<string, string
     // Notify that player left
     await notifyPlayerLeft(validatedRoomId, validatedPlayerId, playerInRoom.username || playerInRoom.name);
     
-    // Update messages for remaining players in the room
-    if (updatedRoom.players.length > 0) {
-      for (const remainingPlayer of updatedRoom.players) {
-        if (!remainingPlayer.chatId) {
-          console.log(`⚠️ No chatId stored for player ${remainingPlayer.id}, skipping update`);
-          continue;
-        }
-        
-        try {
-          console.log(`📢 Updating message for remaining player ${remainingPlayer.id} (chatId: ${remainingPlayer.chatId})`);
-          
-          // Get the stored message ID for this player
-          const playerMessage = await getPlayerMessage(validatedRoomId, remainingPlayer.id);
-          if (!playerMessage) {
-            console.log(`⚠️ No stored message found for player ${remainingPlayer.id}, skipping update`);
-            continue;
+    // Update messages for other players
+    if (completeRoom) {
+      for (const player of completeRoom.players) {
+        if (player.chatId && player.id !== validatedPlayerId) {
+          try {
+            const playerMessage = await getPlayerMessage(completeRoom.id, player.id);
+            if (playerMessage && playerMessage.messageId) {
+              await handlePokerActiveUser({
+                chat: { id: player.chatId },
+                from: { id: parseInt(player.id) },
+                message: { message_id: playerMessage.messageId }
+              } as unknown as Context, {
+                gameType: 'poker',
+                roomId: completeRoom.id,
+                isActive: true,
+                lastActivity: Date.now()
+              }, completeRoom);
+            }
+          } catch (error) {
+            console.error(`Failed to update message for player ${player.id}:`, error);
           }
-
-          // Create a mock context for remaining player using stored chatId and messageId
-          const remainingPlayerContext = {
-            ...ctx,
-            chat: { id: remainingPlayer.chatId },
-            from: { id: parseInt(remainingPlayer.id) },
-            message: { message_id: playerMessage.messageId }
-          };
-          
-          const playerState = {
-            gameType: 'poker' as const,
-            roomId: completeRoom.id, // Use completeRoom instead of updatedRoom
-            isActive: true,
-            lastActivity: Date.now()
-          };
-          
-          // Send updated room state to remaining players
-          await handlePokerActiveUser(remainingPlayerContext, playerState, completeRoom);
-          console.log(`✅ Updated message for remaining player ${remainingPlayer.id}`);
-        } catch (error) {
-          console.error(`❌ Failed to update message for remaining player ${remainingPlayer.id}:`, error);
         }
       }
     }
@@ -180,6 +166,6 @@ async function handleLeave(context: HandlerContext, query: Record<string, string
 }
 
 // Self-register with compact router
-register(POKER_ACTIONS.LEAVE_ROOM, handleLeave, 'Leave Poker Room');
+// register(POKER_ACTIONS.LEAVE_ROOM, handleLeave, 'Leave Poker Room');
 
 export default handleLeave; 

@@ -6,15 +6,15 @@ import { Bot, Context } from 'grammy';
  * This provides a consistent way to update messages across the app
  */
 export async function tryEditMessageText(
-  ctx: { editMessageText?: (text: string, options?: any) => Promise<any>; reply?: (text: string, options?: any) => Promise<any> },
+  ctx: { editMessageText?: (text: string, options?: { parse_mode?: 'HTML' | 'Markdown'; reply_markup?: { inline_keyboard: Array<Array<{ text: string; callback_data: string }>> } }) => Promise<unknown>; reply?: (text: string, options?: { parse_mode?: 'HTML' | 'Markdown'; reply_markup?: { inline_keyboard: Array<Array<{ text: string; callback_data: string }>> } }) => Promise<unknown> },
   text: string,
-  options?: any
-): Promise<any> {
+  options?: { parse_mode?: 'HTML' | 'Markdown'; reply_markup?: { inline_keyboard: Array<Array<{ text: string; callback_data: string }>> } }
+): Promise<unknown> {
   if (ctx.editMessageText) {
     try {
       return await ctx.editMessageText(text, options);
     } catch (error) {
-      console.log('Failed to edit message, falling back to reply:', error);
+      console.log('Failed to edit _message, falling back to reply:', error);
       // Fallback to reply if edit fails
       if (ctx.reply) {
         return await ctx.reply(text, options);
@@ -34,11 +34,11 @@ export async function tryEditMessageText(
  * This provides a consistent way to update message keyboards across the app
  */
 export async function tryEditMessageReplyMarkup(
-  ctx: { editMessageReplyMarkup?: (replyMarkup: any) => Promise<any>; reply?: (text: string, options?: any) => Promise<any> },
-  replyMarkup: any,
+  ctx: { editMessageReplyMarkup?: (replyMarkup: { inline_keyboard: Array<Array<{ text: string; callback_data: string }>> }) => Promise<unknown>; reply?: (text: string, options?: { parse_mode?: 'HTML' | 'Markdown'; reply_markup?: { inline_keyboard: Array<Array<{ text: string; callback_data: string }>> } }) => Promise<unknown> },
+  replyMarkup: { inline_keyboard: Array<Array<{ text: string; callback_data: string }>> },
   fallbackText?: string,
-  fallbackOptions?: any
-): Promise<any> {
+  fallbackOptions?: { parse_mode?: 'HTML' | 'Markdown'; reply_markup?: { inline_keyboard: Array<Array<{ text: string; callback_data: string }>> } }
+): Promise<unknown> {
   if (ctx.editMessageReplyMarkup) {
     try {
       return await ctx.editMessageReplyMarkup(replyMarkup);
@@ -60,7 +60,7 @@ export async function tryEditMessageReplyMarkup(
 
 export const createInlineKeyboard = (buttons: Array<{
   text: string;
-  callbackData: any;
+  callbackData: Record<string, unknown>;
 }>): { inline_keyboard: Array<Array<{ text: string; callback_data: string }>> } => {
   return {
     inline_keyboard: buttons.map(button => [{
@@ -70,9 +70,9 @@ export const createInlineKeyboard = (buttons: Array<{
   };
 };
 
-export const parseCallbackData = (data: string): any => {
+export const parseCallbackData = (data: string): Record<string, unknown> => {
   try {
-    return JSON.parse(data) as any;
+    return JSON.parse(data) as Record<string, unknown>;
   } catch {
     return { action: data };
   }

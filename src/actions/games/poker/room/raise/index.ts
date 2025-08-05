@@ -1,9 +1,16 @@
 import { HandlerContext } from '@/modules/core/handler';
 import { tryEditMessageText } from '@/modules/core/telegramHelpers';
-import { generateRaiseAmountKeyboard, generateGameActionKeyboard } from '../../buttonHelpers';
-import { processBettingAction, getGameStateDisplay } from '../../services/gameStateService';
-import { getPokerRoom } from '../../services/pokerService';
-import { validateRoomId, validatePlayerId } from '../../_utils/typeGuards';
+import { 
+  validateRoomIdWithError,
+  validatePlayerIdWithError,
+  getPokerRoom,
+  getGameStateDisplay,
+  generateGameActionKeyboard
+} from '../../_utils/pokerUtils';
+import { generateRaiseAmountKeyboard, } from '../../buttonHelpers';
+import { processBettingAction, } from '../../services/gameStateService';
+import { } from '../../services/pokerService';
+import { } from '../../_utils/typeGuards';
 
 // Export the action key for consistency and debugging
 export const key = 'games.poker.room.raise';
@@ -29,8 +36,8 @@ async function handleRaise(context: HandlerContext, query: Record<string, string
   
   try {
     // Validate IDs
-    const validatedRoomId = validateRoomId(roomId);
-    const validatedPlayerId = validatePlayerId(user.id.toString());
+    const validatedRoomId = validateRoomIdWithError(roomId);
+    const validatedPlayerId = validatePlayerIdWithError(user.id.toString());
     const raiseAmount = parseInt(amount);
     
     if (isNaN(raiseAmount) || raiseAmount <= 0) {
@@ -60,7 +67,7 @@ async function handleRaise(context: HandlerContext, query: Record<string, string
     const message = gameStateMessage + actionMessage + turnMessage;
     
     // Generate appropriate keyboard
-    const keyboard = generateGameActionKeyboard(updatedRoom.id, !isCurrentPlayerTurn);
+    const keyboard = generateGameActionKeyboard(updatedRoom, validatedPlayerId, isCurrentPlayerTurn);
 
     await tryEditMessageText(ctx, message, {
       parse_mode: 'HTML',
@@ -71,7 +78,9 @@ async function handleRaise(context: HandlerContext, query: Record<string, string
     console.error('Raise action error:', error);
     
     const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-    await tryEditMessageText(ctx, `❌ Failed to raise: ${errorMessage}`);
+    await tryEditMessageText(ctx, `❌ Failed to raise: ${errorMessage}`, {
+      parse_mode: 'HTML'
+    });
   }
 }
 
@@ -82,7 +91,7 @@ async function showRaiseAmountSelection(context: HandlerContext, roomId: string)
   const { ctx } = context;
   
   try {
-    const validatedRoomId = validateRoomId(roomId);
+    const validatedRoomId = validateRoomIdWithError(roomId);
     const room = await getPokerRoom(validatedRoomId);
     
     if (!room) {
@@ -106,7 +115,9 @@ async function showRaiseAmountSelection(context: HandlerContext, roomId: string)
     console.error('Raise amount selection error:', error);
     
     const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-    await tryEditMessageText(ctx, `❌ Failed to show raise options: ${errorMessage}`);
+    await tryEditMessageText(ctx, `❌ Failed to show raise options: ${errorMessage}`, {
+      parse_mode: 'HTML'
+    });
   }
 }
 

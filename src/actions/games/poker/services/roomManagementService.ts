@@ -1,26 +1,19 @@
-import { 
-  PokerRoom, 
-  RoomId, 
-  PlayerId, 
-  CreateRoomRequest, 
-  JoinRoomRequest,
-  RoomStatus 
-} from '../types';
+import { PokerRoom, RoomId, PlayerId, CreateRoomRequest, JoinRoomRequest, RoomStatus, PokerPlayer } from '../types';
+import { logFunctionStart, logFunctionEnd, logError } from '@/modules/core/logger';
+import { startPokerGame } from './gameStateService';
+import { trackGameStatistics } from './gameResultService';
 import { 
   createPokerRoom, 
-  getPokerRoom, 
-  updatePokerRoom, 
   joinPokerRoom, 
-  leavePokerRoom,
+  leavePokerRoom, 
+  getPokerRoom, 
   deletePokerRoom,
   getActivePokerRooms,
   getPokerRoomsForPlayer,
-  updatePlayerReadyStatus,
-  kickPlayerFromRoom
+  updatePokerRoom,
+  kickPlayerFromRoom,
+  updatePlayerReadyStatus
 } from './pokerService';
-import { startPokerGame } from '../engine/gameStart';
-import { trackGameStatistics } from './gameResultService';
-import { logFunctionStart, logFunctionEnd, logError } from '@/modules/core/logger';
 
 /**
  * Room Management Service
@@ -40,14 +33,14 @@ export class RoomManagementService {
     logFunctionStart('RoomManagementService.createRoom', { request, creatorId });
     
     try {
-      const room = await createPokerRoom(request, creatorId, creatorName, creatorUsername);
+      const _room = await createPokerRoom(request, creatorId, creatorName, creatorUsername);
       
-      logFunctionEnd('RoomManagementService.createRoom', room, { creatorId });
-      return room;
-    } catch (error) {
-      logError('RoomManagementService.createRoom', error as Error, { request, creatorId });
-      throw error;
-    }
+      logFunctionEnd('RoomManagementService.createRoom', _room, { creatorId });
+      return _room;
+      } catch (error) {
+    logError('RoomManagementService.createRoom', error as Error, { request, creatorId });
+    throw error;
+  }
   }
   
   /**
@@ -57,14 +50,14 @@ export class RoomManagementService {
     logFunctionStart('RoomManagementService.joinRoom', { request });
     
     try {
-      const room = await joinPokerRoom(request);
+      const _room = await joinPokerRoom(request);
       
-      logFunctionEnd('RoomManagementService.joinRoom', room, { playerId: request.playerId });
-      return room;
-    } catch (error) {
-      logError('RoomManagementService.joinRoom', error as Error, { request });
-      throw error;
-    }
+      logFunctionEnd('RoomManagementService.joinRoom', _room, { playerId: request.playerId });
+      return _room;
+      } catch (error) {
+    logError('RoomManagementService.joinRoom', error as Error, { request });
+    throw error;
+  }
   }
   
   /**
@@ -74,14 +67,14 @@ export class RoomManagementService {
     logFunctionStart('RoomManagementService.leaveRoom', { roomId, playerId });
     
     try {
-      const room = await leavePokerRoom(roomId, playerId);
+      const _room = await leavePokerRoom(roomId, playerId);
       
-      logFunctionEnd('RoomManagementService.leaveRoom', room, { roomId, playerId });
-      return room;
-    } catch (error) {
-      logError('RoomManagementService.leaveRoom', error as Error, { roomId, playerId });
-      throw error;
-    }
+      logFunctionEnd('RoomManagementService.leaveRoom', _room, { roomId, playerId });
+      return _room;
+      } catch (error) {
+    logError('RoomManagementService.leaveRoom', error as Error, { roomId, playerId });
+    throw error;
+  }
   }
   
   /**
@@ -91,14 +84,14 @@ export class RoomManagementService {
     logFunctionStart('RoomManagementService.startGame', { roomId, playerId });
     
     try {
-      const room = await startPokerGame(roomId, playerId);
+      const _room = await startPokerGame(roomId);
       
-      logFunctionEnd('RoomManagementService.startGame', room, { roomId, playerId });
-      return room;
-    } catch (error) {
-      logError('RoomManagementService.startGame', error as Error, { roomId, playerId });
-      throw error;
-    }
+      logFunctionEnd('RoomManagementService.startGame', _room, { roomId, playerId });
+      return _room;
+      } catch (error) {
+    logError('RoomManagementService.startGame', error as Error, { roomId, playerId });
+    throw error;
+  }
   }
   
   /**
@@ -108,31 +101,31 @@ export class RoomManagementService {
     logFunctionStart('RoomManagementService.endGame', { roomId });
     
     try {
-      const room = await getPokerRoom(roomId);
+      const _room = await getPokerRoom(roomId);
       
-      if (!room) {
+      if (!_room) {
         throw new Error('Room not found');
       }
       
-      if (room.status !== 'playing') {
+      if (_room.status !== 'playing') {
         throw new Error('Game is not in playing state');
       }
       
       // Track statistics for all players
-      const trackPromises = room.players.map(player => 
-        trackGameStatistics(room, player.id)
+      const trackPromises = _room.players.map((player: PokerPlayer) => 
+        trackGameStatistics(_room, player.id)
       );
       
       await Promise.all(trackPromises);
       
       // Update room status to finished
-      const updatedRoom = await updatePokerRoom(roomId, {
+      const _updatedRoom = await updatePokerRoom(roomId, {
         status: 'finished' as RoomStatus,
         endedAt: Date.now()
       });
       
-      logFunctionEnd('RoomManagementService.endGame', updatedRoom, { roomId });
-      return updatedRoom;
+      logFunctionEnd('RoomManagementService.endGame', _updatedRoom, { roomId });
+      return _updatedRoom;
     } catch (error) {
       logError('RoomManagementService.endGame', error as Error, { roomId });
       throw error;
@@ -146,10 +139,10 @@ export class RoomManagementService {
     logFunctionStart('RoomManagementService.kickPlayer', { roomId, targetPlayerId });
     
     try {
-      const room = await kickPlayerFromRoom(roomId, targetPlayerId);
+      const _room = await kickPlayerFromRoom(roomId, targetPlayerId);
       
-      logFunctionEnd('RoomManagementService.kickPlayer', room, { roomId, targetPlayerId });
-      return room;
+      logFunctionEnd('RoomManagementService.kickPlayer', _room, { roomId, targetPlayerId });
+      return _room;
     } catch (error) {
       logError('RoomManagementService.kickPlayer', error as Error, { roomId, targetPlayerId });
       throw error;
@@ -167,10 +160,10 @@ export class RoomManagementService {
     logFunctionStart('RoomManagementService.updateReadyStatus', { roomId, playerId, isReady });
     
     try {
-      const room = await updatePlayerReadyStatus(roomId, playerId, isReady);
+      const _room = await updatePlayerReadyStatus(roomId, playerId, isReady);
       
-      logFunctionEnd('RoomManagementService.updateReadyStatus', room, { roomId, playerId, isReady });
-      return room;
+      logFunctionEnd('RoomManagementService.updateReadyStatus', _room, { roomId, playerId, isReady });
+      return _room;
     } catch (error) {
       logError('RoomManagementService.updateReadyStatus', error as Error, { roomId, playerId, isReady });
       throw error;
@@ -184,14 +177,14 @@ export class RoomManagementService {
     logFunctionStart('RoomManagementService.getRoom', { roomId });
     
     try {
-      const room = await getPokerRoom(roomId);
+      const _room = await getPokerRoom(roomId);
       
-      logFunctionEnd('RoomManagementService.getRoom', room, { roomId });
-      return room;
-    } catch (error) {
-      logError('RoomManagementService.getRoom', error as Error, { roomId });
-      throw error;
-    }
+      logFunctionEnd('RoomManagementService.getRoom', _room, { roomId });
+      return _room;
+      } catch (error) {
+    logError('RoomManagementService.getRoom', error as Error, { roomId });
+    throw error;
+  }
   }
   
   /**
@@ -205,10 +198,10 @@ export class RoomManagementService {
       
       logFunctionEnd('RoomManagementService.getActiveRooms', rooms);
       return rooms;
-    } catch (error) {
-      logError('RoomManagementService.getActiveRooms', error as Error);
-      throw error;
-    }
+      } catch (error) {
+    logError('RoomManagementService.getActiveRooms', error as Error);
+    throw error;
+  }
   }
   
   /**
@@ -222,10 +215,10 @@ export class RoomManagementService {
       
       logFunctionEnd('RoomManagementService.getPlayerRooms', rooms, { playerId });
       return rooms;
-    } catch (error) {
-      logError('RoomManagementService.getPlayerRooms', error as Error, { playerId });
-      throw error;
-    }
+      } catch (error) {
+    logError('RoomManagementService.getPlayerRooms', error as Error, { playerId });
+    throw error;
+  }
   }
   
   /**
@@ -238,10 +231,10 @@ export class RoomManagementService {
       await deletePokerRoom(roomId);
       
       logFunctionEnd('RoomManagementService.deleteRoom', {}, { roomId });
-    } catch (error) {
-      logError('RoomManagementService.deleteRoom', error as Error, { roomId });
-      throw error;
-    }
+      } catch (error) {
+    logError('RoomManagementService.deleteRoom', error as Error, { roomId });
+    throw error;
+  }
   }
   
   /**
@@ -261,7 +254,7 @@ export class RoomManagementService {
         return { can: false, error: 'روم یافت نشد' };
       }
       
-      const player = room.players.find(p => p.id === playerId);
+      const player = room.players.find((p: { id: string }) => p.id === playerId);
       
       switch (action) {
         case 'join':

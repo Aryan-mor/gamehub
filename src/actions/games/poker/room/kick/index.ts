@@ -1,6 +1,6 @@
 import { HandlerContext } from '@/modules/core/handler';
 import { tryEditMessageText } from '@/modules/core/telegramHelpers';
-import { getPokerRoom, kickPlayerFromRoom } from '../../services/pokerService';
+import { kickPlayerFromRoom, getPokerRoom } from '../../services/pokerService';
 import { validateRoomId, validatePlayerId } from '../../_utils/typeGuards';
 import { register } from '@/modules/core/compact-router';
 import { POKER_ACTIONS } from '../../compact-codes';

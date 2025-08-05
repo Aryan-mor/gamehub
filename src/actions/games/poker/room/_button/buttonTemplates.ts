@@ -1,4 +1,4 @@
-import { ButtonTemplate } from '@/modules/core/buttonHelpers';
+import { } from '@/modules/core/buttonHelpers';
 import { POKER_ACTIONS, generateFormCallbackData } from '../../compact-codes';
 
 /**

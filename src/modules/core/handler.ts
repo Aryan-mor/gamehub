@@ -1,7 +1,8 @@
+import { Context } from 'grammy';
 import { UserId } from '@/utils/types';
 
 export interface HandlerContext {
-  ctx: any; // Use any for ctx to avoid complex type compatibility issues
+  ctx: Context; // Use Context from grammy for better type safety
   user: {
     id: UserId;
     username: string;

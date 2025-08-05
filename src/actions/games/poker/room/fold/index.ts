@@ -1,10 +1,15 @@
 import { HandlerContext } from '@/modules/core/handler';
 import { tryEditMessageText } from '@/modules/core/telegramHelpers';
-import { generateGameActionKeyboard } from '../../buttonHelpers';
-import { processBettingAction, getGameStateDisplay } from '../../services/gameStateService';
-import { validateRoomIdWithError, validatePlayerIdWithError, createUserFriendlyError } from '../../_utils/errorHandler';
-import { register } from '@/modules/core/compact-router';
-import { POKER_ACTIONS } from '../../compact-codes';
+import { 
+  validateRoomIdWithError,
+  validatePlayerIdWithError,
+  processBettingAction,
+  getGameStateDisplay,
+  generateGameActionKeyboard,
+  createUserFriendlyError,
+  register,
+  POKER_ACTIONS
+} from '../../_utils/pokerUtils';
 
 // Export the action key for consistency and debugging
 export const key = 'games.poker.room.fold';
@@ -29,13 +34,12 @@ async function handleFold(context: HandlerContext, query: Record<string, string>
     // Process the fold action
     const updatedRoom = await processBettingAction(validatedRoomId, validatedPlayerId, 'fold');
     
-    // Get updated game state display
-    const gameStateMessage = getGameStateDisplay(updatedRoom, validatedPlayerId);
+    // Generate updated game state display
+    const gameStateDisplay = getGameStateDisplay(updatedRoom, validatedPlayerId);
+    const keyboard = generateGameActionKeyboard(updatedRoom, validatedPlayerId, false);
     
-    // Generate appropriate keyboard
-    const keyboard = generateGameActionKeyboard(updatedRoom.id);
-    
-    await tryEditMessageText(ctx, gameStateMessage, {
+    // Update the message
+    await tryEditMessageText(ctx, gameStateDisplay, {
       parse_mode: 'HTML',
       reply_markup: keyboard
     });

@@ -1,228 +1,188 @@
-import { PokerPlayer, PlayerId } from '../types';
-import { createDeck, shuffleDeck } from '../_utils/cardUtils';
+import { 
+  Card, 
+  PokerPlayer, 
+  PokerRoom, 
+  BettingRound
+} from '../types';
+import { 
+  createDeck, 
+  shuffleDeck, 
+  dealCards, 
+  findBestHand 
+} from '../_utils/cardUtils';
 import { logFunctionStart, logFunctionEnd, logError } from '@/modules/core/logger';
 
 /**
- * Generate a full shuffled deck of 52 cards
+ * Deal initial cards to players
  */
-export function generateShuffledDeck(): string[] {
-  logFunctionStart('generateShuffledDeck');
+export async function dealInitialCards(room: PokerRoom): Promise<PokerRoom> {
+  logFunctionStart('dealInitialCards', { roomId: room.id });
   
   try {
-    const deck = createDeck();
-    const shuffled = shuffleDeck(deck);
+    // Create and shuffle deck
+    const deck = shuffleDeck(createDeck());
     
-    // Convert to string format (e.g., 'Ah', '7d', etc.)
-    const stringDeck = shuffled.map(card => {
-      const rank = card.rank;
-      const suit = card.suit.charAt(0).toLowerCase(); // h, d, c, s
-      return `${rank}${suit}`;
+    // Deal 2 cards to each player
+    const updatedPlayers: PokerPlayer[] = [];
+    
+    for (let i = 0; i < room.players.length; i++) {
+      const player = room.players[i];
+      const { cards } = dealCards(deck, 2);
+      
+      updatedPlayers.push({
+        ...player,
+        cards,
+        betAmount: 0,
+        totalBet: 0,
+        isFolded: false,
+        isAllIn: false
+      });
+    }
+    
+    const updatedRoom = {
+      ...room,
+      players: updatedPlayers,
+      deck: deck.slice(room.players.length * 2), // Remove dealt cards
+      communityCards: [],
+      pot: 0,
+      currentBet: 0,
+      minRaise: room.bigBlind,
+      bettingRound: 'preflop' as BettingRound
+    };
+    
+    logFunctionEnd('dealInitialCards', updatedRoom, { roomId: room.id });
+    return updatedRoom;
+  } catch (error) {
+    logError('dealInitialCards', error as Error, { roomId: room.id });
+    throw error;
+  }
+}
+
+/**
+ * Deal flop (3 community cards)
+ */
+export async function dealFlop(room: PokerRoom): Promise<PokerRoom> {
+  logFunctionStart('dealFlop', { roomId: room.id });
+  
+  try {
+    const { cards: flopCards, remainingDeck } = dealCards(room.deck as Card[], 3);
+    
+    const updatedRoom = {
+      ...room,
+      communityCards: flopCards,
+      deck: remainingDeck,
+      bettingRound: 'flop' as BettingRound,
+      currentBet: 0,
+      minRaise: room.bigBlind
+    };
+    
+    logFunctionEnd('dealFlop', updatedRoom, { roomId: room.id });
+    return updatedRoom;
+  } catch (error) {
+    logError('dealFlop', error as Error, { roomId: room.id });
+    throw error;
+  }
+}
+
+/**
+ * Deal turn (1 community card)
+ */
+export async function dealTurn(room: PokerRoom): Promise<PokerRoom> {
+  logFunctionStart('dealTurn', { roomId: room.id });
+  
+  try {
+    const { cards: turnCard, remainingDeck } = dealCards(room.deck as Card[], 1);
+    
+    const updatedRoom = {
+      ...room,
+      communityCards: [...room.communityCards, ...turnCard],
+      deck: remainingDeck,
+      bettingRound: 'turn' as BettingRound,
+      currentBet: 0,
+      minRaise: room.bigBlind
+    };
+    
+    logFunctionEnd('dealTurn', updatedRoom, { roomId: room.id });
+    return updatedRoom;
+  } catch (error) {
+    logError('dealTurn', error as Error, { roomId: room.id });
+    throw error;
+  }
+}
+
+/**
+ * Deal river (1 community card)
+ */
+export async function dealRiver(room: PokerRoom): Promise<PokerRoom> {
+  logFunctionStart('dealRiver', { roomId: room.id });
+  
+  try {
+    const { cards: riverCard, remainingDeck } = dealCards(room.deck as Card[], 1);
+    
+    const updatedRoom = {
+      ...room,
+      communityCards: [...room.communityCards, ...riverCard],
+      deck: remainingDeck,
+      bettingRound: 'river' as BettingRound,
+      currentBet: 0,
+      minRaise: room.bigBlind
+    };
+    
+    logFunctionEnd('dealRiver', updatedRoom, { roomId: room.id });
+    return updatedRoom;
+  } catch (error) {
+    logError('dealRiver', error as Error, { roomId: room.id });
+    throw error;
+  }
+}
+
+/**
+ * Evaluate player hands and determine winner
+ */
+export async function evaluateHands(room: PokerRoom): Promise<{
+  winners: PokerPlayer[];
+  winningHand: unknown;
+  pot: number;
+}> {
+  logFunctionStart('evaluateHands', { roomId: room.id });
+  
+  try {
+    const activePlayers = room.players.filter(p => !p.isFolded);
+    
+    if (activePlayers.length === 1) {
+      // Only one player left, they win
+      const winner = activePlayers[0];
+      logFunctionEnd('evaluateHands', { winners: [winner], winningHand: null, pot: room.pot }, { roomId: room.id });
+      return {
+        winners: [winner],
+        winningHand: null,
+        pot: room.pot
+      };
+    }
+    
+    // Evaluate hands for all active players
+    const playerHands = activePlayers.map(player => {
+      const bestHand = findBestHand(player.cards, room.communityCards);
+      return {
+        player,
+        hand: bestHand
+      };
     });
     
-    logFunctionEnd('generateShuffledDeck', { deckSize: stringDeck.length });
-    return stringDeck;
-  } catch (error) {
-    logError('generateShuffledDeck', error as Error);
-    throw error;
-  }
-}
-
-/**
- * Deal cards to players
- * Deal 2 cards to each player
- */
-export function dealCardsToPlayers(
-  deck: string[],
-  players: PokerPlayer[]
-): {
-  updatedPlayers: PokerPlayer[];
-  remainingDeck: string[];
-} {
-  logFunctionStart('dealCardsToPlayers', { playerCount: players.length, deckSize: deck.length });
-  
-  try {
-    if (deck.length < players.length * 2) {
-      throw new Error('Not enough cards in deck for all players');
-    }
+    // Find winner(s)
+    const sortedHands = playerHands.sort((a, b) => b.hand.value - a.hand.value);
+    const winners = sortedHands.filter(hand => hand.hand.value === sortedHands[0].hand.value);
     
-    const updatedPlayers = players.map(player => ({
-      ...player,
-      cards: deck.splice(0, 2), // Deal 2 cards to each player
-      hand: deck.splice(0, 2), // Also set hand for compatibility
-      status: 'active',
-      hasFolded: false,
-      betAmount: 0,
-      totalBet: 0,
-      isFolded: false,
-      isAllIn: false
-    }));
-    
-    logFunctionEnd('dealCardsToPlayers', { 
-      updatedPlayersCount: updatedPlayers.length, 
-      remainingDeckSize: deck.length 
-    });
-    
-    return {
-      updatedPlayers,
-      remainingDeck: deck
+    const result = {
+      winners: winners.map(w => w.player),
+      winningHand: winners[0].hand,
+      pot: room.pot
     };
+    
+    logFunctionEnd('evaluateHands', result, { roomId: room.id });
+    return result;
   } catch (error) {
-    logError('dealCardsToPlayers', error as Error, { playerCount: players.length });
-    throw error;
-  }
-}
-
-/**
- * Reserve community cards
- * Reserve 5 cards for community: [flop, turn, river]
- */
-export function reserveCommunityCards(deck: string[]): {
-  communityCards: string[];
-  remainingDeck: string[];
-} {
-  logFunctionStart('reserveCommunityCards', { deckSize: deck.length });
-  
-  try {
-    if (deck.length < 5) {
-      throw new Error('Not enough cards to reserve for community cards');
-    }
-    
-    // Reserve 5 cards for community (flop: 3, turn: 1, river: 1)
-    const communityCards = deck.splice(0, 5);
-    
-    logFunctionEnd('reserveCommunityCards', { 
-      communityCardsCount: communityCards.length, 
-      remainingDeckSize: deck.length 
-    });
-    
-    return {
-      communityCards,
-      remainingDeck: deck
-    };
-  } catch (error) {
-    logError('reserveCommunityCards', error as Error);
-    throw error;
-  }
-}
-
-/**
- * Deal flop (first 3 community cards)
- */
-export function dealFlop(deck: string[], communityCards: string[]): {
-  flopCards: string[];
-  remainingDeck: string[];
-} {
-  logFunctionStart('dealFlop', { deckSize: deck.length });
-  
-  try {
-    if (deck.length < 3) {
-      throw new Error('Not enough cards to deal flop');
-    }
-    
-    const flopCards = deck.splice(0, 3);
-    
-    logFunctionEnd('dealFlop', { flopCardsCount: flopCards.length });
-    
-    return {
-      flopCards,
-      remainingDeck: deck
-    };
-  } catch (error) {
-    logError('dealFlop', error as Error);
-    throw error;
-  }
-}
-
-/**
- * Deal turn (4th community card)
- */
-export function dealTurn(deck: string[], communityCards: string[]): {
-  turnCard: string;
-  remainingDeck: string[];
-} {
-  logFunctionStart('dealTurn', { deckSize: deck.length });
-  
-  try {
-    if (deck.length < 1) {
-      throw new Error('Not enough cards to deal turn');
-    }
-    
-    const turnCard = deck.splice(0, 1)[0];
-    
-    logFunctionEnd('dealTurn', { turnCard });
-    
-    return {
-      turnCard,
-      remainingDeck: deck
-    };
-  } catch (error) {
-    logError('dealTurn', error as Error);
-    throw error;
-  }
-}
-
-/**
- * Deal river (5th community card)
- */
-export function dealRiver(deck: string[], communityCards: string[]): {
-  riverCard: string;
-  remainingDeck: string[];
-} {
-  logFunctionStart('dealRiver', { deckSize: deck.length });
-  
-  try {
-    if (deck.length < 1) {
-      throw new Error('Not enough cards to deal river');
-    }
-    
-    const riverCard = deck.splice(0, 1)[0];
-    
-    logFunctionEnd('dealRiver', { riverCard });
-    
-    return {
-      riverCard,
-      remainingDeck: deck
-    };
-  } catch (error) {
-    logError('dealRiver', error as Error);
-    throw error;
-  }
-}
-
-/**
- * Complete initial deal process
- * Generate full shuffled deck, deal 2 cards to each player, reserve 5 cards for community
- */
-export function performInitialDeal(players: PokerPlayer[]): {
-  updatedPlayers: PokerPlayer[];
-  deck: string[];
-  communityCards: string[];
-} {
-  logFunctionStart('performInitialDeal', { playerCount: players.length });
-  
-  try {
-    // Generate shuffled deck
-    const fullDeck = generateShuffledDeck();
-    
-    // Deal cards to players
-    const { updatedPlayers, remainingDeck } = dealCardsToPlayers(fullDeck, players);
-    
-    // Reserve community cards
-    const { communityCards, remainingDeck: finalDeck } = reserveCommunityCards(remainingDeck);
-    
-    logFunctionEnd('performInitialDeal', { 
-      updatedPlayersCount: updatedPlayers.length,
-      finalDeckSize: finalDeck.length,
-      communityCardsCount: communityCards.length
-    });
-    
-    return {
-      updatedPlayers,
-      deck: finalDeck,
-      communityCards
-    };
-  } catch (error) {
-    logError('performInitialDeal', error as Error, { playerCount: players.length });
+    logError('evaluateHands', error as Error, { roomId: room.id });
     throw error;
   }
 }

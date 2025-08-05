@@ -2,15 +2,15 @@ import { HandlerContext } from '@/modules/core/handler';
 import { tryEditMessageText } from '@/modules/core/telegramHelpers';
 import { generateFormStepKeyboard } from '../../_utils/formKeyboardGenerator';
 import { validateRoomName } from '../../_utils/roomValidation';
-import { updateFormState } from '../../_utils/formStateManager';
+import { FormState } from '../../_utils/formStateManager';
 
 // In-memory form state storage (shared with main handler)
 declare global {
-  var formStates: Map<string, any>;
+  var formStates: Map<string, FormState>;
 }
 
 if (!global.formStates) {
-  global.formStates = new Map<string, any>();
+  global.formStates = new Map<string, FormState>();
 }
 
 /**

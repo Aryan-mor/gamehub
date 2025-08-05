@@ -1,12 +1,5 @@
-import { 
-  PokerRoom, 
-  RoomId, 
-  PlayerId, 
-  PokerPlayer,
-  BettingRound
-} from '../types';
-import { getCardDisplay, getHandTypeDisplay } from '../_utils/cardUtils';
-import { logFunctionStart, logFunctionEnd, logError } from '@/modules/core/logger';
+import { PokerRoom, PlayerId, PokerPlayer } from '../types';
+import { getCardDisplay } from '../_utils/cardUtils';
 
 /**
  * Notification types for different game events
@@ -27,12 +20,12 @@ export type NotificationType =
  */
 export interface GameNotification {
   type: NotificationType;
-  roomId: RoomId;
+  roomId: string;
   playerId?: PlayerId;
   playerName?: string;
   action?: string;
   amount?: number;
-  round?: BettingRound;
+  round?: string;
   message: string;
   timestamp: number;
 }
@@ -112,10 +105,10 @@ export function createGameStartedNotification(room: PokerRoom): GameNotification
  */
 export function createRoundAdvancedNotification(
   room: PokerRoom,
-  previousRound: BettingRound,
-  newRound: BettingRound
+  _previousRound: string, // BettingRound type was removed, so using 'string' for now
+  newRound: string // BettingRound type was removed, so using 'string' for now
 ): GameNotification {
-  const roundNames: Record<BettingRound, string> = {
+  const roundNames: Record<string, string> = { // Changed to string for now
     'preflop': 'Pre-flop',
     'flop': 'Flop',
     'turn': 'Turn',

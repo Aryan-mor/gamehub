@@ -198,11 +198,12 @@ function checkStraightFlush(cards: Card[]): HandEvaluation | null {
 
 function checkFourOfAKind(cards: Card[]): HandEvaluation | null {
   const groups = groupByValue(cards);
-  const fourOfAKind = Object.entries(groups).find(([_, group]) => group.length === 4);
+  const fourOfAKind = Object.entries(groups).find(([, group]) => group.length === 4);
   
   if (fourOfAKind) {
     const fourCards = fourOfAKind[1];
-    const kicker = cards.find(card => card.value !== fourCards[0].value)!;
+    const kicker = cards.find(card => card.value !== fourCards[0].value);
+    if (!kicker) return null;
     
     return {
       type: 'four-of-a-kind',
@@ -216,8 +217,8 @@ function checkFourOfAKind(cards: Card[]): HandEvaluation | null {
 
 function checkFullHouse(cards: Card[]): HandEvaluation | null {
   const groups = groupByValue(cards);
-  const threeOfAKind = Object.entries(groups).find(([_, group]) => group.length === 3);
-  const pair = Object.entries(groups).find(([_, group]) => group.length === 2);
+  const threeOfAKind = Object.entries(groups).find(([, group]) => group.length === 3);
+  const pair = Object.entries(groups).find(([, group]) => group.length === 2);
   
   if (threeOfAKind && pair) {
     const threeCards = threeOfAKind[1];
@@ -264,7 +265,7 @@ function checkStraight(cards: Card[]): HandEvaluation | null {
 
 function checkThreeOfAKind(cards: Card[]): HandEvaluation | null {
   const groups = groupByValue(cards);
-  const threeOfAKind = Object.entries(groups).find(([_, group]) => group.length === 3);
+  const threeOfAKind = Object.entries(groups).find(([, group]) => group.length === 3);
   
   if (threeOfAKind) {
     const threeCards = threeOfAKind[1];
@@ -282,13 +283,14 @@ function checkThreeOfAKind(cards: Card[]): HandEvaluation | null {
 
 function checkTwoPair(cards: Card[]): HandEvaluation | null {
   const groups = groupByValue(cards);
-  const pairs = Object.entries(groups).filter(([_, group]) => group.length === 2);
+  const pairs = Object.entries(groups).filter(([, group]) => group.length === 2);
   
   if (pairs.length >= 2) {
     const [pair1, pair2] = pairs.slice(0, 2);
     const kicker = cards.find(card => 
       card.value !== pair1[1][0].value && card.value !== pair2[1][0].value
-    )!;
+    );
+    if (!kicker) return null;
     
     return {
       type: 'two-pair',
@@ -302,7 +304,7 @@ function checkTwoPair(cards: Card[]): HandEvaluation | null {
 
 function checkPair(cards: Card[]): HandEvaluation | null {
   const groups = groupByValue(cards);
-  const pair = Object.entries(groups).find(([_, group]) => group.length === 2);
+  const pair = Object.entries(groups).find(([, group]) => group.length === 2);
   
   if (pair) {
     const pairCards = pair[1];

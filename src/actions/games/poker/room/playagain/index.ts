@@ -1,9 +1,16 @@
 import { HandlerContext } from '@/modules/core/handler';
 import { tryEditMessageText } from '@/modules/core/telegramHelpers';
-import { generateRoomManagementKeyboard } from '../../buttonHelpers';
-import { startPokerGame, getGameStateDisplay } from '../../services/gameStateService';
-import { getPokerRoom } from '../../services/pokerService';
-import { validateRoomId, validatePlayerId } from '../../_utils/typeGuards';
+import { 
+  validateRoomIdWithError,
+  validatePlayerIdWithError,
+  getPokerRoom,
+  getGameStateDisplay,
+  generateRoomManagementKeyboard
+} from '../../_utils/pokerUtils';
+import { } from '../../buttonHelpers';
+import { startPokerGame, } from '../../services/gameStateService';
+import { } from '../../services/pokerService';
+import { } from '../../_utils/typeGuards';
 
 // Export the action key for consistency and debugging
 export const key = 'games.poker.room.playagain';
@@ -21,8 +28,8 @@ async function handlePlayAgain(context: HandlerContext, query: Record<string, st
   
   try {
     // Validate IDs
-    const validatedRoomId = validateRoomId(roomId);
-    const validatedPlayerId = validatePlayerId(user.id.toString());
+    const validatedRoomId = validateRoomIdWithError(roomId);
+    const validatedPlayerId = validatePlayerIdWithError(user.id.toString());
     
     // Get current room state
     const currentRoom = await getPokerRoom(validatedRoomId);
@@ -40,34 +47,8 @@ async function handlePlayAgain(context: HandlerContext, query: Record<string, st
       throw new Error('Only the room creator can start a new game');
     }
     
-    // Reset room for new game
-    const resetRoom = {
-      ...currentRoom,
-      status: 'waiting',
-      players: currentRoom.players.map(player => ({
-        ...player,
-        cards: [],
-        betAmount: 0,
-        totalBet: 0,
-        isFolded: false,
-        isAllIn: false,
-        isReady: false,
-        lastAction: undefined
-      })),
-      deck: [],
-      communityCards: [],
-      pot: 0,
-      currentBet: 0,
-      minRaise: currentRoom.bigBlind,
-      bettingRound: 'preflop',
-      currentPlayerIndex: 0,
-      dealerIndex: 0,
-      smallBlindIndex: 0,
-      bigBlindIndex: 0,
-      startedAt: undefined,
-      endedAt: undefined,
-      updatedAt: Date.now()
-    };
+    // Reset room for new game (room will be reset by startPokerGame)
+    // No need to manually reset here as startPokerGame handles it
     
     // Start new game
     const newGame = await startPokerGame(validatedRoomId);

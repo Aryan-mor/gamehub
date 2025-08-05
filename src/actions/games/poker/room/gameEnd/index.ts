@@ -1,9 +1,10 @@
 import { HandlerContext } from '@/modules/core/handler';
 import { tryEditMessageText } from '@/modules/core/telegramHelpers';
 import { generateGameEndKeyboard } from '../../buttonHelpers';
-import { getGameResultDisplay, getHandHistory, getGameSummary, trackGameStatistics } from '../../services/gameResultService';
+import { trackGameStatistics } from '../../services/gameResultService';
 import { getPokerRoom } from '../../services/pokerService';
 import { validateRoomId, validatePlayerId } from '../../_utils/typeGuards';
+import { getGameResultDisplay } from '../../services/gameResultService';
 
 // Export the action key for consistency and debugging
 export const key = 'games.poker.room.gameEnd';

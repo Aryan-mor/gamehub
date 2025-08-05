@@ -1,5 +1,5 @@
 import { api } from '@/lib/api';
-import { PokerRoom, PlayerId, RoomId } from '../types';
+import { PokerRoom, RoomId, PlayerId } from '../types';
 import { logFunctionStart, logFunctionEnd, logError } from '@/modules/core/logger';
 
 interface RoomMessage {
@@ -13,7 +13,7 @@ interface RoomMessage {
 interface RoomNotification {
   roomId: RoomId;
   type: 'player_joined' | 'player_left' | 'room_full' | 'game_started' | 'player_action';
-  data: any;
+  data: Record<string, unknown>;
   timestamp: number;
 }
 
@@ -29,29 +29,26 @@ export async function storePlayerMessage(
   try {
     logFunctionStart('storePlayerMessage', { roomId, playerId, messageId, chatId });
     
-    const message: RoomMessage = {
+    // Log the message data for debugging
+    console.log('Storing player message:', {
       roomId,
       playerId,
       messageId,
       chatId,
       timestamp: Date.now()
-    };
+    });
     
-    const { error } = await supabase
-      .from('room_messages')
-      .upsert({
-        room_id: roomId,
-        user_id: playerId,
-        message_id: messageId,
-        chat_id: chatId, // Use BIGINT directly
-        timestamp: new Date().toISOString()
-      });
-    
-    if (error) throw error;
+    await api.roomMessages.upsert({
+      room_id: roomId,
+      user_id: playerId,
+      message_id: messageId,
+      chat_id: chatId,
+      timestamp: new Date().toISOString()
+    });
     
     logFunctionEnd('storePlayerMessage', {}, { success: true });
   } catch (error) {
-    logError('storePlayerMessage', error);
+    logError('storePlayerMessage', error as Error);
     throw error;
   }
 }
@@ -66,24 +63,15 @@ export async function getPlayerMessage(
   try {
     logFunctionStart('getPlayerMessage', { roomId, playerId });
     
-    const { data, error } = await supabase
-      .from('room_messages')
-      .select('*')
-      .eq('room_id', roomId)
-      .eq('user_id', playerId)
-      .single();
-    
-    if (error && error.code !== 'PGRST116') {
-      throw error;
-    }
+    const data = await api.roomMessages.getByRoomAndUser(roomId, playerId);
     
     if (data) {
       const message: RoomMessage = {
-        roomId: data.room_id,
-        playerId: data.user_id,
-        messageId: data.message_id,
-        chatId: data.chat_id,
-        timestamp: new Date(data.timestamp).getTime()
+        roomId: data.room_id as RoomId,
+        playerId: data.user_id as PlayerId,
+        messageId: data.message_id as number,
+        chatId: data.chat_id as number,
+        timestamp: new Date(data.timestamp as string).getTime()
       };
       logFunctionEnd('getPlayerMessage', {}, { message });
       return message;
@@ -92,7 +80,7 @@ export async function getPlayerMessage(
     logFunctionEnd('getPlayerMessage', {}, { message: null });
     return null;
   } catch (error) {
-    logError('getPlayerMessage', error);
+    logError('getPlayerMessage', error as Error);
     return null;
   }
 }
@@ -104,16 +92,11 @@ export async function getAllRoomMessages(roomId: RoomId): Promise<RoomMessage[]>
   try {
     logFunctionStart('getAllRoomMessages', { roomId });
     
-    const { data, error } = await supabase
-      .from('room_messages')
-      .select('*')
-      .eq('room_id', roomId);
+    const data = await api.roomMessages.getAllByRoom(roomId);
     
-    if (error) throw error;
-    
-    const messages: RoomMessage[] = data.map(item => ({
-      roomId: item.room_id,
-      playerId: item.user_id,
+    const messages: RoomMessage[] = data.map((item: { room_id: string; user_id: string; message_id: number; chat_id: number; timestamp: string }) => ({
+      roomId: item.room_id as RoomId,
+      playerId: item.user_id as PlayerId,
       messageId: item.message_id,
       chatId: item.chat_id,
       timestamp: new Date(item.timestamp).getTime()
@@ -122,7 +105,7 @@ export async function getAllRoomMessages(roomId: RoomId): Promise<RoomMessage[]>
     logFunctionEnd('getAllRoomMessages', {}, { count: messages.length });
     return messages;
   } catch (error) {
-    logError('getAllRoomMessages', error);
+    logError('getAllRoomMessages', error as Error);
     return [];
   }
 }
@@ -137,17 +120,11 @@ export async function removePlayerMessage(
   try {
     logFunctionStart('removePlayerMessage', { roomId, playerId });
     
-    const { error } = await supabase
-      .from('room_messages')
-      .delete()
-      .eq('room_id', roomId)
-      .eq('user_id', playerId);
-    
-    if (error) throw error;
+    await api.roomMessages.deleteByRoomAndUser(roomId, playerId);
     
     logFunctionEnd('removePlayerMessage', {}, { success: true });
   } catch (error) {
-    logError('removePlayerMessage', error);
+    logError('removePlayerMessage', error as Error);
     throw error;
   }
 }
@@ -158,7 +135,7 @@ export async function removePlayerMessage(
 export async function storeRoomNotification(
   roomId: RoomId,
   type: RoomNotification['type'],
-  data: any
+  data: Record<string, unknown>
 ): Promise<void> {
   try {
     logFunctionStart('storeRoomNotification', { roomId, type });
@@ -168,7 +145,7 @@ export async function storeRoomNotification(
     
     logFunctionEnd('storeRoomNotification', {}, { success: true });
   } catch (error) {
-    logError('storeRoomNotification', error);
+    logError('storeRoomNotification', error as Error);
     throw error;
   }
 }
@@ -190,7 +167,7 @@ export async function checkRoomFullAndNotify(room: PokerRoom): Promise<boolean> 
     
     return isFull;
   } catch (error) {
-    logError('checkRoomFullAndNotify', error);
+    logError('checkRoomFullAndNotify', error as Error);
     return false;
   }
 }
@@ -210,7 +187,8 @@ export async function notifyPlayerJoined(
       timestamp: Date.now()
     });
   } catch (error) {
-    logError('notifyPlayerJoined', error);
+    logError('notifyPlayerJoined', error as Error);
+    throw error;
   }
 }
 
@@ -229,7 +207,8 @@ export async function notifyPlayerLeft(
       timestamp: Date.now()
     });
   } catch (error) {
-    logError('notifyPlayerLeft', error);
+    logError('notifyPlayerLeft', error as Error);
+    throw error;
   }
 }
 
@@ -242,6 +221,54 @@ export async function notifyGameStarted(roomId: RoomId): Promise<void> {
       timestamp: Date.now()
     });
   } catch (error) {
-    logError('notifyGameStarted', error);
+    logError('notifyGameStarted', error as Error);
+    throw error;
+  }
+} 
+
+/**
+ * Update all players in a room with new room information
+ */
+export async function updateAllPlayersInRoom(
+  room: PokerRoom,
+  updateType: 'player_joined' | 'player_left' | 'room_full' | 'game_started'
+): Promise<void> {
+  try {
+    logFunctionStart('updateAllPlayersInRoom', { roomId: room.id, updateType });
+    
+    // Get all stored messages for this room
+    const messages = await getAllRoomMessages(room.id);
+    
+    // Import bot instance
+    const { bot } = await import('@/bot');
+    
+    // Update each player's message
+    for (const message of messages) {
+      try {
+        // Get updated room info for this specific player
+        const { getRoomInfoForUser, generateRoomInfoKeyboard } = await import('../_utils/roomInfoHelper');
+        const roomInfo = getRoomInfoForUser(room, message.playerId);
+        const keyboard = generateRoomInfoKeyboard(room, message.playerId);
+        
+        // Edit the message
+        await bot.api.editMessageText(
+          message.chatId,
+          message.messageId,
+          roomInfo,
+          {
+            parse_mode: 'HTML',
+            reply_markup: keyboard
+          }
+        );
+        
+        console.log(`✅ Updated message for player ${message.playerId} in room ${room.id}`);
+      } catch (error) {
+        console.error(`❌ Failed to update message for player ${message.playerId}:`, error);
+      }
+    }
+    
+    logFunctionEnd('updateAllPlayersInRoom', {}, { updatedPlayers: messages.length });
+  } catch (error) {
+    logError('updateAllPlayersInRoom', error as Error);
   }
 } 

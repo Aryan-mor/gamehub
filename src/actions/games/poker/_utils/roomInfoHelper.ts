@@ -1,10 +1,9 @@
-import { PokerRoom, PlayerId } from '../types';
+import { PokerRoom, PlayerId, PokerPlayer } from '../types';
 
 /**
  * Get personalized room information for a specific user
  */
 export function getRoomInfoForUser(room: PokerRoom, userId: PlayerId): string {
-  const currentPlayer = room.players.find(p => p.id === userId);
   const isCreator = room.createdBy === userId;
   
   let message = `🏠 <b>اطلاعات روم پوکر</b>\n\n`;
@@ -78,6 +77,18 @@ export function getRoomInfoForUser(room: PokerRoom, userId: PlayerId): string {
     }
   }
   
+  // Add timestamp
+  const now = new Date();
+  const timestamp = now.toLocaleDateString('fa-IR', { 
+    year: 'numeric', 
+    month: '2-digit', 
+    day: '2-digit' 
+  }) + ' ' + now.toLocaleTimeString('fa-IR', { 
+    hour: '2-digit', 
+    minute: '2-digit' 
+  });
+  message += `\nآخرین بروزرسانی: ${timestamp} (به زمان کاربر)`;
+  
   return message;
 }
 
@@ -102,15 +113,15 @@ export function generateRoomInfoKeyboard(room: PokerRoom, userId: PlayerId): {
     ]);
   }
   
-  // Kick player button (only for creator)
-  if (isCreator && room.players.length > 1 && room.status === 'waiting') {
-    buttons.push([
-      {
-        text: '👢 اخراج بازیکن',
-        callback_data: `games.poker.room.kick?roomId=${room.id}`
-      }
-    ]);
-  }
+  // Share button (always available) - using switch_inline_query to open contacts
+  const shareInlineQuery = `gpj-${room.id}`;
+  console.log(`🔍 SHARE BUTTON INLINE QUERY: ${shareInlineQuery}`);
+  buttons.push([
+    {
+      text: '📤 اشتراک‌گذاری',
+      switch_inline_query: shareInlineQuery
+    } as any
+  ]);
   
   // Refresh and Leave buttons (always available)
   buttons.push([
@@ -138,7 +149,7 @@ export function generateRoomInfoKeyboard(room: PokerRoom, userId: PlayerId): {
 /**
  * Generate keyboard for kick player selection
  */
-export function generateKickPlayerKeyboard(room: PokerRoom, kickablePlayers: any[]): {
+export function generateKickPlayerKeyboard(room: PokerRoom, kickablePlayers: PokerPlayer[]): {
   inline_keyboard: Array<Array<{ text: string; callback_data: string }>>
 } {
   const buttons: Array<Array<{ text: string; callback_data: string }>> = [];

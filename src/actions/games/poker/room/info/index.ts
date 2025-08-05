@@ -14,10 +14,33 @@ export const key = 'games.poker.room.info';
  */
 async function handleInfo(context: HandlerContext, query: Record<string, string> = {}): Promise<void> {
   const { user, ctx } = context;
-  const { roomId, r } = query;
+  const { roomId, r, action } = query;
   const roomIdParam = roomId || r;
   
-  console.log(`Processing room info request for user ${user.id}, roomId: ${roomIdParam}`);
+  console.log(`Processing room info request for user ${user.id}, roomId: ${roomIdParam}, action: ${action}`);
+  
+  // Handle share action
+  if (action === 'share') {
+    try {
+      // Import and call the share handler directly
+      const handleShare = (await import('../share')).default;
+      await handleShare(context, { roomId: roomIdParam });
+      return;
+    } catch (error) {
+      console.error('Share action error:', error);
+      const message = `❌ <b>خطا در اشتراک‌گذاری روم</b>\n\nخطا در پردازش درخواست اشتراک‌گذاری.`;
+      
+      await tryEditMessageText(ctx, message, {
+        parse_mode: 'HTML',
+        reply_markup: {
+          inline_keyboard: [[
+            { text: '🔙 بازگشت به منو', callback_data: 'games.poker.backToMenu' }
+          ]]
+        }
+      });
+      return;
+    }
+  }
   
   if (!roomIdParam) {
     const message = `❌ <b>خطا در نمایش اطلاعات روم</b>\n\n` +
@@ -57,10 +80,27 @@ async function handleInfo(context: HandlerContext, query: Record<string, string>
     // Generate appropriate keyboard
     const keyboard = generateRoomInfoKeyboard(room, validatedPlayerId);
     
-    await tryEditMessageText(ctx, roomInfo, {
-      parse_mode: 'HTML',
-      reply_markup: keyboard
-    });
+    // Try to edit existing message, fallback to new message
+    try {
+      await tryEditMessageText(ctx, roomInfo, {
+        parse_mode: 'HTML',
+        reply_markup: keyboard
+      });
+    } catch {
+      // If edit fails, send new message and store it
+      const sentMessage = await ctx.reply(roomInfo, {
+        parse_mode: 'HTML',
+        reply_markup: keyboard
+      });
+      
+      // Store message ID for future updates
+      try {
+        const { storePlayerMessage } = await import('../../services/roomMessageService');
+        await storePlayerMessage(room.id, validatedPlayerId, sentMessage.message_id, ctx.chat?.id || 0);
+      } catch (storeError) {
+        console.error('Failed to store player message:', storeError);
+      }
+    }
     
   } catch (error) {
     console.error('Room info error:', error);

@@ -36,8 +36,7 @@
     "nanoid": "^5.1.5",
     "node-fetch": "2",
     "pino": "^9.7.0",
-    "pino-pretty": "^13.0.0",
-    "telegraf": "^4.16.3"
+    "pino-pretty": "^13.0.0"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
@@ -45,15 +44,15 @@
     "@types/nanoid": "^3.0.0",
     "@types/node": "^20",
     "@types/node-fetch": "^2.6.12",
-    "@typescript-eslint/eslint-plugin": "^8.37.0",
-    "@typescript-eslint/parser": "^8.37.0",
+    "@typescript-eslint/eslint-plugin": "^8.39.0",
+    "@typescript-eslint/parser": "^8.39.0",
     "@vitest/coverage-v8": "^3.2.4",
     "@vitest/ui": "^3.2.4",
     "eslint": "^9",
     "form-data": "^4.0.4",
     "ts-node": "^10.9.2",
     "tsx": "^4.19.2",
-    "typescript": "^5",
+    "typescript": "^5.9.2",
     "vitest": "^3.2.4"
   },
   "overrides": {

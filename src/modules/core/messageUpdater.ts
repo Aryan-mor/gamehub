@@ -6,7 +6,7 @@ interface MessageUpdateRequest {
   text: string;
   options?: {
     parse_mode?: 'HTML' | 'Markdown';
-    reply_markup?: any;
+    reply_markup?: { inline_keyboard: Array<Array<{ text: string; callback_data: string }>> };
   };
 }
 
@@ -98,7 +98,7 @@ export class MessageUpdater {
     chatId: number,
     messageId: number | undefined,
     text: string,
-    keyboard: any
+    keyboard: { inline_keyboard: Array<Array<{ text: string; callback_data: string }>> }
   ): Promise<MessageUpdateResult> {
     return this.updateMessage({
       chatId,

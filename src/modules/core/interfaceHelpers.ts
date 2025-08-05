@@ -1,5 +1,5 @@
 import { Bot } from 'grammy';
-// import { getUser } from './userService';
+// import { } from './userService';
 
 // Interface state management
 export interface InterfaceState {
@@ -142,13 +142,13 @@ export const updateGameMessage = async (
 };
 
 // Helper function to get current game state
-export const getGameState = (userId: string) => {
+export const getGameState = (userId: string): InterfaceState['gameState'] => {
   const state = userStates.get(userId);
   return state?.gameState;
 };
 
 // Helper function to clear game state and return to main menu
-export const returnToMainMenu = async (bot: Bot, userInfo: { userId: string; chatId: number }) => {
+export const returnToMainMenu = async (bot: Bot, userInfo: { userId: string; chatId: number }): Promise<void> => {
   // Import keys from actions for consistency
   const { key: gamesStartKey } = await import('../../actions/games/start');
   const { key: freecoinKey } = await import('../../actions/financial/freecoin');

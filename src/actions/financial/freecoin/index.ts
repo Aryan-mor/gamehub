@@ -47,7 +47,7 @@ async function handleFreeCoin(context: HandlerContext): Promise<void> {
       }
     } else {
       // Calculate time until next claim
-      const nextClaim = new Date(lastClaim!.getTime() + 24 * 60 * 60 * 1000);
+      const nextClaim = new Date(lastClaim.getTime() + 24 * 60 * 60 * 1000);
       const hoursLeft = Math.ceil((nextClaim.getTime() - now.getTime()) / (60 * 60 * 1000));
       
       const waitMessage = `⏰ <b>Free Coins Not Available</b>\n\n` +

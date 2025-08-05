@@ -1,10 +1,9 @@
 import { HandlerContext } from '@/modules/core/handler';
 import { tryEditMessageText } from '@/modules/core/telegramHelpers';
 import { generateSpectatorKeyboard } from '../../buttonHelpers';
-import { getGameStateDisplay } from '../../services/gameStateService';
 import { getPokerRoom } from '../../services/pokerService';
-import { validateRoomId, validatePlayerId } from '../../_utils/typeGuards';
-import { createUserFriendlyError } from '../../_utils/errorHandler';
+import { validateRoomIdWithError, validatePlayerIdWithError } from '../../_utils/pokerUtils';
+import { PokerRoom, Card } from '../../types';
 
 // Export the action key for consistency and debugging
 export const key = 'games.poker.room.spectate';
@@ -22,8 +21,8 @@ async function handleSpectate(context: HandlerContext, query: Record<string, str
   
   try {
     // Validate IDs
-    const validatedRoomId = validateRoomId(roomId);
-    const validatedPlayerId = validatePlayerId(user.id.toString());
+    const validatedRoomId = validateRoomIdWithError(roomId);
+    const validatedPlayerId = validatePlayerIdWithError(user.id.toString());
     
     // Get current room state
     const room = await getPokerRoom(validatedRoomId);
@@ -38,7 +37,7 @@ async function handleSpectate(context: HandlerContext, query: Record<string, str
     }
     
     // Create spectator view
-    const spectatorMessage = createSpectatorView(room, validatedPlayerId);
+    const spectatorMessage = createSpectatorView(room);
     
     // Generate spectator keyboard
     const keyboard = generateSpectatorKeyboard(roomId);
@@ -49,17 +48,19 @@ async function handleSpectate(context: HandlerContext, query: Record<string, str
     });
     
   } catch (error) {
-    console.error('Spectator mode error:', error);
+    console.error('Spectate action error:', error);
     
-    const errorMessage = createUserFriendlyError(error);
-    await tryEditMessageText(ctx, `❌ Failed to enter spectator mode: ${errorMessage}`);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+    await tryEditMessageText(ctx, `❌ Failed to spectate: ${errorMessage}`, {
+      parse_mode: 'HTML'
+    });
   }
 }
 
 /**
  * Create spectator view of the game
  */
-function createSpectatorView(room: PokerRoom, spectatorId: PlayerId): string {
+function createSpectatorView(room: PokerRoom): string {
   let view = `👁️ <b>Spectator Mode - ${room.name}</b>\n\n`;
   
   // Room status
@@ -151,7 +152,7 @@ function createSpectatorView(room: PokerRoom, spectatorId: PlayerId): string {
 /**
  * Get card display helper
  */
-function getCardDisplay(card: any): string {
+function getCardDisplay(card: Card): string {
   const suitSymbols: Record<string, string> = {
     'hearts': '♥️',
     'diamonds': '♦️',

@@ -1,4 +1,6 @@
-import { CreateRoomFormData } from '../types';
+import { 
+  CreateRoomFormData 
+} from '../types';
 
 /**
  * Validation errors for room creation
@@ -113,22 +115,18 @@ export function validateRoomForm(formData: Partial<CreateRoomFormData>): RoomVal
     }
   }
   
+  // Validate small blind
   if (formData.smallBlind === undefined) {
-    errors.push({ field: 'smallBlind', message: 'مقدار Small Blind الزامی است' });
-  } else {
-    const smallBlindError = validateSmallBlind(formData.smallBlind);
-    if (smallBlindError) {
-      errors.push({ field: 'smallBlind', message: smallBlindError });
-    }
+    errors.push({ field: 'smallBlind', message: 'Small blind is required' });
+  } else if (formData.smallBlind < 1) {
+    errors.push({ field: 'smallBlind', message: 'Small blind must be at least 1' });
   }
   
+  // Validate turn timeout
   if (formData.turnTimeoutSec === undefined) {
-    errors.push({ field: 'turnTimeoutSec', message: 'زمان تایم‌اوت الزامی است' });
-  } else {
-    const timeoutError = validateTurnTimeout(formData.turnTimeoutSec);
-    if (timeoutError) {
-      errors.push({ field: 'turnTimeoutSec', message: timeoutError });
-    }
+    errors.push({ field: 'turnTimeoutSec', message: 'Turn timeout is required' });
+  } else if (formData.turnTimeoutSec < 10 || formData.turnTimeoutSec > 300) {
+    errors.push({ field: 'turnTimeoutSec', message: 'Turn timeout must be between 10 and 300 seconds' });
   }
   
   return {
@@ -140,7 +138,7 @@ export function validateRoomForm(formData: Partial<CreateRoomFormData>): RoomVal
 /**
  * Check if user is already in an active room
  */
-export async function checkUserActiveRoom(_playerId: string): Promise<boolean> {
+export async function checkUserActiveRoom(): Promise<boolean> {
   // This will be implemented when we have the room service
   // For now, return false (no active room)
   return false;

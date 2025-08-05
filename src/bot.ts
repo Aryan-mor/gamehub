@@ -1,9 +1,9 @@
 import 'dotenv/config';
 import { Bot } from 'grammy';
 import { InlineQueryResult } from 'grammy/types';
-import { logFunctionStart, logFunctionEnd, logError } from './modules/core/logger';
-import { extractUserInfo, sendMessage, answerCallbackQuery, parseCallbackData } from './modules/core/telegramHelpers';
-import { getActiveGamesForUser } from './modules/core/gameService';
+import { loggingMiddleware } from './modules/core/logger';
+import { sendMessage, answerCallbackQuery, parseCallbackData, extractUserInfo } from './modules/core/telegramHelpers';
+
 import { 
   createOptimizedKeyboard, 
   updateOrSendMessage
@@ -12,6 +12,9 @@ import { setMessageUpdater } from './modules/core/messageUpdater';
 // Archived games are no longer imported - using new auto-discovery router system
 import { HandlerContext } from './modules/core/handler';
 import { UserId } from './utils/types';
+import { logFunctionStart, logFunctionEnd, logError } from './modules/core/logger';
+import { api } from './lib/api';
+import { Context } from 'grammy';
 
 /**
  * GameHub Telegram Bot
@@ -46,30 +49,10 @@ if (!token.match(/^\d+:[A-Za-z0-9_-]+$/)) {
   );
 }
 
-const bot = new Bot(token);
+export const bot = new Bot(token);
 
 // Add logging middleware
-bot.use(async (ctx, next) => {
-  logFunctionStart('botMiddleware', {
-    userId: ctx.from?.id?.toString(),
-    chatId: ctx.chat?.id?.toString(),
-    messageType: ctx.message ? 'message' : 'callback_query'
-  });
-  
-  try {
-    await next();
-    logFunctionEnd('botMiddleware', {}, {
-      userId: ctx.from?.id?.toString(),
-      chatId: ctx.chat?.id?.toString()
-    });
-  } catch (error) {
-    logError('botMiddleware', error as Error, {
-      userId: ctx.from?.id?.toString(),
-      chatId: ctx.chat?.id?.toString()
-    });
-    throw error;
-  }
-});
+bot.use(loggingMiddleware);
 
 // Add active game redirect middleware (early in the chain)
 bot.use(async (ctx, next) => {
@@ -79,7 +62,7 @@ bot.use(async (ctx, next) => {
     await activeGameRedirect(ctx);
     
     // If the message was handled by active game redirect, don't continue
-    if ((ctx as any).handled) {
+    if ((ctx as Context & { handled?: boolean }).handled) {
       console.log(`🎮 MESSAGE HANDLED BY ACTIVE GAME REDIRECT`);
       return;
     }
@@ -92,6 +75,45 @@ bot.use(async (ctx, next) => {
 });
 
 // Game handlers are now auto-discovered through the smart router system
+
+// Handle room join conflict callbacks
+bot.callbackQuery(/^gpj_/, async (ctx) => {
+  try {
+    const callbackData = ctx.callbackQuery.data || '';
+    const { logFunctionStart, logFunctionEnd, logError } = await import('./modules/core/logger');
+    
+    logFunctionStart('handleRoomJoinConflictCallback', {
+      callbackData,
+      userId: ctx.from?.id?.toString(),
+      prefix: callbackData.split(':')[0],
+      fullCallbackData: callbackData
+    });
+    
+    const [prefix, ...params] = callbackData.split(':');
+    const userId = ctx.from?.id?.toString() || '';
+    
+    const { handleRoomJoinConflictCallback } = await import('./actions/games/poker/room/join');
+    
+    if (prefix === 'gpj_b') {
+      // بازگشت به روم فعلی
+      await handleRoomJoinConflictCallback(ctx, 'back', params[0] as any, undefined, userId as any);
+    } else if (prefix === 'gpj_lj') {
+      // خروج و پیوستن
+      await handleRoomJoinConflictCallback(ctx, 'leave_join', params[0] as any, params[1] as any, userId as any);
+    } else if (prefix === 'gpj_l') {
+      // خروج
+      await handleRoomJoinConflictCallback(ctx, 'leave', params[0] as any, undefined, userId as any);
+    }
+    
+    await ctx.answerCallbackQuery();
+    
+    logFunctionEnd('handleRoomJoinConflictCallback', {}, { success: true });
+  } catch (error) {
+    const { logError } = await import('./modules/core/logger');
+    logError('handleRoomJoinConflictCallback', error as Error);
+    await ctx.answerCallbackQuery('❌ Error processing request');
+  }
+});
 
 // Simple callback logging (without interfering with handlers)
 bot.use(async (ctx, next) => {
@@ -128,7 +150,7 @@ bot.use(async (ctx, next) => {
 
 
 // Helper function to handle room join
-async function handleRoomJoin(ctx: any, userInfo: any, roomId: string, format: string) {
+async function handleRoomJoin(ctx: Context, userInfo: { userId: string; username?: string }, roomId: string, format: string): Promise<void> {
   console.log(`🎯 PROCESSING ROOM JOIN VIA ${format.toUpperCase()}:`);
   console.log(`  Room ID: ${roomId}`);
   console.log(`  User ID: ${userInfo.userId}`);
@@ -177,6 +199,17 @@ bot.command('start', async (ctx) => {
     console.log(`  Start payload: ${startPayload}`);
     
     logFunctionStart('startCommand', { userId: userInfo.userId, startPayload });
+    
+    // Check if this is a room join request (new format: gpj-)
+    if (startPayload && startPayload.startsWith('gpj-')) {
+      const roomId = startPayload.substring(4); // Remove 'gpj-' prefix (4 characters)
+      console.log(`🎯 DETECTED ROOM JOIN REQUEST VIA START: ${roomId}`);
+      console.log(`🎯 ORIGINAL PAYLOAD: ${startPayload}`);
+      console.log(`🎯 EXTRACTED ROOM ID: ${roomId}`);
+      await handleRoomJoin(ctx, userInfo, roomId, 'gpj');
+      logFunctionEnd('startCommand', {}, { userId: userInfo.userId, action: 'roomJoin' });
+      return;
+    }
     
     // Check if this is a room join request (new format: gprs_)
     if (startPayload && startPayload.startsWith('gprs_')) {
@@ -350,6 +383,81 @@ bot.command('poker', async (ctx) => {
   }
 });
 
+// Handle inline queries for room sharing
+bot.inlineQuery(/^gpj-/, async (ctx) => {
+  try {
+    const userInfo = extractUserInfo(ctx);
+    const query = ctx.inlineQuery.query;
+    
+    console.log(`🔍 INLINE QUERY RECEIVED:`);
+    console.log(`  User ID: ${userInfo.userId}`);
+    console.log(`  Query: ${query}`);
+    
+    // Extract room ID from query (format: gpj-roomId)
+    const roomId = query.substring(4); // Remove 'gpj-' prefix
+    
+    if (!roomId) {
+      console.log(`❌ No room ID found in query: ${query}`);
+      await ctx.answerInlineQuery([], { cache_time: 0 });
+      return;
+    }
+    
+    console.log(`🎯 PROCESSING ROOM SHARE INLINE QUERY:`);
+    console.log(`  Room ID: ${roomId}`);
+    console.log(`  User ID: ${userInfo.userId}`);
+    
+    // Get room information
+    const { getPokerRoom } = await import('./actions/games/poker/services/pokerService');
+    const { isValidRoomId } = await import('./utils/typeGuards');
+    
+    if (!isValidRoomId(roomId)) {
+      console.log(`❌ Invalid room ID format: ${roomId}`);
+      await ctx.answerInlineQuery([], { cache_time: 0 });
+      return;
+    }
+    
+    const room = await getPokerRoom(roomId);
+    
+    if (!room) {
+      console.log(`❌ Room not found: ${roomId}`);
+      await ctx.answerInlineQuery([], { cache_time: 0 });
+      return;
+    }
+    
+    // Generate invite link
+    const inviteLink = `https://t.me/${botUsername}?start=gpj-${roomId}`;
+    
+    // Create inline result
+    const result: InlineQueryResult = {
+      type: 'article',
+      id: `room_${roomId}`,
+      title: `🎮 Join Poker Game: ${room.name}`,
+      description: `Click to join this exciting poker room! Players: ${room.players.length}/${room.maxPlayers}`,
+      input_message_content: {
+        message_text: `🎮 **Join Poker Game!**\n\n🎯 **Room:** ${room.name}\n👥 **Players:** ${room.players.length}/${room.maxPlayers}\n🎲 **Blinds:** ${room.smallBlind}/${room.bigBlind}\n\nClick below to join this exciting poker room!`,
+        parse_mode: 'Markdown'
+      },
+      reply_markup: {
+        inline_keyboard: [
+          [{
+            text: '🎮 Join Room',
+            url: inviteLink
+          }]
+        ]
+      }
+    };
+    
+    console.log(`✅ Generated inline result for room ${roomId}`);
+    console.log(`  Invite link: ${inviteLink}`);
+    
+    await ctx.answerInlineQuery([result], { cache_time: 300 });
+    
+  } catch (error) {
+    console.error(`❌ Error handling inline query:`, error);
+    await ctx.answerInlineQuery([], { cache_time: 0 });
+  }
+});
+
 
 
 // Handle /games command
@@ -358,7 +466,7 @@ bot.command('games', async (ctx) => {
     const userInfo = extractUserInfo(ctx);
     logFunctionStart('gamesCommand', { userId: userInfo.userId });
     
-    const activeGames = await getActiveGamesForUser(userInfo.userId);
+    const activeGames = await api.games.getActiveForUser();
     
     if (activeGames.length === 0) {
       await sendMessage(bot, userInfo.chatId, '📋 You have no unfinished games.');
@@ -371,8 +479,8 @@ bot.command('games', async (ctx) => {
     for (const game of activeGames) {
       const status = game.status === 'waiting' ? '⏳ Waiting' : '🎮 Playing';
       const stake = game.stake || 0;
-      const creatorName = game.players[0]?.name || 'Unknown';
-      const joinerName = game.players[1]?.name || 'None';
+      const creatorName = (game.players as unknown as Array<{ name?: string }>)?.[0]?.name || 'Unknown';
+      const joinerName = (game.players as unknown as Array<{ name?: string }>)?.[1]?.name || 'None';
       
       message += `🎮 Game: \`${game.id}\`\n`;
       message += `📊 Status: ${status}\n`;
@@ -407,20 +515,17 @@ bot.callbackQuery(/.*"action":"back".*/, async (ctx) => {
     const { key: balanceKey } = await import('./actions/balance');
     const { key: helpKey } = await import('./actions/help');
     
-    // Return to main menu
-    const welcome = `🃏 <b>Welcome to GameHub - Poker Edition!</b>\n\n🎯 Challenge your friends in competitive poker games!\n\n💰 Earn and claim daily Coins with /freecoin!\n\n🎯 Choose an action below:`;
+    // Use the main start handler to show the correct menu
+    const { default: handleStart } = await import('./actions/start');
+    const context = {
+      ctx,
+      user: {
+        id: userInfo.userId as UserId,
+        username: userInfo.username || 'Unknown'
+      }
+    };
     
-    // Create buttons
-    const buttons = [
-      { text: '🃏 Start Poker', callbackData: { action: gamesStartKey } },
-      { text: '🪙 Free Coin', callbackData: { action: freecoinKey } },
-      { text: '💰 Balance', callbackData: { action: balanceKey } },
-      { text: '❓ Help', callbackData: { action: helpKey } },
-    ];
-    
-    const keyboard = createOptimizedKeyboard(buttons);
-    
-    await updateOrSendMessage(bot, userInfo.chatId, welcome, keyboard, userInfo.userId, 'main_menu');
+    await handleStart(context);
     
     logFunctionEnd('menu_back', {}, { userId: userInfo.userId });
   } catch (error) {
@@ -510,7 +615,7 @@ bot.callbackQuery(/.*"action":"games\.poker\.room\..*/, async (ctx) => {
     
     logFunctionStart('poker_room_action', { 
       userId: userInfo.userId, 
-      action: action,
+      action: action as string,
       context: 'poker_room',
       roomId: data.roomId || 'none'
     });
@@ -530,22 +635,134 @@ bot.callbackQuery(/.*"action":"games\.poker\.room\..*/, async (ctx) => {
     
     // Extract query parameters from callback data
     const query: Record<string, string> = {};
-    if (data.roomId) query.roomId = data.roomId;
-    if (data.amount) query.amount = data.amount;
-    if (data.userId) query.userId = data.userId;
+    if (data.roomId) query.roomId = data.roomId as string;
+    if (data.amount) query.amount = data.amount as string;
+    if (data.userId) query.userId = data.userId as string;
     
     // Add query to context
-    (context as any).query = query;
+    (context as HandlerContext & { _query?: Record<string, string> })._query = query;
     
-    await dispatch(action, context);
+    await dispatch(action as string, context);
     
     logFunctionEnd('poker_room_action', {}, { 
       userId: userInfo.userId, 
-      action: action,
+      action: action as string,
       context: 'poker_room'
     });
   } catch (error) {
     logError('poker_room_action', error as Error, {});
+    await answerCallbackQuery(bot, ctx.callbackQuery.id, '❌ Processing failed');
+  }
+});
+
+// Handle share_room callback queries
+bot.callbackQuery(/^share_room_.*/, async (ctx) => {
+  try {
+    const userInfo = extractUserInfo(ctx);
+    const callbackData = ctx.callbackQuery.data || '';
+    
+    console.log(`🔍 SHARE_ROOM RECEIVED:`);
+    console.log(`  User ID: ${userInfo.userId}`);
+    console.log(`  Callback Data: ${callbackData}`);
+    console.log(`  Chat ID: ${ctx.chat?.id}`);
+    console.log(`  Raw callback data:`, ctx.callbackQuery.data);
+    
+    logFunctionStart('share_room', { 
+      userId: userInfo.userId, 
+      callbackData,
+      context: 'share_room'
+    });
+    
+    await answerCallbackQuery(bot, ctx.callbackQuery.id);
+    
+    // Extract roomId from callback data
+    const roomId = callbackData.replace('share_room_', '');
+    
+    console.log(`🔍 PARSED ROOM ID: ${roomId}`);
+    
+    if (!roomId) {
+      throw new Error('Room ID not found in callback data');
+    }
+    
+    // Import and call the share handler directly
+    const handleShare = (await import('./actions/games/poker/room/share')).default;
+    
+    const context: HandlerContext = {
+      ctx,
+      user: {
+        id: userInfo.userId as UserId,
+        username: userInfo.username || 'Unknown'
+      }
+    };
+    
+    console.log(`🚀 CALLING SHARE HANDLER FOR ROOM: ${roomId}`);
+    await handleShare(context, { roomId });
+    console.log(`✅ SHARE HANDLER COMPLETED FOR ROOM: ${roomId}`);
+    
+    logFunctionEnd('share_room', {}, { 
+      userId: userInfo.userId, 
+      roomId,
+      context: 'share_room'
+    });
+  } catch (error) {
+    console.error(`❌ SHARE_ROOM ERROR:`, error);
+    logError('share_room', error as Error, {});
+    await answerCallbackQuery(bot, ctx.callbackQuery.id, '❌ Processing failed');
+  }
+});
+
+// Handle games.poker.room.share callback queries
+bot.callbackQuery(/.*games\.poker\.room\.share.*/, async (ctx) => {
+  try {
+    const userInfo = extractUserInfo(ctx);
+    const callbackData = ctx.callbackQuery.data || '';
+    
+    console.log(`🔍 GAMES.POKER.ROOM.SHARE RECEIVED:`);
+    console.log(`  User ID: ${userInfo.userId}`);
+    console.log(`  Callback Data: ${callbackData}`);
+    console.log(`  Chat ID: ${ctx.chat?.id}`);
+    
+    logFunctionStart('games_poker_room_share', { 
+      userId: userInfo.userId, 
+      callbackData,
+      context: 'games_poker_room_share'
+    });
+    
+    await answerCallbackQuery(bot, ctx.callbackQuery.id);
+    
+    // Parse the callback data to extract roomId
+    const urlParams = new URLSearchParams(callbackData.split('?')[1] || '');
+    const roomId = urlParams.get('roomId');
+    
+    console.log(`🔍 PARSED ROOM ID: ${roomId}`);
+    
+    if (!roomId) {
+      throw new Error('Room ID not found in callback data');
+    }
+    
+    // Import and call the share handler directly
+    const handleShare = (await import('./actions/games/poker/room/share')).default;
+    
+    const context: HandlerContext = {
+      ctx,
+      user: {
+        id: userInfo.userId as UserId,
+        username: userInfo.username || 'Unknown'
+      }
+    };
+    
+    console.log(`🚀 CALLING SHARE HANDLER FOR ROOM: ${roomId}`);
+    await handleShare(context, { roomId });
+    console.log(`✅ SHARE HANDLER COMPLETED FOR ROOM: ${roomId}`);
+    
+    logFunctionEnd('games_poker_room_share', {}, { 
+      userId: userInfo.userId, 
+      roomId,
+      context: 'games_poker_room_share'
+    });
+  } catch (error) {
+    console.error(`❌ GAMES.POKER.ROOM.SHARE ERROR:`, error);
+    logError('games_poker_room_share', error as Error, {});
     await answerCallbackQuery(bot, ctx.callbackQuery.id, '❌ Processing failed');
   }
 });
@@ -642,7 +859,7 @@ bot.callbackQuery(/^[a-z0-9]{2,5}(\?.*)?$/, async (ctx) => {
     console.log(`🔍 PARSED CALLBACK DATA: code=${code}, params=`, params);
     
     // Add params to context
-    (context as any).query = params;
+    (context as HandlerContext & { _query?: Record<string, string> })._query = params;
     
     console.log(`🚀 DISPATCHING TO COMPACT ROUTER: code=${code}`);
     await dispatch(code, context, params);

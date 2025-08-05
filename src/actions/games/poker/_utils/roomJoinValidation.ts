@@ -1,51 +1,152 @@
-import { PokerRoom, PlayerId, RoomId } from '../types';
-import { getPokerRoomsForPlayer } from '../services/pokerService';
+import { 
+  PokerRoom, 
+  PlayerId 
+} from '../types';
+import { 
+  getPokerRoomsForPlayer 
+} from '../services/pokerService';
+import { logFunctionStart, logFunctionEnd, logError } from '@/modules/core/logger';
 
 /**
- * Check if player is already in an active room
+ * Validate if a player can join a room
  */
-export async function isPlayerInActiveRoom(playerId: PlayerId): Promise<boolean> {
-  try {
-    const playerRooms = await getPokerRoomsForPlayer(playerId);
-    return playerRooms.some(room => room.status === 'waiting' || room.status === 'playing');
-  } catch (error) {
-    console.error('Error checking player active rooms:', error);
-    return false;
-  }
-}
-
-/**
- * Check if room is full
- */
-export function isRoomFull(room: PokerRoom): boolean {
-  return room.players.length >= room.maxPlayers;
-}
-
-/**
- * Check if player is already in the room
- */
-export function isPlayerAlreadyInRoom(room: PokerRoom, playerId: PlayerId): boolean {
-  return room.players.some(player => player.id === playerId);
-}
-
-/**
- * Check if room is accessible (for private rooms)
- */
-export function isRoomAccessible(room: PokerRoom, isDirectLink: boolean = false): boolean {
-  // Public rooms are always accessible
-  if (!room.isPrivate) {
-    return true;
-  }
+export async function validateRoomJoin(
+  room: PokerRoom,
+  playerId: PlayerId
+): Promise<{
+  isValid: boolean;
+  error?: string;
+  activeRoom?: PokerRoom;
+}> {
+  logFunctionStart('validateRoomJoin', { roomId: room.id, playerId });
   
-  // Private rooms are only accessible via direct link
-  return isDirectLink;
+  try {
+    // Check if room exists and is active
+    if (!room || room.status === 'finished' || room.status === 'cancelled') {
+      return {
+        isValid: false,
+        error: 'Room not found or no longer active'
+      };
+    }
+    
+    // Check if room is full
+    if (room.players.length >= room.maxPlayers) {
+      return {
+        isValid: false,
+        error: 'Room is full'
+      };
+    }
+    
+    // Check if player is already in the room
+    const existingPlayer = room.players.find(p => p.id === playerId);
+    if (existingPlayer) {
+      return {
+        isValid: false,
+        error: 'You are already in this room'
+      };
+    }
+    
+    // Check if player is already in another active room
+    try {
+      const userRooms = await getPokerRoomsForPlayer(playerId);
+      const activeRoom = userRooms.find(r => 
+        r.status === 'waiting' || r.status === 'playing'
+      );
+      
+      if (activeRoom && activeRoom.id !== room.id) {
+        console.log(`🚫 VALIDATION FAILED: User ${playerId} is in room ${activeRoom.id} trying to join ${room.id}`);
+        return {
+          isValid: false,
+          error: `شما در روم "${activeRoom.name}" هستید. ابتدا باید از آن روم خارج شوید.`,
+          activeRoom
+        };
+      }
+    } catch (error) {
+      // If getPokerRoomsForPlayer fails, check if it's a "no rooms found" error
+      if (error instanceof Error && error.message.includes('Cannot coerce')) {
+        // User has no rooms, allow join
+        console.log(`User ${playerId} has no rooms, allowing join`);
+      } else {
+        // Other error, log and continue
+        console.log(`Error checking user rooms for ${playerId}:`, error);
+      }
+    }
+    
+    // Check if game is already in progress
+    if (room.status === 'playing') {
+      return {
+        isValid: false,
+        error: 'Game is already in progress'
+      };
+    }
+    
+    logFunctionEnd('validateRoomJoin', { isValid: true }, { roomId: room.id, playerId });
+    return { isValid: true };
+    
+  } catch (error) {
+    logError('validateRoomJoin', error as Error, { roomId: room.id, playerId });
+    return {
+      isValid: false,
+      error: 'Validation failed'
+    };
+  }
 }
 
 /**
- * Check if room can accept new players
+ * Validate room creation
  */
-export function canRoomAcceptPlayers(room: PokerRoom): boolean {
-  return room.status === 'waiting' && !isRoomFull(room);
+export function validateRoomCreation(
+  name: string,
+  maxPlayers: number,
+  smallBlind: number
+): {
+  isValid: boolean;
+  error?: string;
+} {
+  logFunctionStart('validateRoomCreation', { name, maxPlayers, smallBlind });
+  
+  try {
+    // Validate room name
+    if (!name || name.trim().length < 3) {
+      return {
+        isValid: false,
+        error: 'Room name must be at least 3 characters long'
+      };
+    }
+    
+    if (name.length > 50) {
+      return {
+        isValid: false,
+        error: 'Room name must be less than 50 characters'
+      };
+    }
+    
+    // Validate max players
+    if (maxPlayers < 2 || maxPlayers > 8) {
+      return {
+        isValid: false,
+        error: 'Max players must be between 2 and 8'
+      };
+    }
+    
+    // Validate small blind
+    if (smallBlind < 1) {
+      return {
+        isValid: false,
+        error: 'Small blind must be at least 1'
+      };
+    }
+    
+    logFunctionEnd('validateRoomCreation', { isValid: true }, { name, maxPlayers, smallBlind });
+    return { isValid: true };
+    
+  } catch (error) {
+    logError('validateRoomCreation', error as Error, { name, maxPlayers, smallBlind });
+    return {
+      isValid: false,
+      error: 'Validation failed'
+    };
+  }
 }
 
 /**
@@ -54,77 +155,13 @@ export function canRoomAcceptPlayers(room: PokerRoom): boolean {
 export function getRoomCapacityInfo(room: PokerRoom): {
   current: number;
   max: number;
-  available: number;
   isFull: boolean;
+  hasMinimumPlayers: boolean;
 } {
-  const current = room.players.length;
-  const max = room.maxPlayers;
-  const available = max - current;
-  const isFull = current >= max;
-  
   return {
-    current,
-    max,
-    available,
-    isFull
+    current: room.players.length,
+    max: room.maxPlayers,
+    isFull: room.players.length >= room.maxPlayers,
+    hasMinimumPlayers: room.players.length >= 2
   };
-}
-
-/**
- * Validate room join request
- */
-export async function validateRoomJoinRequest(
-  room: PokerRoom,
-  playerId: PlayerId,
-  isDirectLink: boolean = false
-): Promise<{
-  isValid: boolean;
-  error?: string;
-  activeRoom?: PokerRoom;
-}> {
-  // Check if player is already in an active room
-  const playerRooms = await getPokerRoomsForPlayer(playerId);
-  const activeRoom = playerRooms.find(r => r.status === 'waiting' || r.status === 'playing');
-  
-  if (activeRoom) {
-    return {
-      isValid: false,
-      error: 'شما در حال حاضر در یک روم فعال هستید. لطفاً ابتدا از روم فعلی خارج شوید.',
-      activeRoom: activeRoom
-    };
-  }
-  
-  // Check if room can accept players
-  if (!canRoomAcceptPlayers(room)) {
-    if (room.status !== 'waiting') {
-      return {
-        isValid: false,
-        error: 'این روم در حال حاضر بازیکن نمی‌پذیرد.'
-      };
-    }
-    if (isRoomFull(room)) {
-      return {
-        isValid: false,
-        error: 'این روم پر شده است.'
-      };
-    }
-  }
-  
-  // Check if player is already in this room
-  if (isPlayerAlreadyInRoom(room, playerId)) {
-    return {
-      isValid: false,
-      error: 'شما قبلاً در این روم عضو هستید.'
-    };
-  }
-  
-  // Check if room is accessible
-  if (!isRoomAccessible(room, isDirectLink)) {
-    return {
-      isValid: false,
-      error: 'این روم خصوصی است و فقط از طریق لینک مستقیم قابل دسترسی است.'
-    };
-  }
-  
-  return { isValid: true };
 } 

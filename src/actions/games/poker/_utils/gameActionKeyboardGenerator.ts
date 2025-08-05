@@ -1,4 +1,4 @@
-import { PokerRoom, PlayerId } from '../types';
+import { PokerRoom, PokerPlayer, PlayerId } from '../types';
 
 /**
  * Generate game action keyboard for current player
@@ -66,14 +66,14 @@ export function generateGameActionKeyboard(
   ]);
   
   // Raise buttons (if player has enough chips)
-  const canRaise = currentPlayer.balance > room.currentBet;
+  const canRaise = (currentPlayer.chips || 0) > room.currentBet;
   if (canRaise) {
     const raiseOptions = generateRaiseOptions(room, currentPlayer);
     buttons.push(raiseOptions);
   }
   
   // All-in button (if player has chips)
-  if (currentPlayer.balance > 0) {
+  if ((currentPlayer.chips || 0) > 0) {
     buttons.push([
       {
         text: '🔥 All In',
@@ -96,9 +96,9 @@ export function generateGameActionKeyboard(
 /**
  * Generate raise options
  */
-function generateRaiseOptions(room: PokerRoom, player: any): Array<{ text: string; callback_data: string }> {
+function generateRaiseOptions(room: PokerRoom, player: PokerPlayer): Array<{ text: string; callback_data: string }> {
   const minRaise = room.minRaise;
-  const playerBalance = player.balance;
+  const playerChips = player.chips || 0;
   const currentBet = room.currentBet;
   
   const options: Array<{ text: string; callback_data: string }> = [];
@@ -108,8 +108,8 @@ function generateRaiseOptions(room: PokerRoom, player: any): Array<{ text: strin
     minRaise,
     minRaise * 2,
     minRaise * 3,
-    playerBalance
-  ].filter(amount => amount <= playerBalance && amount > currentBet);
+    playerChips
+  ].filter(amount => amount <= playerChips && amount > currentBet);
   
   // Add raise buttons
   for (const amount of raiseAmounts.slice(0, 3)) { // Limit to 3 buttons
@@ -143,7 +143,7 @@ function generateErrorKeyboard(): {
 /**
  * Generate game state keyboard for active players
  */
-export function generateGameStateKeyboard(room: PokerRoom, player: any, isMyTurn: boolean): {
+export function generateGameStateKeyboard(room: PokerRoom, player: PokerPlayer, isMyTurn: boolean): {
   inline_keyboard: Array<Array<{ text: string; callback_data: string }>>
 } {
   const buttons: Array<Array<{ text: string; callback_data: string }>> = [];
@@ -239,12 +239,12 @@ export function generateWaitingRoomKeyboard(roomId: string, canStart: boolean): 
   // Room management buttons
   buttons.push([
     {
-      text: '👥 دعوت دوستان',
-      switch_inline_query: `join_room_${roomId}`
+      text: '👥 Invite Friends',
+      callback_data: `games.poker.room.share?roomId=${roomId}`
     },
     {
-      text: '📊 اطلاعات روم',
-      callback_data: `gpinf?roomId=${roomId}`
+      text: '📊 Room Info',
+      callback_data: `games.poker.room.info?roomId=${roomId}`
     }
   ]);
   
