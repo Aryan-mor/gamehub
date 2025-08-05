@@ -1,4 +1,6 @@
 import { PokerRoom, PokerPlayer, PlayerId } from '../types';
+import { createPokerActionCallback, createPokerActionCallbackWithParams } from './pokerActionHelper';
+import { RoomId } from '@/utils/types';
 
 /**
  * Generate game action keyboard for current player
@@ -17,13 +19,13 @@ export function generateGameActionKeyboard(
         [
           {
             text: '🔄 بروزرسانی',
-            callback_data: `games.poker.room.game.refresh?roomId=${room.id}`
+            callback_data: createPokerActionCallback('REFRESH_GAME', room.id)
           }
         ],
         [
           {
             text: '🚪 خروج از بازی',
-            callback_data: `games.poker.room.leave?roomId=${room.id}`
+            callback_data: createPokerActionCallback('LEAVE_ROOM', room.id)
           }
         ]
       ]
@@ -45,14 +47,14 @@ export function generateGameActionKeyboard(
     buttons.push([
       {
         text: `🃏 Call (${callAmount})`,
-        callback_data: `games.poker.room.call?roomId=${room.id}`
+        callback_data: createPokerActionCallback('CALL', room.id)
       }
     ]);
   } else {
     buttons.push([
       {
         text: '👁️ Check',
-        callback_data: `games.poker.room.check?roomId=${room.id}`
+        callback_data: createPokerActionCallback('CHECK', room.id)
       }
     ]);
   }
@@ -61,7 +63,7 @@ export function generateGameActionKeyboard(
   buttons.push([
     {
       text: '❌ Fold',
-      callback_data: `games.poker.room.fold?roomId=${room.id}`
+      callback_data: createPokerActionCallback('FOLD', room.id)
     }
   ]);
   
@@ -77,7 +79,7 @@ export function generateGameActionKeyboard(
     buttons.push([
       {
         text: '🔥 All In',
-        callback_data: `games.poker.room.allin?roomId=${room.id}`
+        callback_data: createPokerActionCallback('ALL_IN', room.id)
       }
     ]);
   }
@@ -86,7 +88,7 @@ export function generateGameActionKeyboard(
   buttons.push([
     {
       text: '🚪 خروج از بازی',
-      callback_data: `games.poker.room.leave?roomId=${room.id}`
+      callback_data: createPokerActionCallback('LEAVE_ROOM', room.id)
     }
   ]);
   
@@ -115,7 +117,7 @@ function generateRaiseOptions(room: PokerRoom, player: PokerPlayer): Array<{ tex
   for (const amount of raiseAmounts.slice(0, 3)) { // Limit to 3 buttons
     options.push({
       text: `💰 +${amount}`,
-      callback_data: `games.poker.room.raise?roomId=${room.id}&amount=${amount}`
+      callback_data: createPokerActionCallbackWithParams('RAISE', { roomId: room.id, amount: amount.toString() })
     });
   }
   
@@ -133,7 +135,7 @@ function generateErrorKeyboard(): {
       [
         {
           text: '🔙 بازگشت به منو',
-          callback_data: 'games.poker.backToMenu'
+          callback_data: createPokerActionCallbackWithParams('BACK', {})
         }
       ]
     ]
@@ -157,14 +159,14 @@ export function generateGameStateKeyboard(room: PokerRoom, player: PokerPlayer, 
       buttons.push([
         {
           text: `🃏 Call (${callAmount})`,
-          callback_data: `gpcall?roomId=${room.id}`
+          callback_data: createPokerActionCallback('CALL', room.id)
         }
       ]);
     } else {
       buttons.push([
         {
           text: '👁️ Check',
-          callback_data: `gpchk?roomId=${room.id}`
+          callback_data: createPokerActionCallback('CHECK', room.id)
         }
       ]);
     }
@@ -172,7 +174,7 @@ export function generateGameStateKeyboard(room: PokerRoom, player: PokerPlayer, 
     buttons.push([
       {
         text: '❌ Fold',
-        callback_data: `gpfld?roomId=${room.id}`
+        callback_data: createPokerActionCallback('FOLD', room.id)
       }
     ]);
     
@@ -181,7 +183,7 @@ export function generateGameStateKeyboard(room: PokerRoom, player: PokerPlayer, 
       buttons.push([
         {
           text: '💰 Raise',
-          callback_data: `gprse?roomId=${room.id}`
+          callback_data: createPokerActionCallback('RAISE', room.id)
         }
       ]);
     }
@@ -191,7 +193,7 @@ export function generateGameStateKeyboard(room: PokerRoom, player: PokerPlayer, 
       buttons.push([
         {
           text: '🔥 All In',
-          callback_data: `gpall?roomId=${room.id}`
+          callback_data: createPokerActionCallback('ALL_IN', room.id)
         }
       ]);
     }
@@ -200,7 +202,7 @@ export function generateGameStateKeyboard(room: PokerRoom, player: PokerPlayer, 
     buttons.push([
       {
         text: '🔄 بروزرسانی',
-        callback_data: `gpref?roomId=${room.id}`
+        callback_data: createPokerActionCallback('REFRESH_GAME', room.id)
       }
     ]);
   }
@@ -209,7 +211,7 @@ export function generateGameStateKeyboard(room: PokerRoom, player: PokerPlayer, 
   buttons.push([
     {
       text: '🚪 خروج از بازی',
-      callback_data: `gpl?roomId=${room.id}`
+      callback_data: createPokerActionCallback('LEAVE_ROOM', room.id)
     }
   ]);
   
@@ -219,7 +221,7 @@ export function generateGameStateKeyboard(room: PokerRoom, player: PokerPlayer, 
 /**
  * Generate waiting room keyboard
  */
-export function generateWaitingRoomKeyboard(roomId: string, canStart: boolean): {
+export function generateWaitingRoomKeyboard(roomId: RoomId, canStart: boolean): {
   inline_keyboard: Array<Array<{ text: string; callback_data: string }>>
 } {
   const buttons: Array<Array<{ text: string; callback_data: string }>> = [];
@@ -231,7 +233,7 @@ export function generateWaitingRoomKeyboard(roomId: string, canStart: boolean): 
     buttons.push([
       {
         text: '🎮 شروع بازی',
-        callback_data: `gpsg?roomId=${roomId}`
+        callback_data: createPokerActionCallback('START_GAME', roomId)
       }
     ]);
   }

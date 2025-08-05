@@ -111,7 +111,7 @@ async function handleKick(context: HandlerContext, query: Record<string, string>
     
     await tryEditMessageText(ctx, message, {
       parse_mode: 'HTML',
-      reply_markup: keyboard
+      reply_markup: keyboard as any
     });
     
   } catch (error) {

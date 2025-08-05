@@ -84,13 +84,13 @@ async function handleInfo(context: HandlerContext, query: Record<string, string>
     try {
       await tryEditMessageText(ctx, roomInfo, {
         parse_mode: 'HTML',
-        reply_markup: keyboard
+        reply_markup: keyboard as any
       });
     } catch {
       // If edit fails, send new message and store it
       const sentMessage = await ctx.reply(roomInfo, {
         parse_mode: 'HTML',
-        reply_markup: keyboard
+        reply_markup: keyboard as any
       });
       
       // Store message ID for future updates

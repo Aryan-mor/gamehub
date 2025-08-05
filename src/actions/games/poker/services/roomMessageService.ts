@@ -257,7 +257,7 @@ export async function updateAllPlayersInRoom(
           roomInfo,
           {
             parse_mode: 'HTML',
-            reply_markup: keyboard
+            reply_markup: keyboard as any
           }
         );
         

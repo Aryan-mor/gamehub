@@ -5,6 +5,7 @@ import { POKER_ACTIONS } from '../../compact-codes';
 import { logFunctionStart, logFunctionEnd, logError } from '@/modules/core/logger';
 import { Context } from 'grammy';
 import { FormState } from '../../_utils/formStateManager';
+import { PlayerId } from '../../types';
 
 
 // Global form state storage (shared with other handlers)
@@ -276,7 +277,7 @@ async function handleConfirmCreate(context: HandlerContext): Promise<void> {
       maxPlayers: formState.data.maxPlayers || 2,
       smallBlind: formState.data.smallBlind || 1,
       turnTimeoutSec: formState.data.turnTimeoutSec || 30
-    }, user.id as any, user.username || 'Unknown', user.username, ctx.chat?.id);
+    }, user.id as unknown as PlayerId, user.username || 'Unknown', user.username, ctx.chat?.id);
     
     // Clear form state
     global.formStates.delete(userId);

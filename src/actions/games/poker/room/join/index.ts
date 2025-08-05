@@ -2,6 +2,7 @@ import { Context } from 'grammy';
 import { HandlerContext } from '@/modules/core/handler';
 import { PlayerId, RoomId } from '../../types';
 import { PokerRoom as RoomData } from '../../types';
+import { UserId } from '@/utils/types';
 import { joinPokerRoom, getPokerRoom } from '../../services/pokerService';
 import { validateRoomId, validatePlayerId } from '../../_utils/typeGuards';
 import { validateRoomJoin } from '../../_utils/roomJoinValidation';
@@ -78,7 +79,7 @@ async function handleJoin(context: HandlerContext, query: Record<string, string>
     // Send new message instead of editing for better UX
     const sentMessage = await ctx.reply(roomInfo, {
       parse_mode: 'HTML',
-      reply_markup: keyboard
+      reply_markup: keyboard as any
     });
     
     // Store message ID for future updates
@@ -162,9 +163,9 @@ async function handleRoomJoinConflictCallback(
       const info = getRoomInfoForUser(room, playerId);
       const keyboard = generateRoomInfoKeyboard(room, playerId);
       try {
-        await ctx.editMessageText(info, { parse_mode: 'HTML', reply_markup: keyboard });
+        await ctx.editMessageText(info, { parse_mode: 'HTML', reply_markup: keyboard as any });
       } catch {
-        await ctx.reply(info, { parse_mode: 'HTML', reply_markup: keyboard });
+        await ctx.reply(info, { parse_mode: 'HTML', reply_markup: keyboard as any });
       }
     }
     return;
@@ -180,9 +181,9 @@ async function handleRoomJoinConflictCallback(
         const info = getRoomInfoForUser(newRoom, playerId);
         const keyboard = generateRoomInfoKeyboard(newRoom, playerId);
         try {
-          await ctx.editMessageText(info, { parse_mode: 'HTML', reply_markup: keyboard });
+          await ctx.editMessageText(info, { parse_mode: 'HTML', reply_markup: keyboard as any });
         } catch {
-          await ctx.reply(info, { parse_mode: 'HTML', reply_markup: keyboard });
+          await ctx.reply(info, { parse_mode: 'HTML', reply_markup: keyboard as any });
         }
       }
     } catch {
@@ -200,7 +201,7 @@ async function handleRoomJoinConflictCallback(
       const context = {
         ctx,
         user: {
-          id: playerId as any,
+          id: playerId as unknown as UserId,
           username: 'Unknown'
         }
       };

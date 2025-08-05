@@ -66,7 +66,7 @@ export async function activeGameRedirect(ctx: Context): Promise<boolean> {
       await handleRoomInfo(context, { roomId: activeRoom.id });
       
       // Mark as handled to prevent further processing
-      (ctx as any).handled = true;
+      (ctx as Context & { handled?: boolean }).handled = true;
       
       return true; // Stop further processing
     }
@@ -110,7 +110,7 @@ export async function checkAndRedirectToActiveGame(ctx: Context): Promise<boolea
       await handleRoomInfo(context, { roomId: activeRoom.id });
       
       // Mark as handled to prevent further processing
-      (ctx as any).handled = true;
+      (ctx as Context & { handled?: boolean }).handled = true;
       
       return true; // Stop further processing
     }

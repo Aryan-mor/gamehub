@@ -146,7 +146,7 @@ export const getPokerRoom = async (roomId: RoomId): Promise<PokerRoom | null> =>
   try {
     const { data: roomData, error: roomError } = await supabase
       .from('rooms')
-      .select('*')
+      .select('*, is_private')
       .eq('room_id', roomId)
       .single();
     

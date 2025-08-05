@@ -8,7 +8,8 @@ import { sendMessage, answerCallbackQuery, parseCallbackData, extractUserInfo } 
 import { setMessageUpdater } from './modules/core/messageUpdater';
 // Archived games are no longer imported - using new auto-discovery router system
 import { HandlerContext } from './modules/core/handler';
-import { UserId } from './utils/types';
+import { UserId, RoomId } from './utils/types';
+import { PlayerId } from './actions/games/poker/types';
 import { logFunctionStart, logFunctionEnd, logError } from './modules/core/logger';
 import { api } from './lib/api';
 import { Context } from 'grammy';
@@ -93,13 +94,13 @@ bot.callbackQuery(/^gpj_/, async (ctx) => {
     
     if (prefix === 'gpj_b') {
       // بازگشت به روم فعلی
-      await handleRoomJoinConflictCallback(ctx, 'back', params[0] as any, undefined, userId as any);
+      await handleRoomJoinConflictCallback(ctx, 'back', params[0] as RoomId, undefined, userId as PlayerId);
     } else if (prefix === 'gpj_lj') {
       // خروج و پیوستن
-      await handleRoomJoinConflictCallback(ctx, 'leave_join', params[0] as any, params[1] as any, userId as any);
+      await handleRoomJoinConflictCallback(ctx, 'leave_join', params[0] as RoomId, params[1] as RoomId, userId as PlayerId);
     } else if (prefix === 'gpj_l') {
       // خروج
-      await handleRoomJoinConflictCallback(ctx, 'leave', params[0] as any, undefined, userId as any);
+      await handleRoomJoinConflictCallback(ctx, 'leave', params[0] as RoomId, undefined, userId as PlayerId);
     }
     
     await ctx.answerCallbackQuery();

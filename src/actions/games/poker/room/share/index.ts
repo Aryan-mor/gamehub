@@ -80,7 +80,7 @@ async function handleShare(context: HandlerContext, query: Record<string, string
           {
             text: '📤 اشتراک‌گذاری با مخاطبین',
             switch_inline_query: `🎮 دعوت به بازی پوکر: ${room.name}\n\n${inviteLink}`
-          } as any
+          } as { text: string; switch_inline_query: string }
         ],
         [
           {
@@ -105,7 +105,7 @@ async function handleShare(context: HandlerContext, query: Record<string, string
     
     await tryEditMessageText(ctx, inviteMessage, {
       parse_mode: 'HTML',
-      reply_markup: keyboard
+      reply_markup: keyboard as any
     });
     
   } catch (error) {

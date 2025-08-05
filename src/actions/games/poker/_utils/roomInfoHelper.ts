@@ -1,4 +1,5 @@
 import { PokerRoom, PlayerId, PokerPlayer } from '../types';
+import { createPokerActionCallback, createPokerActionCallbackWithParams } from './pokerActionHelper';
 
 /**
  * Get personalized room information for a specific user
@@ -96,42 +97,49 @@ export function getRoomInfoForUser(room: PokerRoom, userId: PlayerId): string {
  * Generate keyboard for room information based on user role
  */
 export function generateRoomInfoKeyboard(room: PokerRoom, userId: PlayerId): {
-  inline_keyboard: Array<Array<{ text: string; callback_data: string }>>
+  inline_keyboard: Array<Array<{ text: string; callback_data: string } | { text: string; switch_inline_query: string }>>
 } {
   const isCreator = room.createdBy === userId;
   const canStartGame = isCreator && room.players.length >= room.minPlayers && room.status === 'waiting';
   
-  const buttons: Array<Array<{ text: string; callback_data: string }>> = [];
+  const buttons: Array<Array<{ text: string; callback_data: string } | { text: string; switch_inline_query: string }>> = [];
   
   // Start Game button (only for creator when conditions are met)
   if (canStartGame) {
     buttons.push([
       {
         text: '🎮 شروع بازی',
-        callback_data: `games.poker.room.start?roomId=${room.id}`
+        callback_data: createPokerActionCallback('START_GAME', room.id)
       }
     ]);
   }
   
-  // Share button (always available) - using switch_inline_query to open contacts
-  const shareInlineQuery = `gpj-${room.id}`;
-  console.log(`🔍 SHARE BUTTON INLINE QUERY: ${shareInlineQuery}`);
-  buttons.push([
-    {
-      text: '📤 اشتراک‌گذاری',
-      switch_inline_query: shareInlineQuery
-    } as any
-  ]);
+  // Share button (only when room is not full) - using switch_inline_query to open contacts
+  const isRoomFull = room.players.length >= room.maxPlayers;
+  console.log(`🔍 ROOM STATUS CHECK: ${room.name} - Players: ${room.players.length}/${room.maxPlayers} - Is Full: ${isRoomFull}`);
+  
+  if (!isRoomFull) {
+    const shareInlineQuery = `gpj-${room.id}`;
+    console.log(`🔍 SHARE BUTTON INLINE QUERY: ${shareInlineQuery}`);
+    buttons.push([
+      {
+        text: '📤 اشتراک‌گذاری',
+        switch_inline_query: shareInlineQuery
+      } as { text: string; switch_inline_query: string }
+    ]);
+  } else {
+    console.log(`🔍 SHARE BUTTON HIDDEN: Room ${room.name} is full (${room.players.length}/${room.maxPlayers})`);
+  }
   
   // Refresh and Leave buttons (always available)
   buttons.push([
     {
       text: '🔁 بروزرسانی',
-      callback_data: `games.poker.room.info?roomId=${room.id}`
+      callback_data: createPokerActionCallback('ROOM_INFO', room.id)
     },
     {
       text: '🚪 خروج از روم',
-      callback_data: `games.poker.room.leave?roomId=${room.id}`
+      callback_data: createPokerActionCallback('LEAVE_ROOM', room.id)
     }
   ]);
   
@@ -139,7 +147,7 @@ export function generateRoomInfoKeyboard(room: PokerRoom, userId: PlayerId): {
   buttons.push([
     {
       text: '🔙 بازگشت به منو',
-      callback_data: 'games.poker.backToMenu'
+      callback_data: createPokerActionCallback('BACK_TO_MENU', room.id)
     }
   ]);
   
@@ -162,7 +170,7 @@ export function generateKickPlayerKeyboard(room: PokerRoom, kickablePlayers: Pok
     const player1 = kickablePlayers[i];
     row.push({
       text: `👢 ${player1.name}`,
-      callback_data: `games.poker.room.kick?roomId=${room.id}&targetPlayerId=${player1.id}`
+      callback_data: createPokerActionCallbackWithParams('KICK_PLAYER', { roomId: room.id, targetPlayerId: player1.id })
     });
     
     // Second player in row (if exists)
@@ -170,7 +178,7 @@ export function generateKickPlayerKeyboard(room: PokerRoom, kickablePlayers: Pok
       const player2 = kickablePlayers[i + 1];
       row.push({
         text: `👢 ${player2.name}`,
-        callback_data: `games.poker.room.kick?roomId=${room.id}&targetPlayerId=${player2.id}`
+        callback_data: createPokerActionCallbackWithParams('KICK_PLAYER', { roomId: room.id, targetPlayerId: player2.id })
       });
     }
     
@@ -181,14 +189,14 @@ export function generateKickPlayerKeyboard(room: PokerRoom, kickablePlayers: Pok
   buttons.push([
     {
       text: '🔙 بازگشت به اطلاعات روم',
-      callback_data: `games.poker.room.info?roomId=${room.id}`
+      callback_data: createPokerActionCallback('ROOM_INFO', room.id)
     }
   ]);
   
   buttons.push([
     {
       text: '🔙 بازگشت به منو',
-      callback_data: 'games.poker.backToMenu'
+      callback_data: createPokerActionCallback('BACK_TO_MENU', room.id)
     }
   ]);
   
