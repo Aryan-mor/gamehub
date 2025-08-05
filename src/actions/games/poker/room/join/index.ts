@@ -185,7 +185,7 @@ async function handleRoomJoinConflictCallback(
           await ctx.reply(info, { parse_mode: 'HTML', reply_markup: keyboard });
         }
       }
-    } catch (error) {
+    } catch {
       await ctx.editMessageText('❌ خطا در پیوستن به روم جدید. لطفاً دوباره تلاش کنید.', { parse_mode: 'HTML' });
     }
     return;
@@ -211,7 +211,7 @@ async function handleRoomJoinConflictCallback(
         // Fallback to simple message if start game handler fails
         await ctx.editMessageText('✅ شما از روم خارج شدید و به صفحه اصلی بازگشتید.', { parse_mode: 'HTML' });
       }
-    } catch (error) {
+    } catch {
       await ctx.editMessageText('❌ خطا در خروج از روم. لطفاً دوباره تلاش کنید.', { parse_mode: 'HTML' });
     }
     return;

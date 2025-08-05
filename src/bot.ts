@@ -4,10 +4,7 @@ import { InlineQueryResult } from 'grammy/types';
 import { loggingMiddleware } from './modules/core/logger';
 import { sendMessage, answerCallbackQuery, parseCallbackData, extractUserInfo } from './modules/core/telegramHelpers';
 
-import { 
-  createOptimizedKeyboard, 
-  updateOrSendMessage
-} from './modules/core/interfaceHelpers';
+
 import { setMessageUpdater } from './modules/core/messageUpdater';
 // Archived games are no longer imported - using new auto-discovery router system
 import { HandlerContext } from './modules/core/handler';
@@ -80,7 +77,7 @@ bot.use(async (ctx, next) => {
 bot.callbackQuery(/^gpj_/, async (ctx) => {
   try {
     const callbackData = ctx.callbackQuery.data || '';
-    const { logFunctionStart, logFunctionEnd, logError } = await import('./modules/core/logger');
+    const { logFunctionStart, logFunctionEnd } = await import('./modules/core/logger');
     
     logFunctionStart('handleRoomJoinConflictCallback', {
       callbackData,
@@ -509,11 +506,7 @@ bot.callbackQuery(/.*"action":"back".*/, async (ctx) => {
     
     await answerCallbackQuery(bot, ctx.callbackQuery.id);
     
-    // Import keys from actions for consistency
-    const { key: gamesStartKey } = await import('./actions/games/start');
-    const { key: freecoinKey } = await import('./actions/financial/freecoin');
-    const { key: balanceKey } = await import('./actions/balance');
-    const { key: helpKey } = await import('./actions/help');
+
     
     // Use the main start handler to show the correct menu
     const { default: handleStart } = await import('./actions/start');
