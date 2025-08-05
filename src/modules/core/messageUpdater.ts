@@ -59,6 +59,16 @@ export class MessageUpdater {
         newMessageId: messageId
       };
     } catch (editError) {
+      // Check if it's a "message is not modified" error
+      const errorMessage = editError instanceof Error ? editError.message : '';
+      if (errorMessage.includes('message is not modified')) {
+        console.log(`ℹ️ Message ${messageId} is already up to date, no changes needed`);
+        return {
+          success: true,
+          newMessageId: messageId
+        };
+      }
+      
       console.log(`❌ Failed to edit message ${messageId}, sending new message:`, editError);
       
       // Send new message

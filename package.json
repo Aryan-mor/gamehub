@@ -13,6 +13,10 @@
     "test:run": "vitest run",
     "test:coverage": "vitest run --coverage",
     "test:ci": "vitest run --reporter=verbose",
+    "test:scenarios": "vitest run tests/scenarios/",
+    "test:scenarios:ui": "vitest tests/scenarios/ --ui",
+    "test:scenarios:coverage": "vitest run tests/scenarios/ --coverage",
+    "test:scenarios:ci": "vitest run tests/scenarios/ --reporter=verbose",
 
     "pre-push:full": "./scripts/pre-push.sh",
     "pre-push:coverage": "./scripts/pre-push.sh --coverage",

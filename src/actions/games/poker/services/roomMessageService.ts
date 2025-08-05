@@ -227,7 +227,76 @@ export async function notifyGameStarted(roomId: RoomId): Promise<void> {
 } 
 
 /**
- * Update all players in a room with new room information
+ * Send new room information to all players in a room
+ */
+export async function sendNewRoomInfoToAllPlayers(
+  room: PokerRoom,
+  updateType: 'player_joined' | 'player_left' | 'room_full' | 'game_started'
+): Promise<void> {
+  try {
+    logFunctionStart('sendNewRoomInfoToAllPlayers', { roomId: room.id, updateType });
+    
+    // Import bot instance
+    const { bot } = await import('@/bot');
+    const { getRoomInfoForUser, generateRoomInfoKeyboard } = await import('../_utils/roomInfoHelper');
+    
+    // Get all stored messages for this room
+    const messages = await getAllRoomMessages(room.id);
+    
+    // Update each player's message
+    for (const player of room.players) {
+      try {
+        // Get room info for this specific player
+        const roomInfo = getRoomInfoForUser(room, player.id);
+        const keyboard = generateRoomInfoKeyboard(room, player.id);
+        
+        // Check if we have a stored message for this player
+        const existingMessage = messages.find(m => m.playerId === player.id);
+        
+        if (existingMessage) {
+          // Delete old message first
+          try {
+            await bot.api.deleteMessage(existingMessage.chatId, existingMessage.messageId);
+            console.log(`🗑️ Deleted old message for player ${player.id} in room ${room.id}`);
+          } catch (deleteError) {
+            console.log(`⚠️ Failed to delete old message for player ${player.id}:`, deleteError);
+          }
+          
+          // Remove old message from database
+          try {
+            await api.roomMessages.deleteByRoomAndUser(room.id, player.id);
+          } catch (error) {
+            // Ignore error if no existing message
+          }
+        }
+        
+        // Send new message
+        const sentMessage = await bot.api.sendMessage(
+          player.chatId || parseInt(player.id),
+          roomInfo,
+          {
+            parse_mode: 'HTML',
+            reply_markup: keyboard as any
+          }
+        );
+        
+        // Store the new message ID
+        await storePlayerMessage(room.id, player.id, sentMessage.message_id, player.chatId || parseInt(player.id));
+        
+        console.log(`✅ Sent new room info to player ${player.id} in room ${room.id}`);
+      } catch (error) {
+        console.error(`❌ Failed to send room info for player ${player.id}:`, error);
+      }
+    }
+    
+    logFunctionEnd('sendNewRoomInfoToAllPlayers', {}, { updatedPlayers: room.players.length });
+  } catch (error) {
+    logError('sendNewRoomInfoToAllPlayers', error as Error);
+  }
+}
+
+/**
+ * Update all players in a room with new room information (legacy function - kept for compatibility)
  */
 export async function updateAllPlayersInRoom(
   room: PokerRoom,
@@ -241,29 +310,53 @@ export async function updateAllPlayersInRoom(
     
     // Import bot instance
     const { bot } = await import('@/bot');
+    const { getRoomInfoForUser, generateRoomInfoKeyboard } = await import('../_utils/roomInfoHelper');
     
     // Update each player's message
     for (const message of messages) {
       try {
         // Get updated room info for this specific player
-        const { getRoomInfoForUser, generateRoomInfoKeyboard } = await import('../_utils/roomInfoHelper');
         const roomInfo = getRoomInfoForUser(room, message.playerId);
         const keyboard = generateRoomInfoKeyboard(room, message.playerId);
         
-        // Edit the message
-        await bot.api.editMessageText(
-          message.chatId,
-          message.messageId,
-          roomInfo,
-          {
-            parse_mode: 'HTML',
-            reply_markup: keyboard as any
+        // Try to edit the existing message first
+        try {
+          await bot.api.editMessageText(
+            message.chatId,
+            message.messageId,
+            roomInfo,
+            {
+              parse_mode: 'HTML',
+              reply_markup: keyboard as any
+            }
+          );
+          
+          console.log(`✅ Updated existing message for player ${message.playerId} in room ${room.id}`);
+        } catch (editError) {
+          // If edit fails, send new message and store it
+          console.log(`⚠️ Failed to edit message for player ${message.playerId}, sending new message`);
+          
+          const sentMessage = await bot.api.sendMessage(
+            message.chatId,
+            roomInfo,
+            {
+              parse_mode: 'HTML',
+              reply_markup: keyboard as any
+            }
+          );
+          
+          // Store the new message ID (remove old one first to avoid duplicate key error)
+          try {
+            await api.roomMessages.deleteByRoomAndUser(room.id, message.playerId);
+          } catch (error) {
+            // Ignore error if no existing message
           }
-        );
-        
-        console.log(`✅ Updated message for player ${message.playerId} in room ${room.id}`);
+          await storePlayerMessage(room.id, message.playerId, sentMessage.message_id, message.chatId);
+          
+          console.log(`✅ Sent new message for player ${message.playerId} in room ${room.id}`);
+        }
       } catch (error) {
-        console.error(`❌ Failed to update message for player ${message.playerId}:`, error);
+        console.error(`❌ Failed to update/send message for player ${message.playerId}:`, error);
       }
     }
     

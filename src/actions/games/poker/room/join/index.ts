@@ -7,7 +7,7 @@ import { joinPokerRoom, getPokerRoom } from '../../services/pokerService';
 import { validateRoomId, validatePlayerId } from '../../_utils/typeGuards';
 import { validateRoomJoin } from '../../_utils/roomJoinValidation';
 import { generateJoinRoomKeyboard } from '../../_utils/joinRoomKeyboardGenerator';
-import { getRoomInfoForUser } from '../../_utils/roomInfoHelper';
+import { getRoomInfoForUser, generateRoomInfoKeyboard } from '../../_utils/roomInfoHelper';
 import { logFunctionStart, logFunctionEnd, logError } from '@/modules/core/logger';
 
 // Export the action key for consistency and debugging
@@ -18,17 +18,18 @@ export const key = 'games.poker.room.join';
  */
 async function handleJoin(context: HandlerContext, query: Record<string, string> = {}): Promise<void> {
   const { user, ctx } = context;
-  const { roomId } = query;
+  const { roomId, r } = query;
+  const roomIdParam = roomId || r;
   
-  if (!roomId) {
+  if (!roomIdParam) {
     throw new Error('Room ID is required');
   }
   
   try {
-    logFunctionStart('handleJoin', { roomId, userId: user.id });
+    logFunctionStart('handleJoin', { roomId: roomIdParam, userId: user.id });
     
     // Validate IDs
-    const validatedRoomId = validateRoomId(roomId);
+    const validatedRoomId = validateRoomId(roomIdParam);
     const validatedPlayerId = validatePlayerId(user.id.toString());
     
     // Get room information
@@ -69,31 +70,18 @@ async function handleJoin(context: HandlerContext, query: Record<string, string>
       playerId: validatedPlayerId,
       playerName: user.username || 'Unknown Player',
       username: user.username,
-      chips: 1000 // Default starting chips
+      chips: 1000, // Default starting chips
+      chatId: ctx.chat?.id
     });
     
-    // Generate success message
-    const roomInfo = getRoomInfoForUser(updatedRoom, validatedPlayerId);
-    const keyboard = generateJoinRoomKeyboard();
+    // The room info has already been sent by joinPokerRoom service
+    // No need to send another message here
+    console.log('✅ Successfully called handleJoin for room', updatedRoom.id);
     
-    // Send new message instead of editing for better UX
-    const sentMessage = await ctx.reply(roomInfo, {
-      parse_mode: 'HTML',
-      reply_markup: keyboard as any
-    });
-    
-    // Store message ID for future updates
-    try {
-      const { storePlayerMessage } = await import('../../services/roomMessageService');
-      await storePlayerMessage(updatedRoom.id, validatedPlayerId, sentMessage.message_id, ctx.chat?.id || 0);
-    } catch (error) {
-      console.error('Failed to store player message:', error);
-    }
-    
-    logFunctionEnd('handleJoin', { success: true }, { roomId, userId: user.id });
+    logFunctionEnd('handleJoin', { success: true }, { roomId: roomIdParam, userId: user.id });
     
   } catch (error) {
-    logError('handleJoin', error as Error, { roomId, userId: user.id });
+    logError('handleJoin', error as Error, { roomId: roomIdParam, userId: user.id });
     
     const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
     await ctx.reply(`❌ Failed to join room: ${errorMessage}`);
@@ -220,6 +208,12 @@ async function handleRoomJoinConflictCallback(
   
   logFunctionEnd('handleRoomJoinConflictCallback', {}, { success: true });
 }
+
+// Self-register with compact router
+import { register } from '@/modules/core/compact-router';
+import { POKER_ACTIONS } from '../../compact-codes';
+
+register(POKER_ACTIONS.JOIN_ROOM, handleJoin, 'Join Poker Room');
 
 export { handleRoomJoinConflict, handleRoomJoinConflictCallback };
 export default handleJoin; 

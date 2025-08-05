@@ -179,34 +179,52 @@ export const getPokerRoom = async (roomId: RoomId): Promise<PokerRoom | null> =>
     
     if (creatorError) throw creatorError;
     
+    // Check if there's a cached room object in settings
+    const cachedRoom = settings?.room as PokerRoom | undefined;
+    
+    // Use cached room data if available and more recent, otherwise use database data
+    let finalPlayers = players;
+    let finalSettings = settings;
+    
+    if (cachedRoom && cachedRoom.players && cachedRoom.players.length >= players.length) {
+      // Use cached data if it has more players (more up-to-date)
+      finalPlayers = cachedRoom.players;
+      finalSettings = {
+        ...settings,
+        smallBlind: cachedRoom.smallBlind,
+        bigBlind: cachedRoom.bigBlind,
+        turnTimeoutSec: cachedRoom.turnTimeoutSec
+      };
+    }
+    
     // Reconstruct room from database data
     const room: PokerRoom = {
       id: roomData.room_id as RoomId,
       name: roomData.name,
       status: roomData.status as RoomStatus,
-      players: players,
+      players: finalPlayers,
       currentPlayerIndex: 0,
       dealerIndex: 0,
       smallBlindIndex: 0,
       bigBlindIndex: 0,
       pot: 0,
       currentBet: 0,
-      minRaise: (settings?.smallBlind as number) * 2 || 100,
+      minRaise: (finalSettings?.smallBlind as number) * 2 || 100,
       deck: [],
       communityCards: [],
       bettingRound: 'preflop',
-      smallBlind: (settings?.smallBlind as number) || 50,
-      bigBlind: (settings?.bigBlind as number) || 100,
+      smallBlind: (finalSettings?.smallBlind as number) || 50,
+      bigBlind: (finalSettings?.bigBlind as number) || 100,
       minPlayers: 2,
       maxPlayers: roomData.max_players,
       isPrivate: roomData.is_private,
-      turnTimeoutSec: (settings?.turnTimeoutSec as number) || 30,
+      turnTimeoutSec: (finalSettings?.turnTimeoutSec as number) || 30,
       createdBy: creatorData.telegram_id.toString() as PlayerId,
       createdAt: new Date(roomData.created_at).getTime(),
       updatedAt: new Date(roomData.updated_at).getTime()
     };
     
-    logFunctionEnd('getPokerRoom', room, { roomId });
+    logFunctionEnd('getPokerRoom', room, { roomId, playerCount: room.players.length });
     return room;
   } catch (error) {
     logError('getPokerRoom', error as Error, { roomId });
@@ -224,26 +242,20 @@ export const updatePokerRoom = async (
   logFunctionStart('updatePokerRoom', { roomId, updates });
   
   try {
-    const { data: roomData, error: roomError } = await supabase
-      .from('rooms')
-      .select('settings')
-      .eq('room_id', roomId)
-      .single();
-    
-    if (roomError) throw roomError;
-    
-    const settings = roomData.settings as Record<string, unknown>;
-    const currentRoom = settings?.room as PokerRoom;
+    // First get the current room to ensure we have all data
+    const currentRoom = await getPokerRoom(roomId);
+    if (!currentRoom) {
+      throw new Error('Room not found');
+    }
     
     const updatedRoom = { ...currentRoom, ...updates, updatedAt: Date.now() };
     
     const { error: updateError } = await supabase
       .from('rooms')
       .update({
-        status: updates.status || (roomData as Record<string, unknown>).status,
-        created_by: updates.createdBy || (roomData as Record<string, unknown>).created_by,
+        status: updates.status || currentRoom.status,
         settings: {
-          ...settings,
+          ...currentRoom,
           room: updatedRoom
         },
         updated_at: new Date().toISOString()
@@ -326,7 +338,7 @@ export const joinPokerRoom = async (request: JoinRoomRequest): Promise<PokerRoom
       isDealer: false,
       cards: [],
       joinedAt: Date.now(),
-      chatId: undefined
+      chatId: request.chatId
     };
     
     // Add player to room
@@ -355,9 +367,9 @@ export const joinPokerRoom = async (request: JoinRoomRequest): Promise<PokerRoom
     
     // Send notification to all players in the room
     try {
-      const { notifyPlayerJoined, updateAllPlayersInRoom } = await import('./roomMessageService');
+      const { notifyPlayerJoined, sendNewRoomInfoToAllPlayers } = await import('./roomMessageService');
       await notifyPlayerJoined(updatedRoom.id, newPlayer.id, newPlayer.name);
-      await updateAllPlayersInRoom(updatedRoom, 'player_joined');
+      await sendNewRoomInfoToAllPlayers(updatedRoom, 'player_joined');
     } catch (error) {
       console.error('Failed to send room update notification:', error);
     }
@@ -444,12 +456,13 @@ export const leavePokerRoom = async (roomId: RoomId, playerId: PlayerId): Promis
     
     // Send notification to all players in the room
     try {
-      const { notifyPlayerLeft, updateAllPlayersInRoom } = await import('./roomMessageService');
+      const { notifyPlayerLeft, sendNewRoomInfoToAllPlayers } = await import('./roomMessageService');
       const leavingPlayer = room.players.find(p => p.id === playerId);
       if (leavingPlayer) {
         await notifyPlayerLeft(updatedRoom.id, playerId, leavingPlayer.name);
       }
-      await updateAllPlayersInRoom(updatedRoom, 'player_left');
+      // Send new room info to all remaining players
+      await sendNewRoomInfoToAllPlayers(updatedRoom, 'player_left');
     } catch (error) {
       console.error('Failed to send room update notification:', error);
     }

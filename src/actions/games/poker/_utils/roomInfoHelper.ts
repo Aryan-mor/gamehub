@@ -1,5 +1,6 @@
 import { PokerRoom, PlayerId, PokerPlayer } from '../types';
 import { createPokerActionCallback, createPokerActionCallbackWithParams } from './pokerActionHelper';
+import { POKER_ACTIONS } from '../compact-codes';
 
 /**
  * Get personalized room information for a specific user
@@ -109,7 +110,7 @@ export function generateRoomInfoKeyboard(room: PokerRoom, userId: PlayerId): {
     buttons.push([
       {
         text: '🎮 شروع بازی',
-        callback_data: createPokerActionCallback('START_GAME', room.id)
+        callback_data: `${POKER_ACTIONS.START_GAME}?r=${room.id}`
       }
     ]);
   }
@@ -135,11 +136,11 @@ export function generateRoomInfoKeyboard(room: PokerRoom, userId: PlayerId): {
   buttons.push([
     {
       text: '🔁 بروزرسانی',
-      callback_data: createPokerActionCallback('ROOM_INFO', room.id)
+      callback_data: `${POKER_ACTIONS.ROOM_INFO}?r=${room.id}`
     },
     {
       text: '🚪 خروج از روم',
-      callback_data: createPokerActionCallback('LEAVE_ROOM', room.id)
+      callback_data: `${POKER_ACTIONS.LEAVE_ROOM}?r=${room.id}`
     }
   ]);
   
@@ -147,7 +148,7 @@ export function generateRoomInfoKeyboard(room: PokerRoom, userId: PlayerId): {
   buttons.push([
     {
       text: '🔙 بازگشت به منو',
-      callback_data: createPokerActionCallback('BACK_TO_MENU', room.id)
+      callback_data: `${POKER_ACTIONS.BACK_TO_MENU}`
     }
   ]);
   

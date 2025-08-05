@@ -81,11 +81,20 @@ async function handleInfo(context: HandlerContext, query: Record<string, string>
     const keyboard = generateRoomInfoKeyboard(room, validatedPlayerId);
     
     // Try to edit existing message, fallback to new message
+    let messageId: number | undefined;
+    let chatId: number | undefined;
+    
     try {
       await tryEditMessageText(ctx, roomInfo, {
         parse_mode: 'HTML',
         reply_markup: keyboard as any
       });
+      
+      // Get the message ID from the context if available
+      if (ctx.callbackQuery?.message?.message_id) {
+        messageId = ctx.callbackQuery.message.message_id;
+        chatId = ctx.chat?.id || 0;
+      }
     } catch {
       // If edit fails, send new message and store it
       const sentMessage = await ctx.reply(roomInfo, {
@@ -93,10 +102,16 @@ async function handleInfo(context: HandlerContext, query: Record<string, string>
         reply_markup: keyboard as any
       });
       
-      // Store message ID for future updates
+      messageId = sentMessage.message_id;
+      chatId = ctx.chat?.id || 0;
+    }
+    
+    // Store message ID for future updates (if we have a message ID)
+    if (messageId && chatId) {
       try {
         const { storePlayerMessage } = await import('../../services/roomMessageService');
-        await storePlayerMessage(room.id, validatedPlayerId, sentMessage.message_id, ctx.chat?.id || 0);
+        await storePlayerMessage(room.id, validatedPlayerId, messageId, chatId);
+        console.log(`💾 Stored message ID ${messageId} for player ${validatedPlayerId} in room ${room.id}`);
       } catch (storeError) {
         console.error('Failed to store player message:', storeError);
       }

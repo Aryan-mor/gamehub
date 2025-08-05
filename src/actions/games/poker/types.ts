@@ -144,6 +144,7 @@ export interface JoinRoomRequest {
   playerName: string;
   username?: string;
   chips: number;
+  chatId?: number; // Telegram chat ID for sending messages
 }
 
 // Betting action request

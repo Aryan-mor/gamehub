@@ -73,6 +73,11 @@ async function handleForm(context: HandlerContext, query: Record<string, string>
     
     // Update form state based on step
     switch (step) {
+      case 'name':
+        formState.data.name = value;
+        formState.step = 'name';
+        await handleNameStep(ctx, value);
+        break;
       case 'privacy':
         formState.data.isPrivate = value === 'true';
         formState.step = 'privacy';
@@ -119,6 +124,32 @@ async function handleForm(context: HandlerContext, query: Record<string, string>
       }
     });
   }
+}
+
+/**
+ * Handle name step
+ */
+async function handleNameStep(ctx: Context, name: string): Promise<void> {
+  const message = `📝 <b>نام روم</b>\n\n` +
+    `✅ "${name}" انتخاب شد.\n\n` +
+    `در مرحله بعدی نوع روم را انتخاب کنید:`;
+  
+  const keyboard = {
+    inline_keyboard: [
+      [
+        { text: '🌐 عمومی', callback_data: `${POKER_ACTIONS.FORM_STEP}?s=privacy&v=false` },
+        { text: '🔒 خصوصی', callback_data: `${POKER_ACTIONS.FORM_STEP}?s=privacy&v=true` }
+      ],
+      [
+        { text: '🔙 بازگشت', callback_data: POKER_ACTIONS.BACK }
+      ]
+    ]
+  };
+  
+  await tryEditMessageText(ctx, message, {
+    parse_mode: 'HTML',
+    reply_markup: keyboard
+  });
 }
 
 /**

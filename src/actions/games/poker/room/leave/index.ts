@@ -166,6 +166,9 @@ async function handleLeave(context: HandlerContext, query: Record<string, string
 }
 
 // Self-register with compact router
-// register(POKER_ACTIONS.LEAVE_ROOM, handleLeave, 'Leave Poker Room');
+import { register } from '@/modules/core/compact-router';
+import { POKER_ACTIONS } from '../../compact-codes';
+
+register(POKER_ACTIONS.LEAVE_ROOM, handleLeave, 'Leave Poker Room');
 
 export default handleLeave; 

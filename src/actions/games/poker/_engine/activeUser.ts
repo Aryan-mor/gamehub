@@ -107,66 +107,10 @@ async function handleWaitingRoomState(
     }))
   });
   
-  // Get room updates
-  const notificationMessage = roomUpdateService.getNotificationMessage(room);
-  
-  let message = `🏠 <b>روم پوکر: ${room.name}</b>\n\n`;
-  
-  // Add notification if any
-  if (notificationMessage) {
-    message += `📢 <b>آخرین تغییرات:</b>\n${notificationMessage}\n\n`;
-  }
-  
-  // Add room full notification for admin
-  const isAdmin = room.createdBy === userId;
-  const isRoomFull = room.players.length >= room.maxPlayers;
-  if (isAdmin && isRoomFull) {
-    message += `🎉 <b>روم پر شد!</b>\n` +
-      `همه بازیکنان حاضر هستند. می‌توانید بازی را شروع کنید.\n\n`;
-  }
-  
-  message += `📊 <b>وضعیت روم:</b>\n` +
-    `• بازیکنان: ${playerCount}/${maxPlayers}\n` +
-    `• Small Blind: ${room.smallBlind} سکه\n` +
-    `• تایم‌اوت: ${room.turnTimeoutSec || 60} ثانیه\n` +
-    `• نوع: ${room.isPrivate ? '🔒 خصوصی' : '🌐 عمومی'}\n\n` +
-    `👥 <b>بازیکنان حاضر:</b>\n` +
-    `${room.players.map(p => {
-      // Use display name (first_name + last_name) instead of username for privacy
-      const displayName = p.name || 'Unknown Player';
-      const status = p.isReady ? '✅' : '⏸️';
-      const isCurrentUser = p.id === userId ? ' (شما)' : '';
-      return `• ${displayName} ${status}${isCurrentUser}`;
-    }).join('\n')}\n\n` +
-    `📊 <b>وضعیت شما:</b>\n` +
-    `• سکه‌ها: ${player.chips}\n` +
-    `• آماده: ✅ بله (اتوماتیک)\n\n`;
-  
-  let keyboard;
-  if (isCreator) {
-    // Creator can start game if enough players are ready
-    const readyPlayers = room.players.filter(p => p.isReady).length;
-    const canStart = readyPlayers >= room.minPlayers;
-    
-    if (canStart) {
-      message += `🎮 <b>آماده شروع بازی!</b>\n` +
-        `همه بازیکنان آماده هستند. می‌توانید بازی را شروع کنید.`;
-      keyboard = generateWaitingRoomKeyboard(room.id, true); // Show start button
-    } else if (isRoomFull) {
-      message += `⏳ <b>در انتظار شروع بازی</b>\n` +
-        `روم پر شده است. منتظر شروع بازی توسط سازنده هستیم.`;
-      keyboard = generateWaitingRoomKeyboard(room.id, false);
-    } else {
-      message += `⏳ <b>در انتظار بازیکنان</b>\n` +
-        `نیاز به ${room.minPlayers - readyPlayers} بازیکن دیگر برای شروع بازی.`;
-      keyboard = generateWaitingRoomKeyboard(room.id, false);
-    }
-  } else {
-    // Regular player can toggle ready status or leave
-    message += `⏳ <b>در انتظار شروع بازی</b>\n` +
-      `سازنده روم بازی را شروع خواهد کرد.`;
-    keyboard = generateWaitingRoomKeyboard(room.id, false);
-  }
+  // Use the new room info format
+  const { getRoomInfoForUser, generateRoomInfoKeyboard } = await import('../_utils/roomInfoHelper');
+  const message = getRoomInfoForUser(room, userId);
+  const keyboard = generateRoomInfoKeyboard(room, userId);
   
   try {
     const messageUpdater = getMessageUpdater();
