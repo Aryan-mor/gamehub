@@ -5,7 +5,7 @@ import {
   createCustomKeyboard,
   ButtonDefinition 
 } from '@/modules/core/buttonHelpers';
-import { pokerButtonTemplates } from './room/_button/buttonTemplates';
+import { createPokerButtonTemplates } from './room/_button/buttonTemplates';
 import { roomControls } from './room/management/buttonSets';
 import { gameActions } from './room/game/buttonSets';
 import { raiseOptions } from './room/raise/buttonSets';
@@ -15,46 +15,56 @@ import { gameEndOptions } from './room/gameEnd/buttonSets';
 
 /**
  * Generate a single poker button with parameters
+ * Note: This function requires ctx to be passed from the handler
  */
 export function generatePokerButton(
   action: string,
-  params: Record<string, string> = {}
+  params: Record<string, string> = {},
+  ctx?: any
 ): ButtonDefinition {
-  return generateButton(action, params, pokerButtonTemplates);
+  const templates = ctx ? createPokerButtonTemplates(ctx) : {};
+  return generateButton(action, params, templates);
 }
 
 /**
  * Generate multiple poker buttons with parameters
+ * Note: This function requires ctx to be passed from the handler
  */
 export function generatePokerButtons(
   actions: string[],
-  params: Record<string, string> = {}
+  params: Record<string, string> = {},
+  ctx?: any
 ): ButtonDefinition[] {
-  return generateButtons(actions, params, pokerButtonTemplates);
+  const templates = ctx ? createPokerButtonTemplates(ctx) : {};
+  return generateButtons(actions, params, templates);
 }
 
 /**
  * Generate poker keyboard from button set with parameters
+ * Note: This function requires ctx to be passed from the handler
  */
 export function generatePokerKeyboard(
   buttonSet: string[] | string[][],
   params: Record<string, string> = {},
-  showBack = false
+  showBack = false,
+  ctx?: any
 ): {
   inline_keyboard: Array<Array<{ text: string; callback_data: string }>>
 } {
+  const templates = ctx ? createPokerButtonTemplates(ctx) : {};
+  
   // Check if buttonSet is already a layout (array of arrays)
   if (Array.isArray(buttonSet[0])) {
     // It's already a layout, use it directly
-    return createCustomKeyboard(buttonSet as string[][], pokerButtonTemplates, params);
+    return createCustomKeyboard(buttonSet as string[][], templates, params);
   } else {
     // It's a flat array, convert to layout and add back button if needed
-    const buttons = generatePokerButtons(buttonSet as string[], params);
+    const buttons = generatePokerButtons(buttonSet as string[], params, ctx);
     
     if (showBack) {
       // Add the appropriate back button based on context
       const backAction = (buttonSet as string[]).includes('backToMenu') ? 'backToMenu' : 'back';
-      const backButton = generatePokerButton(backAction, params);
+      const backButton = generatePokerButton(backAction, params, ctx);
       buttons.push(backButton);
     }
     
