@@ -74,11 +74,13 @@ export function generatePokerKeyboard(
 
 /**
  * Generate main menu keyboard with custom layout (2 buttons per row)
+ * Note: This function requires ctx to be passed from the handler
  */
-export function generateMainMenuKeyboard(): {
+export function generateMainMenuKeyboard(ctx?: any): {
   inline_keyboard: Array<Array<{ text: string; callback_data: string }>>
 } {
-  return createCustomKeyboard(roomControls.mainMenu, pokerButtonTemplates, {});
+  const templates = ctx ? createPokerButtonTemplates(ctx) : {};
+  return createCustomKeyboard(roomControls.mainMenu, templates, {});
 }
 
 /**
