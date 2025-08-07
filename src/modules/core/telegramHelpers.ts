@@ -1,5 +1,5 @@
 
-import { Bot, Context } from 'grammy';
+import { Bot } from 'grammy';
 
 
 

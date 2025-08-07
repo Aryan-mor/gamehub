@@ -1,4 +1,4 @@
-import { Context, Bot } from 'grammy';
+import { Context } from 'grammy';
 import { GameHubContext, GameHubPlugin, ContextBuilder } from './context';
 
 /**
@@ -49,7 +49,7 @@ export class TelegramPlugin implements GameHubPlugin {
     };
   };
 
-  middleware = async (ctx: GameHubContext, next: () => Promise<void>): Promise<void> => {
+  middleware = async (_ctx: GameHubContext, next: () => Promise<void>): Promise<void> => {
     await next();
   };
 }
