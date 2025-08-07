@@ -47,7 +47,7 @@ export async function storePlayerMessage(
     }
     
     // Then insert new record
-    await api.roomMessages.insert({
+    await api.roomMessages.upsert({
       room_id: roomId,
       user_id: playerId,
       message_id: messageId,

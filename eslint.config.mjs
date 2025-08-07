@@ -75,70 +75,6 @@ const eslintConfig = [
     },
   },
 
-  // New rule specifically for poker actions and i18n
-  {
-    files: ["src/actions/**/*.ts"],
-    ignores: ["src/actions/games/poker/**/__tests__/**/*", "src/actions/games/poker/compact-codes.ts"],
-    languageOptions: {
-      parser: tsparser,
-      parserOptions: {
-        ecmaVersion: 2020,
-        sourceType: "module",
-        project: "./tsconfig.json",
-      },
-    },
-    plugins: {
-      "@typescript-eslint": tseslint,
-    },
-    rules: {
-      // Prevent hardcoded poker action codes - only allow POKER_ACTIONS constants
-      "no-restricted-syntax": [
-        "error",
-        {
-          "selector": "Literal[value='gpcall']",
-          "message": "Do not use hardcoded poker action codes. Use POKER_ACTIONS.CALL instead of 'gpcall'"
-        },
-        {
-          "selector": "Literal[value='gpchk']",
-          "message": "Do not use hardcoded poker action codes. Use POKER_ACTIONS.CHECK instead of 'gpchk'"
-        },
-        {
-          "selector": "Literal[value='gpfld']",
-          "message": "Do not use hardcoded poker action codes. Use POKER_ACTIONS.FOLD instead of 'gpfld'"
-        },
-        {
-          "selector": "Literal[value='gprse']",
-          "message": "Do not use hardcoded poker action codes. Use POKER_ACTIONS.RAISE instead of 'gprse'"
-        },
-        {
-          "selector": "Literal[value='gpall']",
-          "message": "Do not use hardcoded poker action codes. Use POKER_ACTIONS.ALL_IN instead of 'gpall'"
-        },
-        {
-          "selector": "Literal[value='gpref']",
-          "message": "Do not use hardcoded poker action codes. Use POKER_ACTIONS.REFRESH_GAME instead of 'gpref'"
-        },
-        {
-          "selector": "Literal[value='gpl']",
-          "message": "Do not use hardcoded poker action codes. Use POKER_ACTIONS.LEAVE_ROOM instead of 'gpl'"
-        },
-        {
-          "selector": "Literal[value='gpsg']",
-          "message": "Do not use hardcoded poker action codes. Use POKER_ACTIONS.START_GAME instead of 'gpsg'"
-        },
-        // Prevent hardcoded user-facing strings in ctx.replySmart first parameter
-        {
-          "selector": "CallExpression[callee.object.name='ctx'][callee.property.name='replySmart'] > Literal:first-child",
-          "message": "Use ctx.t() for user-facing strings in ctx.replySmart(). Example: ctx.replySmart(ctx.t('bot.start.welcome'))"
-        },
-        // Prevent hardcoded user-facing strings in button text properties
-        {
-          "selector": "Property[key.name='text'] > Literal[value=/^.+$/]",
-          "message": "Use ctx.t() for all button text. Example: text: ctx.t('bot.poker.actions.fold')"
-        }
-      ]
-    },
-  },
   // New rule for card-image-service to prevent hardcoded user-facing strings
   {
     files: ["card-image-service/src/**/*.ts"],
@@ -217,6 +153,37 @@ const eslintConfig = [
       "@typescript-eslint/no-non-null-assertion": "warn",
       "prefer-const": "error",
       "no-var": "error",
+    },
+  },
+  // Rule for poker actions to prevent hardcoded strings
+  {
+    files: ["src/actions/games/poker/**/*.ts"],
+    ignores: ["src/actions/games/poker/**/__tests__/**/*", "src/actions/games/poker/compact-codes.ts", "src/bot.ts"],
+    languageOptions: {
+      parser: tsparser,
+      parserOptions: {
+        ecmaVersion: 2020,
+        sourceType: "module",
+        project: "./tsconfig.json",
+      },
+    },
+    plugins: {
+      "@typescript-eslint": tseslint,
+    },
+    rules: {
+      // Prevent hardcoded user-facing strings in ctx.replySmart first parameter
+      "no-restricted-syntax": [
+        "error",
+        {
+          "selector": "CallExpression[callee.object.name='ctx'][callee.property.name='replySmart'] > Literal:first-child",
+          "message": "Use ctx.t() for user-facing strings in ctx.replySmart(). Example: ctx.replySmart(ctx.t('bot.start.welcome'))"
+        },
+        // Prevent hardcoded user-facing strings in button text properties
+        {
+          "selector": "Property[key.name='text'] > Literal[value=/^.+$/]",
+          "message": "Use ctx.t() for all button text. Example: text: ctx.t('bot.poker.actions.fold')"
+        }
+      ]
     },
   },
   {

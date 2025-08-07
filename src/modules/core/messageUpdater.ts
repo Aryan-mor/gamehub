@@ -6,13 +6,7 @@ interface MessageUpdateRequest {
   text: string;
   options?: {
     parse_mode?: 'HTML' | 'Markdown';
-    reply_markup?: { 
-      inline_keyboard: Array<Array<{ 
-        text: string; 
-        callback_data?: string;
-        switch_inline_query?: string;
-      }>> 
-    };
+    reply_markup?: any; // Use any to avoid type conflicts with grammY types
   };
 }
 
