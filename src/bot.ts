@@ -1006,7 +1006,7 @@ bot.callbackQuery(/.*"action":"balance".*/, async (ctx) => {
 });
 
 // Helper functions for callback handlers
-// Temporarily disabled game trigger functions to focus on trivia
+// Focus on poker game
 // const triggerDiceGame = async (bot: Bot, userInfo: { userId: string; chatId: number }) => {
 //   logFunctionStart('triggerDiceGame', { 
 //     userId: userInfo.userId, 
@@ -1108,7 +1108,7 @@ bot.callbackQuery(/.*"action":"balance".*/, async (ctx) => {
 //   );
 // };
 
-// Temporarily disabled to focus on trivia
+// Focus on poker game
 // const handleNewGame = async (bot: Bot, userInfo: { userId: string; chatId: number }, data: any) => {
 //   const gameType = data.gameType;
 //   
