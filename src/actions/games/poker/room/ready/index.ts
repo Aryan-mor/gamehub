@@ -3,7 +3,6 @@ import { Context } from 'grammy';
 import { 
   validateRoomIdWithError,
   validatePlayerIdWithError,
-  generateRoomManagementKeyboard,
   handlePokerActiveUser
 } from '../../_utils/pokerUtils';
 import { updatePlayerReadyStatus, } from '../../services/pokerService';
@@ -50,7 +49,7 @@ async function handleReady(context: HandlerContext, query: Record<string, string
       `💰 <b>شرط‌ها:</b> ${updatedRoom.smallBlind}/${updatedRoom.bigBlind} سکه\n\n` +
       `⏳ منتظر آماده شدن سایر بازیکنان...`;
     
-    const keyboard = generateRoomManagementKeyboard(updatedRoom.id);
+    const keyboard = ctx.poker.generateRoomManagementKeyboard(updatedRoom.id);
     
     await ctx.replySmart(message, {
       parse_mode: 'HTML',

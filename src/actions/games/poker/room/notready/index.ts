@@ -1,8 +1,7 @@
 import { HandlerContext } from '@/modules/core/handler';
-import { 
+import {
   validateRoomIdWithError,
-  validatePlayerIdWithError,
-  generateRoomManagementKeyboard
+  validatePlayerIdWithError
 } from '../../_utils/pokerUtils';
 import { updatePlayerReadyStatus, } from '../../services/pokerService';
 import { } from '../../_utils/typeGuards';
@@ -47,7 +46,7 @@ async function handleNotReady(context: HandlerContext, query: Record<string, str
       `💰 <b>شرط‌ها:</b> ${updatedRoom.smallBlind}/${updatedRoom.bigBlind} سکه\n\n` +
       `📋 سایر بازیکنان وضعیت شما را می‌بینند`;
     
-    const keyboard = generateRoomManagementKeyboard(updatedRoom.id);
+    const keyboard = ctx.poker.generateRoomManagementKeyboard(updatedRoom.id);
     
     await ctx.replySmart(message, {
       parse_mode: 'HTML',

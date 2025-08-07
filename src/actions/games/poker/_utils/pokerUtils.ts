@@ -87,10 +87,10 @@ export {
   generateGameActionKeyboard
 } from './gameActionKeyboardGenerator';
 
-// Import button helper functions
-export { 
-  generateRoomManagementKeyboard
-} from '../buttonHelpers';
+// Import button helper functions - moved to plugin system
+// export { 
+//   generateRoomManagementKeyboard
+// } from '../buttonHelpers';
 
 // Import message management functions
 export { 

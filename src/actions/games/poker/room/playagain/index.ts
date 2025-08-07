@@ -3,8 +3,7 @@ import {
   validateRoomIdWithError,
   validatePlayerIdWithError,
   getPokerRoom,
-  getGameStateDisplay,
-  generateRoomManagementKeyboard
+  getGameStateDisplay
 } from '../../_utils/pokerUtils';
 // No imports needed - using plugin system
 import { startPokerGame, } from '../../services/gameStateService';
@@ -72,7 +71,7 @@ async function handlePlayAgain(context: HandlerContext, query: Record<string, st
     const message = gameStateMessage + actionMessage + turnMessage;
     
     // Generate appropriate keyboard
-    const keyboard = generateRoomManagementKeyboard(newGame.id);
+    const keyboard = ctx.poker.generateRoomManagementKeyboard(newGame.id);
     
     await ctx.replySmart(message, {
       parse_mode: 'HTML',
