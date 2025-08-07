@@ -209,3 +209,37 @@ export function parseFormCallbackData(callbackData: string): {
     params
   };
 } 
+
+/**
+ * Get description for an action code
+ */
+export function getActionDescription(code: string): string {
+  return POKER_ACTION_DESCRIPTIONS[code as PokerActionCode] || `Unknown Action: ${code}`;
+}
+
+/**
+ * Get all action codes with descriptions for debugging
+ */
+export function getAllActionDescriptions(): Array<{ code: string; description: string }> {
+  return Object.entries(POKER_ACTION_DESCRIPTIONS).map(([code, description]) => ({
+    code,
+    description
+  }));
+}
+
+/**
+ * Validate if an action code exists
+ */
+export function isValidActionCode(code: string): code is PokerActionCode {
+  return code in POKER_ACTION_DESCRIPTIONS;
+}
+
+/**
+ * Log all registered actions for debugging
+ */
+export function logAllActions(): void {
+  console.log('🎮 REGISTERED POKER ACTIONS:');
+  getAllActionDescriptions().forEach(({ code, description }) => {
+    console.log(`  ${code}: ${description}`);
+  });
+} 
