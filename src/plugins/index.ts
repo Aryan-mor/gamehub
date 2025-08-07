@@ -14,6 +14,7 @@ import { i18nPluginInstance } from './i18n';
 import { loggingPluginInstance } from './logging';
 import { userPluginInstance } from './user';
 import { pluginRegistry } from './context';
+import { Context } from 'grammy';
 
 /**
  * Initialize all core plugins
@@ -37,6 +38,6 @@ export function getPluginMiddlewareChain() {
 /**
  * Build a complete GameHubContext from a grammY Context
  */
-export function buildGameHubContext(ctx: any): any {
+export function buildGameHubContext(ctx: Context): any {
   return pluginRegistry.buildContext(ctx);
 } 

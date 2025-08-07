@@ -129,7 +129,7 @@ async function sendComprehensiveGameStartMessage(room: any): Promise<void> {
       
       // Clean up previous messages for this player
       try {
-        const { getPlayerMessage, removePlayerMessage } = await import('../../services/roomMessageService');
+        const { getPlayerMessage } = await import('../../services/roomMessageService');
         const previousMessage = await getPlayerMessage(room.id, player.id);
         if (previousMessage && previousMessage.messageId) {
           await bot.api.deleteMessage(parseInt(player.id), previousMessage.messageId);

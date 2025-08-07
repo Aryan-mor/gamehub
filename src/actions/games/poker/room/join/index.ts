@@ -6,8 +6,8 @@ import { UserId } from '@/utils/types';
 import { joinPokerRoom, getPokerRoom } from '../../services/pokerService';
 import { validateRoomId, validatePlayerId } from '../../_utils/typeGuards';
 import { validateRoomJoin } from '../../_utils/roomJoinValidation';
-import { generateJoinRoomKeyboard } from '../../_utils/joinRoomKeyboardGenerator';
-import { getRoomInfoForUser, generateRoomInfoKeyboard } from '../../_utils/roomInfoHelper';
+// import { generateJoinRoomKeyboard } from '../../_utils/joinRoomKeyboardGenerator';
+// import { getRoomInfoForUser, generateRoomInfoKeyboard } from '../../_utils/roomInfoHelper';
 import { logFunctionStart, logFunctionEnd, logError } from '@/modules/core/logger';
 
 // Export the action key for consistency and debugging

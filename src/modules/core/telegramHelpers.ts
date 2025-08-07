@@ -1,6 +1,5 @@
 
 import { Bot, Context } from 'grammy';
-import { SmartContext } from '../../types';
 
 
 

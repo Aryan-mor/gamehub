@@ -13,16 +13,16 @@ export class LoggingPlugin implements GameHubPlugin {
   buildContext: ContextBuilder = (ctx: Context): Partial<GameHubContext> => {
     return {
       log: {
-        debug: (message: string, context?: Record<string, unknown>) => {
+        debug: (message: string, context?: Record<string, unknown>): void => {
           logger.debug({ userId: ctx.from?.id?.toString(), chatId: ctx.chat?.id?.toString(), ...context }, message);
         },
-        info: (message: string, context?: Record<string, unknown>) => {
+        info: (message: string, context?: Record<string, unknown>): void => {
           logger.info({ userId: ctx.from?.id?.toString(), chatId: ctx.chat?.id?.toString(), ...context }, message);
         },
-        warn: (message: string, context?: Record<string, unknown>) => {
+        warn: (message: string, context?: Record<string, unknown>): void => {
           logger.warn({ userId: ctx.from?.id?.toString(), chatId: ctx.chat?.id?.toString(), ...context }, message);
         },
-        error: (message: string, context?: Record<string, unknown>) => {
+        error: (message: string, context?: Record<string, unknown>): void => {
           logger.error({ userId: ctx.from?.id?.toString(), chatId: ctx.chat?.id?.toString(), ...context }, message);
         }
       }
