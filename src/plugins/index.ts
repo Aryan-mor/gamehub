@@ -1,5 +1,6 @@
 // Core plugin system
-export { GameHubContext, GameHubPlugin, ContextBuilder, PluginRegistry, pluginRegistry } from './context';
+export type { GameHubContext, GameHubPlugin, ContextBuilder } from './context';
+export { PluginRegistry, pluginRegistry } from './context';
 
 // Individual plugins
 export { SmartReplyPlugin, smartReplyPluginInstance, smartReplyPlugin } from './smart-reply';

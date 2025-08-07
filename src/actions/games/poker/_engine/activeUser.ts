@@ -3,9 +3,9 @@ import { logFunctionStart, logFunctionEnd, logError } from '@/modules/core/logge
 import { getMessageUpdater } from '@/modules/core/messageUpdater';
 import { getPokerRoom } from '../services/pokerService';
 import { PokerRoom, PokerPlayer, PlayerId, RoomId } from '../types';
-import { generateGameStateKeyboard, generateWaitingRoomKeyboard } from '../_utils/gameActionKeyboardGenerator';
+import { generateGameStateKeyboard } from '../_utils/gameActionKeyboardGenerator';
 import { generateErrorKeyboard } from '../_utils/joinRoomKeyboardGenerator';
-import { roomUpdateService } from '../services/roomUpdateService';
+// import { roomUpdateService } from '../services/roomUpdateService';
 
 interface PlayerState {
   gameType: 'poker';

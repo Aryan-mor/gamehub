@@ -51,7 +51,7 @@ export class SmartReplyPlugin implements GameHubPlugin {
     };
   };
 
-  middleware = async (ctx: GameHubContext, next: () => Promise<void>): Promise<void> => {
+  middleware = async (_ctx: GameHubContext, next: () => Promise<void>): Promise<void> => {
     // Smart reply functionality is already added via buildContext
     await next();
   };

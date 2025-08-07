@@ -1,7 +1,6 @@
 import { Context } from 'grammy';
-import pino from 'pino';
 import { GameHubContext, GameHubPlugin, ContextBuilder } from './context';
-import { logFunctionStart, logFunctionEnd, logError, logger } from '../modules/core/logger';
+import { logger } from '../modules/core/logger';
 
 /**
  * Logging Plugin
@@ -12,22 +11,19 @@ export class LoggingPlugin implements GameHubPlugin {
   version = '1.0.0';
 
   buildContext: ContextBuilder = (ctx: Context): Partial<GameHubContext> => {
-    const userId = ctx.from?.id?.toString();
-    const chatId = ctx.chat?.id?.toString();
-    
     return {
       log: {
         debug: (message: string, context?: Record<string, unknown>) => {
-          logger.debug({ userId, chatId, ...context }, message);
+          logger.debug({ userId: ctx.from?.id?.toString(), chatId: ctx.chat?.id?.toString(), ...context }, message);
         },
         info: (message: string, context?: Record<string, unknown>) => {
-          logger.info({ userId, chatId, ...context }, message);
+          logger.info({ userId: ctx.from?.id?.toString(), chatId: ctx.chat?.id?.toString(), ...context }, message);
         },
         warn: (message: string, context?: Record<string, unknown>) => {
-          logger.warn({ userId, chatId, ...context }, message);
+          logger.warn({ userId: ctx.from?.id?.toString(), chatId: ctx.chat?.id?.toString(), ...context }, message);
         },
         error: (message: string, context?: Record<string, unknown>) => {
-          logger.error({ userId, chatId, ...context }, message);
+          logger.error({ userId: ctx.from?.id?.toString(), chatId: ctx.chat?.id?.toString(), ...context }, message);
         }
       }
     };

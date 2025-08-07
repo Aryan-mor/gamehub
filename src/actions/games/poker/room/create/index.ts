@@ -353,7 +353,7 @@ async function showFormStep(context: HandlerContext, formState: FormState): Prom
         };
     }
     
-    await tryEditMessageText(ctx, message, {
+    await ctx.replySmart(message, {
       parse_mode: 'HTML',
       reply_markup: keyboard
     });

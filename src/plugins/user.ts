@@ -34,14 +34,13 @@ export class UserPlugin implements GameHubPlugin {
       }
 
       // Get or create user profile
-      let userData;
       try {
-        userData = await getUser(userId);
+        await getUser(userId);
         ctx.user.isNewUser = false;
       } catch {
         // User doesn't exist, create new profile
         await setUserProfile(userId, ctx.from?.username, ctx.from?.username || 'Unknown');
-        userData = await getUser(userId);
+        await getUser(userId);
         ctx.user.isNewUser = true;
       }
 

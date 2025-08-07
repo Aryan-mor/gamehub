@@ -3,7 +3,13 @@ import { Context } from "grammy";
 export interface SmartReplyOptions {
   chatId?: number | string;
   messageId?: number;
-  reply_markup?: { inline_keyboard: Array<Array<{ text: string; callback_data: string }>> };
+  reply_markup?: { 
+    inline_keyboard: Array<Array<{ 
+      text: string; 
+      callback_data?: string;
+      switch_inline_query?: string;
+    }>> 
+  };
   parse_mode?: "HTML" | "Markdown" | "MarkdownV2";
 }
 
