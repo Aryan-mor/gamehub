@@ -1,5 +1,4 @@
 import { HandlerContext } from '@/modules/core/handler';
-import { tryEditMessageText } from '@/modules/core/telegramHelpers';
 import { generateSpectatorKeyboard } from '../../buttonHelpers';
 import { getPokerRoom } from '../../services/pokerService';
 import { validateRoomIdWithError, validatePlayerIdWithError } from '../../_utils/pokerUtils';
@@ -42,7 +41,7 @@ async function handleSpectate(context: HandlerContext, query: Record<string, str
     // Generate spectator keyboard
     const keyboard = generateSpectatorKeyboard(roomId);
     
-    await tryEditMessageText(ctx, spectatorMessage, {
+    await ctx.replySmart(spectatorMessage, {
       parse_mode: 'HTML',
       reply_markup: keyboard
     });
@@ -51,7 +50,7 @@ async function handleSpectate(context: HandlerContext, query: Record<string, str
     console.error('Spectate action error:', error);
     
     const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-    await tryEditMessageText(ctx, `❌ Failed to spectate: ${errorMessage}`, {
+    await ctx.replySmart(`❌ Failed to spectate: ${errorMessage}`, {
       parse_mode: 'HTML'
     });
   }

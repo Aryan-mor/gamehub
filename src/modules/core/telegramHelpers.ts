@@ -1,61 +1,37 @@
 
 import { Bot, Context } from 'grammy';
+import { SmartContext } from '../../types';
 
 /**
  * Try to edit message text first, fallback to sending new message
  * This provides a consistent way to update messages across the app
+ * @deprecated Use ctx.replySmart() instead
  */
 export async function tryEditMessageText(
-  ctx: { editMessageText?: (text: string, options?: { parse_mode?: 'HTML' | 'Markdown'; reply_markup?: { inline_keyboard: Array<Array<{ text: string; callback_data: string }>> } }) => Promise<unknown>; reply?: (text: string, options?: { parse_mode?: 'HTML' | 'Markdown'; reply_markup?: { inline_keyboard: Array<Array<{ text: string; callback_data: string }>> } }) => Promise<unknown> },
+  ctx: SmartContext,
   text: string,
   options?: { parse_mode?: 'HTML' | 'Markdown'; reply_markup?: { inline_keyboard: Array<Array<{ text: string; callback_data: string }>> } }
 ): Promise<unknown> {
-  if (ctx.editMessageText) {
-    try {
-      return await ctx.editMessageText(text, options);
-    } catch (error) {
-      console.log('Failed to edit _message, falling back to reply:', error);
-      // Fallback to reply if edit fails
-      if (ctx.reply) {
-        return await ctx.reply(text, options);
-      }
-      throw error;
-    }
-  } else if (ctx.reply) {
-    // No edit capability, use reply
-    return await ctx.reply(text, options);
-  } else {
-    throw new Error('Neither editMessageText nor reply is available');
-  }
+  // Use the smart reply plugin instead
+  return await ctx.replySmart(text, options);
 }
 
 /**
  * Try to edit message reply markup first, fallback to sending new message
  * This provides a consistent way to update message keyboards across the app
+ * @deprecated Use ctx.replySmart() instead
  */
 export async function tryEditMessageReplyMarkup(
-  ctx: { editMessageReplyMarkup?: (replyMarkup: { inline_keyboard: Array<Array<{ text: string; callback_data: string }>> }) => Promise<unknown>; reply?: (text: string, options?: { parse_mode?: 'HTML' | 'Markdown'; reply_markup?: { inline_keyboard: Array<Array<{ text: string; callback_data: string }>> } }) => Promise<unknown> },
+  ctx: SmartContext,
   replyMarkup: { inline_keyboard: Array<Array<{ text: string; callback_data: string }>> },
   fallbackText?: string,
   fallbackOptions?: { parse_mode?: 'HTML' | 'Markdown'; reply_markup?: { inline_keyboard: Array<Array<{ text: string; callback_data: string }>> } }
 ): Promise<unknown> {
-  if (ctx.editMessageReplyMarkup) {
-    try {
-      return await ctx.editMessageReplyMarkup(replyMarkup);
-    } catch (error) {
-      console.log('Failed to edit message reply markup, falling back to reply:', error);
-      // Fallback to reply if edit fails
-      if (ctx.reply && fallbackText) {
-        return await ctx.reply(fallbackText, { ...fallbackOptions, reply_markup: replyMarkup });
-      }
-      throw error;
-    }
-  } else if (ctx.reply && fallbackText) {
-    // No edit capability, use reply
-    return await ctx.reply(fallbackText, { ...fallbackOptions, reply_markup: replyMarkup });
-  } else {
-    throw new Error('Neither editMessageReplyMarkup nor reply is available');
-  }
+  // Use the smart reply plugin instead
+  return await ctx.replySmart(fallbackText || 'Message updated', { 
+    ...fallbackOptions, 
+    reply_markup: replyMarkup 
+  });
 }
 
 export const createInlineKeyboard = (buttons: Array<{

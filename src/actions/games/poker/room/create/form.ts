@@ -1,5 +1,4 @@
 import { HandlerContext } from '@/modules/core/handler';
-import { tryEditMessageText } from '@/modules/core/telegramHelpers';
 import { register } from '@/modules/core/compact-router';
 import { POKER_ACTIONS } from '../../compact-codes';
 import { logFunctionStart, logFunctionEnd, logError } from '@/modules/core/logger';
@@ -115,7 +114,7 @@ async function handleForm(context: HandlerContext, query: Record<string, string>
     const errorMessage = error instanceof Error ? error.message : 'خطای نامشخص رخ داده است';
     const message = `❌ <b>خطا در پردازش فرم</b>\n\n${errorMessage}`;
     
-    await tryEditMessageText(ctx, message, {
+    await ctx.replySmart(message, {
       parse_mode: 'HTML',
       reply_markup: {
         inline_keyboard: [[
@@ -146,7 +145,7 @@ async function handleNameStep(ctx: Context, name: string): Promise<void> {
     ]
   };
   
-  await tryEditMessageText(ctx, message, {
+  await ctx.replySmart(message, {
     parse_mode: 'HTML',
     reply_markup: keyboard
   });
@@ -176,7 +175,7 @@ async function handlePrivacyStep(ctx: Context, isPrivate: boolean): Promise<void
     ]
   };
   
-  await tryEditMessageText(ctx, message, {
+  await ctx.replySmart(message, {
     parse_mode: 'HTML',
     reply_markup: keyboard
   });
@@ -206,7 +205,7 @@ async function handleMaxPlayersStep(ctx: Context, maxPlayers: number): Promise<v
     ]
   };
   
-  await tryEditMessageText(ctx, _message, {
+  await ctx.replySmart(_message, {
     parse_mode: 'HTML',
     reply_markup: keyboard
   });
@@ -236,7 +235,7 @@ async function handleSmallBlindStep(ctx: Context, smallBlind: number): Promise<v
     ]
   };
   
-  await tryEditMessageText(ctx, _message, {
+  await ctx.replySmart(_message, {
     parse_mode: 'HTML',
     reply_markup: keyboard
   });
@@ -265,7 +264,7 @@ async function handleTimeoutStep(ctx: Context, timeout: number): Promise<void> {
     ]
   };
   
-  await tryEditMessageText(ctx, _message, {
+  await ctx.replySmart(_message, {
     parse_mode: 'HTML',
     reply_markup: keyboard
   });
@@ -287,7 +286,7 @@ async function handleConfirmCreate(context: HandlerContext): Promise<void> {
       const message = `❌ <b>خطا در تایید روم</b>\n\n` +
         `فرم تکمیل نشده است. لطفاً ابتدا تمام مراحل را تکمیل کنید.`;
       
-      await tryEditMessageText(ctx, message, {
+      await ctx.replySmart(message, {
         parse_mode: 'HTML',
         reply_markup: {
           inline_keyboard: [[
@@ -325,7 +324,7 @@ async function handleConfirmCreate(context: HandlerContext): Promise<void> {
       `متأسفانه مشکلی در ساخت روم پیش آمده.\n` +
       `لطفاً دوباره تلاش کنید.`;
     
-    await tryEditMessageText(ctx, message, {
+    await ctx.replySmart(message, {
       parse_mode: 'HTML',
       reply_markup: {
         inline_keyboard: [[

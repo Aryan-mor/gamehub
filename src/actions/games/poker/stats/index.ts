@@ -1,5 +1,4 @@
 import { HandlerContext } from '@/modules/core/handler';
-import { tryEditMessageText } from '@/modules/core/telegramHelpers';
 import { generateMainMenuKeyboard } from '../buttonHelpers';
 import { getPlayerStatistics } from '../services/gameResultService';
 import { validatePlayerId } from '../_utils/typeGuards';
@@ -57,7 +56,7 @@ async function handleStats(context: HandlerContext): Promise<void> {
     
     const keyboard = generateMainMenuKeyboard();
     
-    await tryEditMessageText(ctx, message, {
+    await ctx.replySmart(message, {
       parse_mode: 'HTML',
       reply_markup: keyboard
     });
@@ -66,7 +65,7 @@ async function handleStats(context: HandlerContext): Promise<void> {
     console.error('Statistics display error:', error);
     
     const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-    await tryEditMessageText(ctx, `❌ Failed to show statistics: ${errorMessage}`);
+    await ctx.replySmart(`❌ Failed to show statistics: ${errorMessage}`);
   }
 }
 

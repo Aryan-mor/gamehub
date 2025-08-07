@@ -1,5 +1,4 @@
 import { HandlerContext } from '@/modules/core/handler';
-import { tryEditMessageText } from '@/modules/core/telegramHelpers';
 import { generateMainMenuKeyboard } from './buttonHelpers';
 import { register } from '@/modules/core/compact-router';
 import { POKER_ACTIONS } from './compact-codes';
@@ -22,7 +21,7 @@ async function handleBack(context: HandlerContext): Promise<void> {
     
     const keyboard = generateMainMenuKeyboard();
     
-    await tryEditMessageText(ctx, message, {
+    await ctx.replySmart(message, {
       parse_mode: 'HTML',
       reply_markup: keyboard
     });
@@ -31,7 +30,7 @@ async function handleBack(context: HandlerContext): Promise<void> {
     console.error('Back navigation error:', error);
     
     const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-    await tryEditMessageText(ctx, `❌ Navigation error: ${errorMessage}`);
+    await ctx.replySmart(`❌ Navigation error: ${errorMessage}`);
   }
 }
 

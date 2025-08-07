@@ -1,5 +1,4 @@
 import { HandlerContext } from '@/modules/core/handler';
-import { tryEditMessageText } from '@/modules/core/telegramHelpers';
 import { FormState, defaultFormState } from '../../_utils/formStateManager';
 
 // Global form state storage (shared with textHandler)
@@ -52,7 +51,7 @@ async function handleCreate(context: HandlerContext): Promise<void> {
       `متأسفانه مشکلی در شروع فرم ساخت روم پیش آمده.\n` +
       `لطفاً دوباره تلاش کنید.`;
     
-    await tryEditMessageText(ctx, message, {
+    await ctx.replySmart(message, {
       parse_mode: 'HTML',
       reply_markup: {
         inline_keyboard: [[

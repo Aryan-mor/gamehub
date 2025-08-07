@@ -1,0 +1,79 @@
+{
+  "bot": {
+    "start": {
+      "title": "🎮 GameHub Bot",
+      "description": "Welcome to GameHub! Choose a game to play:",
+      "welcome": "Welcome to GameHub! 🎮\n\nChoose a game to start playing:"
+    },
+    "help": {
+      "title": "📖 GameHub Help",
+      "description": "Here's how to use GameHub:",
+      "commands": {
+        "start": "/start - Start the bot",
+        "help": "/help - Show this help message",
+        "poker": "/poker - Start poker game"
+      }
+    },
+    "poker": {
+      "start": {
+        "title": "🃏 Poker Game",
+        "description": "Welcome to Poker! Create or join a room to start playing.",
+        "createRoom": "Create Room",
+        "joinRoom": "Join Room",
+        "listRooms": "List Rooms"
+      },
+      "room": {
+        "create": {
+          "title": "Create Poker Room",
+          "name": "Room Name",
+          "privacy": "Private Room",
+          "maxPlayers": "Max Players",
+          "smallBlind": "Small Blind",
+          "timeout": "Timeout (seconds)",
+          "confirm": "Create Room",
+          "cancel": "Cancel"
+        },
+        "join": {
+          "title": "Join Poker Room",
+          "enterRoomId": "Enter Room ID:",
+          "roomNotFound": "Room not found",
+          "roomFull": "Room is full",
+          "alreadyJoined": "You are already in this room",
+          "joinSuccess": "Successfully joined room"
+        },
+        "info": {
+          "title": "Room Information",
+          "players": "Players",
+          "status": "Status",
+          "waiting": "Waiting",
+          "playing": "Playing",
+          "finished": "Finished"
+        },
+        "game": {
+          "start": "Start Game",
+          "ready": "Ready",
+          "notReady": "Not Ready",
+          "leave": "Leave Room",
+          "share": "Share Room"
+        },
+        "actions": {
+          "fold": "Fold",
+          "call": "Call",
+          "raise": "Raise",
+          "check": "Check",
+          "allIn": "All In"
+        }
+      }
+    },
+    "common": {
+      "error": "❌ Error",
+      "success": "✅ Success",
+      "cancel": "❌ Cancel",
+      "back": "⬅️ Back",
+      "loading": "⏳ Loading...",
+      "notFound": "Not found",
+      "invalidInput": "Invalid input",
+      "permissionDenied": "Permission denied"
+    }
+  }
+} 

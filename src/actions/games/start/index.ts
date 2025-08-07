@@ -1,6 +1,5 @@
 import { HandlerContext } from '@/modules/core/handler';
 import { isValidUserId } from '@/utils/typeGuards';
-import { tryEditMessageText } from '@/modules/core/telegramHelpers';
 
 // Export the action key for consistency and debugging
 export const key = 'games.start';
@@ -33,8 +32,8 @@ async function handleStartGame(context: HandlerContext): Promise<void> {
     
     const message = '🎮 <b>GameHub - Poker Focus</b>\n\n🃏 Challenge your friends in competitive poker games!\n\nJoin rooms, play Texas Hold\'em, and compete for coins.';
     
-    // Use the helper function to try editing first, then fallback to reply
-    await tryEditMessageText(ctx, message, { 
+    // Use replySmart to handle message editing/sending
+    await ctx.replySmart(message, { 
       parse_mode: 'HTML',
       reply_markup: keyboard 
     });
@@ -43,9 +42,7 @@ async function handleStartGame(context: HandlerContext): Promise<void> {
     console.error('StartGame action error:', error);
     
     // Fallback message
-    if (ctx.reply) {
-      await ctx.reply('🎮 Game selection is currently available for Poker only.');
-    }
+    await ctx.replySmart('🎮 Game selection is currently available for Poker only.');
   }
 }
 

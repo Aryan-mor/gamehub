@@ -1,7 +1,6 @@
 import { HandlerContext } from '@/modules/core/handler';
 import { isValidUserId } from '@/utils/typeGuards';
 import { generateMainMenuKeyboard } from '../buttonHelpers';
-import { tryEditMessageText } from '@/modules/core/telegramHelpers';
 import { register } from '@/modules/core/compact-router';
 import { POKER_ACTIONS } from '../compact-codes';
 
@@ -36,8 +35,8 @@ async function handlePokerStart(context: HandlerContext): Promise<void> {
     // Generate dynamic keyboard using the new button system
     const keyboard = generateMainMenuKeyboard();
     
-    // Use the helper function to try editing first, then fallback to reply
-    await tryEditMessageText(ctx, message, { 
+    // Use replySmart to handle message editing/sending
+    await ctx.replySmart(message, { 
       parse_mode: 'HTML',
       reply_markup: keyboard 
     });
@@ -46,9 +45,7 @@ async function handlePokerStart(context: HandlerContext): Promise<void> {
     console.error('Poker start action error:', error);
     
     // Fallback message
-    if (ctx.reply) {
-      await ctx.reply('❌ Failed to start poker game. Please try again later.');
-    }
+    await ctx.replySmart('❌ Failed to start poker game. Please try again later.');
   }
 }
 

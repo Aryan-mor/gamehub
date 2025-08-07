@@ -1,5 +1,4 @@
 import { HandlerContext } from '@/modules/core/handler';
-import { tryEditMessageText } from '@/modules/core/telegramHelpers';
 import { generateFormStepKeyboard } from '../../_utils/formKeyboardGenerator';
 import { validateRoomName } from '../../_utils/roomValidation';
 import { FormState } from '../../_utils/formStateManager';
@@ -36,24 +35,16 @@ export async function handleRoomNameInput(context: HandlerContext, text: string)
       const message = `❌ <b>خطا در نام روم</b>\n\n${nameError}\n\n` +
         `لطفاً نام دیگری انتخاب کنید:`;
       
-      // For text messages, we need to send a new message since we can't edit the original
-      if (ctx.reply) {
-        await ctx.reply(message, {
-          parse_mode: 'HTML',
-          reply_markup: generateFormStepKeyboard('name')
-        });
-      } else {
-        await tryEditMessageText(ctx, message, {
-          parse_mode: 'HTML',
-          reply_markup: generateFormStepKeyboard('name')
-        });
-      }
+      await ctx.replySmart(message, {
+        parse_mode: 'HTML',
+        reply_markup: generateFormStepKeyboard('name')
+      });
       return true; // Handled
     }
     
     // Update form state with room name
     formState.data.name = text.trim();
-    formState.step = 'name';
+    formState.step = 'privacy';
     global.formStates.set(userId, formState);
     
     // Move to next step (privacy)
@@ -64,18 +55,10 @@ export async function handleRoomNameInput(context: HandlerContext, text: string)
       `🔒 <b>خصوصی:</b> فقط با لینک دعوت قابل ورود\n` +
       `🌐 <b>عمومی:</b> در لیست روم‌های عمومی نمایش داده می‌شود`;
     
-    // For text messages, we need to send a new message since we can't edit the original
-    if (ctx.reply) {
-      await ctx.reply(message, {
-        parse_mode: 'HTML',
-        reply_markup: generateFormStepKeyboard('privacy')
-      });
-    } else {
-      await tryEditMessageText(ctx, message, {
-        parse_mode: 'HTML',
-        reply_markup: generateFormStepKeyboard('privacy')
-      });
-    }
+    await ctx.replySmart(message, {
+      parse_mode: 'HTML',
+      reply_markup: generateFormStepKeyboard('privacy')
+    });
     
     return true; // Handled
     
@@ -86,26 +69,14 @@ export async function handleRoomNameInput(context: HandlerContext, text: string)
       `متأسفانه مشکلی در پردازش نام روم پیش آمده.\n` +
       `لطفاً دوباره تلاش کنید.`;
     
-    // For text messages, we need to send a new message since we can't edit the original
-    if (ctx.reply) {
-      await ctx.reply(message, {
-        parse_mode: 'HTML',
-        reply_markup: {
-          inline_keyboard: [[
-            { text: '🔙 بازگشت به منو', callback_data: 'games.poker.backToMenu' }
-          ]]
-        }
-      });
-    } else {
-      await tryEditMessageText(ctx, message, {
-        parse_mode: 'HTML',
-        reply_markup: {
-          inline_keyboard: [[
-            { text: '🔙 بازگشت به منو', callback_data: 'games.poker.backToMenu' }
-          ]]
-        }
-      });
-    }
+    await ctx.replySmart(message, {
+      parse_mode: 'HTML',
+      reply_markup: {
+        inline_keyboard: [[
+          { text: '🔙 بازگشت به منو', callback_data: 'games.poker.backToMenu' }
+        ]]
+      }
+    });
     
     return true; // Handled
   }

@@ -1,5 +1,4 @@
 import { HandlerContext } from '@/modules/core/handler';
-import { tryEditMessageText } from '@/modules/core/telegramHelpers';
 import { 
   validateRoomIdWithError,
   validatePlayerIdWithError,
@@ -75,7 +74,7 @@ async function handlePlayAgain(context: HandlerContext, query: Record<string, st
     // Generate appropriate keyboard
     const keyboard = generateRoomManagementKeyboard(newGame.id);
     
-    await tryEditMessageText(ctx, message, {
+    await ctx.replySmart(message, {
       parse_mode: 'HTML',
       reply_markup: keyboard
     });
@@ -84,7 +83,7 @@ async function handlePlayAgain(context: HandlerContext, query: Record<string, st
     console.error('Play again action error:', error);
     
     const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-    await tryEditMessageText(ctx, `❌ Failed to start new round: ${errorMessage}`);
+    await ctx.replySmart(`❌ Failed to start new round: ${errorMessage}`);
   }
 }
 

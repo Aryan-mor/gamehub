@@ -1,5 +1,6 @@
 import { HandlerContext } from '@/modules/core/handler';
 import { isValidUserId } from '@/utils/typeGuards';
+import { I18nContext } from '@/modules/core/i18n';
 
 // Export the action key for consistency and debugging
 export const key = 'start';
@@ -10,6 +11,7 @@ export const key = 'start';
  */
 async function handleStart(context: HandlerContext): Promise<void> {
   const { user, ctx } = context;
+  const i18nCtx = ctx as I18nContext;
   
   // Validate user ID
   if (!isValidUserId(user.id)) {
@@ -35,8 +37,8 @@ async function handleStart(context: HandlerContext): Promise<void> {
     const userData = await getUser(user.id);
     
     // Build welcome message
-    let welcome = `🃏 <b>Welcome to GameHub - Poker Edition!</b>\n\n` +
-      `🎯 Challenge your friends in competitive poker games!\n\n` +
+    let welcome = `${i18nCtx.t('bot.start.title')}\n\n` +
+      `${i18nCtx.t('bot.start.description')}\n\n` +
       `💰 Earn and claim daily Coins with /freecoin!\n\n` +
       `🎯 Choose an action below:`;
     
@@ -48,8 +50,8 @@ async function handleStart(context: HandlerContext): Promise<void> {
     
     // Create buttons
     const buttons = [
-      { text: '🃏 Start Poker', callbackData: { action: pokerGameStartKey } },
-      { text: '🃏 Start Games', callbackData: { action: gamesStartKey } },
+      { text: i18nCtx.t('bot.poker.start.createRoom'), callbackData: { action: pokerGameStartKey } },
+      { text: i18nCtx.t('bot.poker.start.joinRoom'), callbackData: { action: gamesStartKey } },
       { text: '🪙 Free Coin', callbackData: { action: freecoinKey } },
       { text: '💰 Balance', callbackData: { action: balanceKey } },
       { text: '❓ Help', callbackData: { action: helpKey } },
@@ -58,20 +60,16 @@ async function handleStart(context: HandlerContext): Promise<void> {
     const keyboard = createOptimizedKeyboard(buttons);
     
     // Send message with keyboard
-    if (ctx.reply) {
-      await ctx.reply(welcome, { 
-        parse_mode: 'HTML',
-        reply_markup: keyboard 
-      });
-    }
+    await ctx.replySmart(welcome, { 
+      parse_mode: 'HTML',
+      reply_markup: keyboard 
+    });
     
   } catch (error) {
     console.error('Start command error:', error);
     
     // Fallback message
-    if (ctx.reply) {
-      await ctx.reply('🎮 Welcome to GameHub!÷÷÷÷\n\nUse /help to see available commands.');
-    }
+    await ctx.replySmart(i18nCtx.t('bot.start.welcome'));
   }
 }
 

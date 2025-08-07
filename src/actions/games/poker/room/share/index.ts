@@ -1,5 +1,4 @@
 import { HandlerContext } from '@/modules/core/handler';
-import { tryEditMessageText } from '@/modules/core/telegramHelpers';
 import { PlayerId, RoomId } from '../../types';
 import {
   validateRoomIdWithError,
@@ -46,7 +45,7 @@ async function handleShare(context: HandlerContext, query: Record<string, string
       const message = `❌ <b>خطا در اشتراک‌گذاری</b>\n\n` +
         `روم مورد نظر یافت نشد.`;
       
-      await tryEditMessageText(ctx, message, {
+      await ctx.replySmart(message, {
         parse_mode: 'HTML',
         reply_markup: {
           inline_keyboard: [[
@@ -103,7 +102,7 @@ async function handleShare(context: HandlerContext, query: Record<string, string
       ]
     };
     
-    await tryEditMessageText(ctx, inviteMessage, {
+    await ctx.replySmart(inviteMessage, {
       parse_mode: 'HTML',
       reply_markup: keyboard as any
     });
@@ -115,7 +114,7 @@ async function handleShare(context: HandlerContext, query: Record<string, string
       `متأسفانه مشکلی در اشتراک‌گذاری روم پیش آمده.\n` +
       `لطفاً دوباره تلاش کنید.`;
     
-    await tryEditMessageText(ctx, message, {
+    await ctx.replySmart(message, {
       parse_mode: 'HTML',
       reply_markup: {
         inline_keyboard: [[

@@ -17,7 +17,6 @@
     "test:scenarios:ui": "vitest tests/scenarios/ --ui",
     "test:scenarios:coverage": "vitest run tests/scenarios/ --coverage",
     "test:scenarios:ci": "vitest run tests/scenarios/ --reporter=verbose",
-
     "pre-push:full": "./scripts/pre-push.sh",
     "pre-push:coverage": "./scripts/pre-push.sh --coverage",
     "bot": "tsx src/bot.ts",
@@ -37,6 +36,8 @@
     "@supabase/supabase-js": "^2.39.0",
     "dotenv": "^16.4.5",
     "grammy": "^1.37.0",
+    "i18next": "^25.3.2",
+    "i18next-fs-backend": "^2.6.0",
     "nanoid": "^5.1.5",
     "node-fetch": "2",
     "pino": "^9.7.0",

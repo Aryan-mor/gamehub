@@ -1,5 +1,4 @@
 import { HandlerContext } from '@/modules/core/handler';
-import { tryEditMessageText } from '@/modules/core/telegramHelpers';
 import { getActivePokerRooms } from '../../services/pokerService';
 
 // Export the action key for consistency and debugging
@@ -30,7 +29,7 @@ async function handleList(context: HandlerContext): Promise<void> {
         ]
       };
       
-      await tryEditMessageText(ctx, message, {
+      await ctx.replySmart(message, {
         parse_mode: 'HTML',
         reply_markup: keyboard
       });
@@ -57,7 +56,7 @@ async function handleList(context: HandlerContext): Promise<void> {
         ]
       };
       
-      await tryEditMessageText(ctx, message, {
+      await ctx.replySmart(message, {
         parse_mode: 'HTML',
         reply_markup: keyboard
       });
@@ -102,7 +101,7 @@ async function handleList(context: HandlerContext): Promise<void> {
       ]
     };
     
-    await tryEditMessageText(ctx, roomListMessage, {
+    await ctx.replySmart(roomListMessage, {
       parse_mode: 'HTML',
       reply_markup: keyboard
     });
@@ -111,7 +110,7 @@ async function handleList(context: HandlerContext): Promise<void> {
     console.error('List rooms error:', error);
     
     const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-    await tryEditMessageText(ctx, `❌ Failed to list rooms: ${errorMessage}`);
+    await ctx.replySmart(`❌ Failed to list rooms: ${errorMessage}`);
   }
 }
 

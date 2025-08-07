@@ -52,18 +52,38 @@ export async function activeGameRedirect(ctx: Context): Promise<boolean> {
     if (activeRoom) {
       logFunctionEnd('activeGameRedirect', { hasActiveRoom: true, roomId: activeRoom.id }, { userId });
       
-      // Call the room info handler directly to show room information
-      const { default: handleRoomInfo } = await import('../../room/info');
-      
-      const context = {
-        ctx,
-        user: {
-          id: userId as unknown as UserId,
-          username: ctx.from?.username || 'Unknown'
+      // If game is playing, show game state. If waiting, show room info
+      if (activeRoom.status === 'playing') {
+        // Show current game state
+        await showCurrentGameState(ctx, activeRoom, userId);
+      } else {
+        // Show room info for waiting rooms
+        const { default: handleRoomInfo } = await import('../../room/info');
+        
+        // Ensure we have proper context information
+        if (!ctx.chat?.id) {
+          console.error('❌ Missing chat ID in context for active game redirect');
+          return false;
         }
-      };
-      
-      await handleRoomInfo(context, { roomId: activeRoom.id });
+        
+        const context = {
+          ctx,
+          user: {
+            id: userId as unknown as UserId,
+            username: ctx.from?.username || 'Unknown'
+          }
+        };
+        
+        try {
+          await handleRoomInfo(context, { roomId: activeRoom.id });
+        } catch (error) {
+          console.error('Error calling room info handler from active game redirect:', error);
+          // Fallback to simple message
+          await ctx.reply(`🏠 شما در روم "${activeRoom.name}" هستید.\n\nبرای مشاهده جزئیات روم، از دکمه‌های زیر استفاده کنید.`, {
+            parse_mode: 'HTML'
+          });
+        }
+      }
       
       // Mark as handled to prevent further processing
       (ctx as Context & { handled?: boolean }).handled = true;
@@ -82,6 +102,48 @@ export async function activeGameRedirect(ctx: Context): Promise<boolean> {
 }
 
 /**
+ * Show current game state to the user
+ */
+async function showCurrentGameState(ctx: Context, room: any, userId: PlayerId): Promise<void> {
+  try {
+    const player = room.players.find((p: any) => p.id === userId);
+    if (!player) {
+      console.log(`❌ Player ${userId} not found in room ${room.id}`);
+      return;
+    }
+    
+    console.log(`🎮 Showing current game state for player ${userId} in room ${room.id}`);
+    
+    // Get game state display
+    const { getGameStateDisplay } = await import('../../services/gameStateService');
+    const gameStateMessage = getGameStateDisplay(room, userId);
+    
+    // Generate keyboard for the current player
+    const { generateGameActionKeyboard } = await import('../../_utils/gameActionKeyboardGenerator');
+    const isCurrentPlayer = room.players[room.currentPlayerIndex].id === userId;
+    console.log(`🔍 Generating keyboard for player ${userId}, isCurrentPlayer: ${isCurrentPlayer}`);
+    const keyboard = generateGameActionKeyboard(room, userId, isCurrentPlayer);
+    console.log(`🔍 Generated keyboard:`, keyboard);
+    
+    // Send the game state message with keyboard for all players
+    await ctx.reply(gameStateMessage, {
+      parse_mode: 'HTML',
+      reply_markup: keyboard
+    });
+    
+    console.log(`✅ Sent current game state to player ${userId}`);
+    
+  } catch (error) {
+    console.error(`❌ Error showing current game state to player ${userId}:`, error);
+    
+    // Fallback to simple message
+    await ctx.reply(`🎮 شما در حال حاضر در بازی "${room.name}" هستید.\n\nبرای مشاهده جزئیات بازی، از دکمه‌های زیر استفاده کنید.`, {
+      parse_mode: 'HTML'
+    });
+  }
+}
+
+/**
  * Check if user has active game and redirect if needed
  */
 export async function checkAndRedirectToActiveGame(ctx: Context): Promise<boolean> {
@@ -96,18 +158,38 @@ export async function checkAndRedirectToActiveGame(ctx: Context): Promise<boolea
     );
     
     if (activeRoom) {
-      // Call the room info handler directly to show room information
-      const { default: handleRoomInfo } = await import('../../room/info');
-      
-      const context = {
-        ctx,
-        user: {
-          id: userId as unknown as UserId,
-          username: ctx.from?.username || 'Unknown'
+      // If game is playing, show game state. If waiting, show room info
+      if (activeRoom.status === 'playing') {
+        // Show current game state
+        await showCurrentGameState(ctx, activeRoom, userId);
+      } else {
+        // Show room info for waiting rooms
+        const { default: handleRoomInfo } = await import('../../room/info');
+        
+        // Ensure we have proper context information
+        if (!ctx.chat?.id) {
+          console.error('❌ Missing chat ID in context for active game redirect');
+          return false;
         }
-      };
-      
-      await handleRoomInfo(context, { roomId: activeRoom.id });
+        
+        const context = {
+          ctx,
+          user: {
+            id: userId as unknown as UserId,
+            username: ctx.from?.username || 'Unknown'
+          }
+        };
+        
+        try {
+          await handleRoomInfo(context, { roomId: activeRoom.id });
+        } catch (error) {
+          console.error('Error calling room info handler from checkAndRedirectToActiveGame:', error);
+          // Fallback to simple message
+          await ctx.reply(`🏠 شما در روم "${activeRoom.name}" هستید.\n\nبرای مشاهده جزئیات روم، از دکمه‌های زیر استفاده کنید.`, {
+            parse_mode: 'HTML'
+          });
+        }
+      }
       
       // Mark as handled to prevent further processing
       (ctx as Context & { handled?: boolean }).handled = true;

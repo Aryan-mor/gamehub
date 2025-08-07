@@ -42,19 +42,15 @@ async function handleBalance(context: HandlerContext): Promise<void> {
       `• Win more coins by playing poker\n` +
       `• Stake coins to increase your winnings`;
     
-    if (ctx.reply) {
-      await ctx.reply(balanceMessage, { 
-        parse_mode: 'HTML'
-      });
-    }
+    await ctx.replySmart(balanceMessage, { 
+      parse_mode: 'HTML'
+    });
     
   } catch (error) {
     console.error('Balance action error:', error);
     
     // Fallback message
-    if (ctx.reply) {
-      await ctx.reply('❌ Failed to fetch balance. Please try again later.');
-    }
+    await ctx.replySmart('❌ Failed to fetch balance. Please try again later.');
   }
 }
 

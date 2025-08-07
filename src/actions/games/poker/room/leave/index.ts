@@ -1,5 +1,4 @@
 import { HandlerContext } from '@/modules/core/handler';
-import { tryEditMessageText } from '@/modules/core/telegramHelpers';
 import { Context } from 'grammy';
 import { generateMainMenuKeyboard } from '../../buttonHelpers';
 import { 
@@ -102,7 +101,7 @@ async function handleLeave(context: HandlerContext, query: Record<string, string
 
     // Use tryEditMessageText to update the existing message
     try {
-      await tryEditMessageText(ctx, message, {
+      await ctx.replySmart(message, {
         parse_mode: 'HTML',
         reply_markup: keyboard
       });
@@ -110,7 +109,7 @@ async function handleLeave(context: HandlerContext, query: Record<string, string
     } catch (error) {
       console.error(`❌ FAILED TO SEND LEAVE MESSAGE:`, error);
       // Fallback: send new message
-      await ctx.reply(message, {
+      await ctx.replySmart(message, {
         parse_mode: 'HTML',
         reply_markup: keyboard
       });
@@ -154,7 +153,7 @@ async function handleLeave(context: HandlerContext, query: Record<string, string
     const errorMessage = error instanceof Error ? error.message : 'خطای نامشخص رخ داده است';
     const message = `❌ <b>خطا در ترک روم</b>\n\n${errorMessage}`;
     
-    await tryEditMessageText(ctx, message, {
+    await ctx.replySmart(message, {
       parse_mode: 'HTML',
       reply_markup: {
         inline_keyboard: [[

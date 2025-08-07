@@ -1,5 +1,4 @@
 import { HandlerContext } from '@/modules/core/handler';
-import { tryEditMessageText } from '@/modules/core/telegramHelpers';
 import { kickPlayerFromRoom, getPokerRoom } from '../../services/pokerService';
 import { validateRoomId, validatePlayerId } from '../../_utils/typeGuards';
 import { register } from '@/modules/core/compact-router';
@@ -23,7 +22,7 @@ async function handleKick(context: HandlerContext, query: Record<string, string>
     const message = `❌ <b>خطا در اخراج بازیکن</b>\n\n` +
       `شناسه روم مورد نیاز است.`;
     
-    await tryEditMessageText(ctx, message, {
+    await ctx.replySmart(message, {
       parse_mode: 'HTML',
       reply_markup: {
         inline_keyboard: [[
@@ -69,7 +68,7 @@ async function handleKick(context: HandlerContext, query: Record<string, string>
       
       const keyboard = generateKickPlayerKeyboard(room, kickablePlayers);
       
-      await tryEditMessageText(ctx, message, {
+      await ctx.replySmart(message, {
         parse_mode: 'HTML',
         reply_markup: keyboard
       });
@@ -109,7 +108,7 @@ async function handleKick(context: HandlerContext, query: Record<string, string>
     // Generate room info keyboard
     const keyboard = generateRoomInfoKeyboard(updatedRoom, validatedPlayerId);
     
-    await tryEditMessageText(ctx, message, {
+    await ctx.replySmart(message, {
       parse_mode: 'HTML',
       reply_markup: keyboard as any
     });
@@ -120,7 +119,7 @@ async function handleKick(context: HandlerContext, query: Record<string, string>
     const errorMessage = error instanceof Error ? error.message : 'خطای نامشخص رخ داده است';
     const message = `❌ <b>خطا در اخراج بازیکن</b>\n\n${errorMessage}`;
     
-    await tryEditMessageText(ctx, message, {
+    await ctx.replySmart(message, {
       parse_mode: 'HTML',
       reply_markup: {
         inline_keyboard: [

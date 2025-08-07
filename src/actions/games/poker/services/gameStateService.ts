@@ -43,12 +43,14 @@ export const startPokerGame = async (roomId: RoomId): Promise<PokerRoom> => {
     // Create and shuffle deck
     const deck = shuffleDeck(createDeck());
     
-    // Deal 2 cards to each player
+    // Deal 2 cards to each player (but don't show them in Pre-flop)
+    let currentDeck = deck;
     const updatedPlayers = room.players.map(player => {
-      const { cards } = dealCards(deck, 2);
+      const { cards, remainingDeck } = dealCards(currentDeck, 2);
+      currentDeck = remainingDeck; // Update deck for next player
       return {
         ...player,
-        cards,
+        cards, // Cards are dealt but not shown in Pre-flop
         betAmount: 0,
         totalBet: 0,
         isFolded: false,
@@ -61,25 +63,51 @@ export const startPokerGame = async (roomId: RoomId): Promise<PokerRoom> => {
       ...room,
       status: 'playing',
       players: updatedPlayers,
-      deck: deck.slice(room.players.length * 2), // Remove dealt cards
+      deck: currentDeck, // Use the remaining deck after dealing
       communityCards: [],
       pot: 0,
       currentBet: 0,
       minRaise: room.bigBlind,
       bettingRound: 'preflop',
       dealerIndex: 0,
-      smallBlindIndex: 1 % room.players.length,
-      bigBlindIndex: 2 % room.players.length,
-      currentPlayerIndex: (room.bigBlindIndex + 1) % room.players.length,
+      smallBlindIndex: 0, // First player (dealer)
+      bigBlindIndex: 1,   // Second player
+      currentPlayerIndex: 0, // Will be set after blinds
       startedAt: Date.now(),
       updatedAt: Date.now()
     };
     
+    console.log(`🔍 Initial game state:`, {
+      players: updatedRoom.players.length,
+      cards: updatedRoom.players.map(p => p.cards?.length || 0),
+      smallBlindIndex: updatedRoom.smallBlindIndex,
+      bigBlindIndex: updatedRoom.bigBlindIndex,
+      currentPlayerIndex: updatedRoom.currentPlayerIndex
+    });
+    
     // Post blinds
     const roomWithBlinds = await postBlinds(updatedRoom);
     
-    logFunctionEnd('startPokerGame', roomWithBlinds, { roomId });
-    return roomWithBlinds;
+    // Set current player to the first player after big blind
+    const finalRoom = {
+      ...roomWithBlinds,
+      currentPlayerIndex: (roomWithBlinds.bigBlindIndex + 1) % roomWithBlinds.players.length
+    };
+    
+    console.log(`🔍 Final game state:`, {
+      currentPlayerIndex: finalRoom.currentPlayerIndex,
+      currentPlayerId: finalRoom.players[finalRoom.currentPlayerIndex].id,
+      pot: finalRoom.pot,
+      currentBet: finalRoom.currentBet,
+      players: finalRoom.players.map(p => ({ id: p.id, betAmount: p.betAmount, chips: p.chips }))
+    });
+    
+    // Update the room with the final state
+    const { updatePokerRoom } = await import('../services/pokerService');
+    const savedRoom = await updatePokerRoom(roomId, finalRoom);
+    
+    logFunctionEnd('startPokerGame', savedRoom, { roomId });
+    return savedRoom;
   } catch (error) {
     logError('startPokerGame', error as Error, { roomId });
     throw error;
@@ -90,6 +118,9 @@ export const startPokerGame = async (roomId: RoomId): Promise<PokerRoom> => {
  * Post small and big blinds
  */
 async function postBlinds(room: PokerRoom): Promise<PokerRoom> {
+  console.log(`🔍 Posting blinds for room ${room.id}`);
+  console.log(`🔍 Room players before blinds:`, room.players.map(p => ({ id: p.id, name: p.name, cards: p.cards?.length || 0, chips: p.chips })));
+  
   const updatedPlayers = [...room.players];
   
   // Post small blind
@@ -119,8 +150,12 @@ async function postBlinds(room: PokerRoom): Promise<PokerRoom> {
     players: updatedPlayers,
     pot: smallBlindAmount + bigBlindAmount,
     currentBet: bigBlindAmount,
-    minRaise: room.bigBlind
+    minRaise: room.bigBlind,
+    currentPlayerIndex: room.currentPlayerIndex // Preserve currentPlayerIndex
   };
+  
+  console.log(`🔍 Room players after blinds:`, updatedRoom.players.map(p => ({ id: p.id, name: p.name, cards: p.cards?.length || 0, chips: p.chips, betAmount: p.betAmount })));
+  console.log(`🔍 Final pot: ${updatedRoom.pot}, current bet: ${updatedRoom.currentBet}`);
   
   return await updatePokerRoom(room.id, updatedRoom);
 }
@@ -134,22 +169,30 @@ export const processBettingAction = async (
   action: 'fold' | 'check' | 'call' | 'raise' | 'all-in',
   amount?: number
 ): Promise<PokerRoom> => {
-  logFunctionStart('processBettingAction', { roomId, playerId, action, amount });
-  
   try {
+    logFunctionStart('processBettingAction', { roomId, playerId, action, amount });
+    
     const room = await getPokerRoom(roomId);
     if (!room) {
       throw new Error('Room not found');
     }
     
     if (room.status !== 'playing') {
-      throw new Error('Game is not in progress');
+      throw new Error('Game is not in playing state');
     }
     
     const playerIndex = room.players.findIndex(p => p.id === playerId);
     if (playerIndex === -1) {
       throw new Error('Player not in room');
     }
+    
+    // Debug logs
+    console.log(`🔍 TURN DEBUG:`);
+    console.log(`  - playerId: "${playerId}"`);
+    console.log(`  - playerIndex: ${playerIndex}`);
+    console.log(`  - currentPlayerIndex: ${room.currentPlayerIndex}`);
+    console.log(`  - currentPlayer.id: "${room.players[room.currentPlayerIndex]?.id}"`);
+    console.log(`  - isCurrentTurn: ${playerIndex === room.currentPlayerIndex}`);
     
     if (playerIndex !== room.currentPlayerIndex) {
       throw new Error('Not your turn');
@@ -173,7 +216,12 @@ export const processBettingAction = async (
         break;
         
       case 'check':
-        if (player.betAmount < room.currentBet) {
+        // Allow check if player has already matched the current bet (e.g., Small Blind player)
+        // OR if this is the first action after Big Blind (Small Blind can check)
+        if (player.betAmount < room.currentBet && room.bettingRound === 'preflop' && room.currentPlayerIndex === room.smallBlindIndex) {
+          // Small Blind can check if they are the first to act after Big Blind
+          console.log(`✅ Allowing Small Blind check for player ${playerId}`);
+        } else if (player.betAmount < room.currentBet) {
           throw new Error('Cannot check when there is a bet to call');
         }
         updatedPlayers[playerIndex] = {
@@ -487,7 +535,9 @@ export function getGameStateDisplay(room: PokerRoom, playerId: PlayerId): string
   // Game in progress
   display += `💰 <b>Pot:</b> ${room.pot} coins\n`;
   display += `🎯 <b>Current Bet:</b> ${room.currentBet} coins\n`;
-  display += `🔄 <b>Round:</b> ${room.bettingRound}\n\n`;
+  display += `🔄 <b>Round:</b> ${room.bettingRound}\n`;
+  display += `🎰 <b>Small Blind:</b> ${room.smallBlind} coins\n`;
+  display += `🎰 <b>Big Blind:</b> ${room.bigBlind} coins\n\n`;
   
   // Community cards
   if (room.communityCards.length > 0) {
@@ -495,23 +545,69 @@ export function getGameStateDisplay(room: PokerRoom, playerId: PlayerId): string
     display += `${room.communityCards.map(card => getCardDisplay(card)).join(' ')}\n\n`;
   }
   
-  // Player's cards
-  display += `🎴 <b>Your Cards:</b>\n`;
-  display += `${player.cards.map(card => getCardDisplay(card)).join(' ')}\n\n`;
+  // Player's cards - Hide in Pre-flop
+  if (room.bettingRound === 'preflop') {
+    // In Pre-flop, don't show cards at all
+    display += `🎴 <b>Your Cards:</b>\n`;
+    display += `(کارت‌ها در مرحله Pre-flop نمایش داده نمی‌شوند)\n\n`;
+  } else {
+    // In other rounds, show cards normally
+    display += `🎴 <b>Your Cards:</b>\n`;
+    if (player.cards && Array.isArray(player.cards) && player.cards.length > 0) {
+      const cardDisplays = player.cards.map(card => getCardDisplay(card));
+      display += `${cardDisplays.join(' ')}\n\n`;
+    } else {
+      display += `(کارت‌ها هنوز تقسیم نشده‌اند)\n\n`;
+    }
+  }
   
   // Player's chips and bet
   display += `💎 <b>Your Chips:</b> ${player.chips}\n`;
   display += `💸 <b>Your Bet:</b> ${player.betAmount}\n\n`;
   
-  // Other players
+  // Turn status
+  const currentPlayer = room.players[room.currentPlayerIndex];
+  const isCurrentPlayer = currentPlayer.id === playerId;
+  
+  if (isCurrentPlayer) {
+    display += `🎯 <b>نوبت شماست!</b>\n\n`;
+    display += `انتخاب کنید:\n`;
+    display += `• 🃏 Call (برابری)\n`;
+    display += `• ❌ Fold (تخلیه)\n`;
+    display += `• 💰 Raise (افزایش)\n\n`;
+  } else {
+    // Use display name (first_name + last_name) instead of username for privacy
+    const displayName = currentPlayer.name || currentPlayer.username || 'Unknown Player';
+    display += `⏳ <b>منتظر ${displayName}...</b>\n\n`;
+    display += `بازیکن فعلی در حال تصمیم‌گیری است.\n\n`;
+  }
+  
+  // All players (including current player)
   display += `👥 <b>Players:</b>\n`;
   room.players.forEach(p => {
-    if (p.id !== playerId) {
-      const status = p.isFolded ? '❌ Folded' : 
-                    p.isAllIn ? '🔥 All-In' : 
-                    p.betAmount > 0 ? `💰 Bet: ${p.betAmount}` : '⏳ Waiting';
-      display += `• ${p.name}: ${p.chips} chips ${status}\n`;
+    const isCurrent = p.id === room.players[room.currentPlayerIndex].id;
+    const isThisPlayer = p.id === playerId;
+    
+    let status = '';
+    if (p.isFolded) {
+      status = '❌ Folded';
+    } else if (p.isAllIn) {
+      status = '🔥 All-In';
+    } else if (p.betAmount > 0) {
+      status = `💰 Bet: ${p.betAmount}`;
+    } else {
+      status = '⏳ Waiting';
     }
+    
+    if (isCurrent) {
+      status += ' 🎯 (Current Turn)';
+    }
+    
+    if (isThisPlayer) {
+      status += ' 👤 (You)';
+    }
+    
+    display += `• ${p.name}: ${p.chips} chips ${status}\n`;
   });
   
   return display;

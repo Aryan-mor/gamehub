@@ -1,5 +1,4 @@
 import { HandlerContext } from '@/modules/core/handler';
-import { tryEditMessageText } from '@/modules/core/telegramHelpers';
 import { 
   validateRoomIdWithError,
   validatePlayerIdWithError,
@@ -69,7 +68,7 @@ async function handleRaise(context: HandlerContext, query: Record<string, string
     // Generate appropriate keyboard
     const keyboard = generateGameActionKeyboard(updatedRoom, validatedPlayerId, isCurrentPlayerTurn);
 
-    await tryEditMessageText(ctx, message, {
+    await ctx.replySmart(message, {
       parse_mode: 'HTML',
       reply_markup: keyboard
     });
@@ -78,7 +77,7 @@ async function handleRaise(context: HandlerContext, query: Record<string, string
     console.error('Raise action error:', error);
     
     const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-    await tryEditMessageText(ctx, `❌ Failed to raise: ${errorMessage}`, {
+    await ctx.replySmart(`❌ Failed to raise: ${errorMessage}`, {
       parse_mode: 'HTML'
     });
   }
@@ -106,7 +105,7 @@ async function showRaiseAmountSelection(context: HandlerContext, roomId: string)
     
     const keyboard = generateRaiseAmountKeyboard(roomId);
     
-    await tryEditMessageText(ctx, message, {
+    await ctx.replySmart(message, {
       parse_mode: 'HTML',
       reply_markup: keyboard
     });
@@ -115,7 +114,7 @@ async function showRaiseAmountSelection(context: HandlerContext, roomId: string)
     console.error('Raise amount selection error:', error);
     
     const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-    await tryEditMessageText(ctx, `❌ Failed to show raise options: ${errorMessage}`, {
+    await ctx.replySmart(`❌ Failed to show raise options: ${errorMessage}`, {
       parse_mode: 'HTML'
     });
   }

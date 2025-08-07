@@ -40,11 +40,9 @@ async function handleFreeCoin(context: HandlerContext): Promise<void> {
         `⏰ <b>Next Claim:</b> Available in 24 hours\n\n` +
         `💡 <b>Tip:</b> Use these coins to play poker and win more!`;
       
-      if (ctx.reply) {
-        await ctx.reply(successMessage, { 
-          parse_mode: 'HTML'
-        });
-      }
+      await ctx.replySmart(successMessage, { 
+        parse_mode: 'HTML'
+      });
     } else {
       // Calculate time until next claim
       const nextClaim = new Date(lastClaim.getTime() + 24 * 60 * 60 * 1000);
@@ -56,20 +54,16 @@ async function handleFreeCoin(context: HandlerContext): Promise<void> {
         `💰 <b>Current Balance:</b> ${userData.coins} coins\n\n` +
         `💡 <b>Tip:</b> Play poker to earn more coins!`;
       
-      if (ctx.reply) {
-        await ctx.reply(waitMessage, { 
-          parse_mode: 'HTML'
-        });
-      }
+      await ctx.replySmart(waitMessage, { 
+        parse_mode: 'HTML'
+      });
     }
     
   } catch (error) {
     console.error('Freecoin action error:', error);
     
     // Fallback message
-    if (ctx.reply) {
-      await ctx.reply('❌ Failed to claim free coins. Please try again later.');
-    }
+    await ctx.replySmart('❌ Failed to claim free coins. Please try again later.');
   }
 }
 

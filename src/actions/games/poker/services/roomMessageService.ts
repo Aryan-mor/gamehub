@@ -38,7 +38,16 @@ export async function storePlayerMessage(
       timestamp: Date.now()
     });
     
-    await api.roomMessages.upsert({
+    // First try to delete existing record
+    try {
+      await api.roomMessages.deleteByRoomAndUser(roomId, playerId);
+    } catch (error) {
+      // Ignore if record doesn't exist
+      console.log(`No existing message record to delete for player ${playerId} in room ${roomId}`);
+    }
+    
+    // Then insert new record
+    await api.roomMessages.insert({
       room_id: roomId,
       user_id: playerId,
       message_id: messageId,
@@ -49,7 +58,7 @@ export async function storePlayerMessage(
     logFunctionEnd('storePlayerMessage', {}, { success: true });
   } catch (error) {
     logError('storePlayerMessage', error as Error);
-    throw error;
+    console.log('⚠️ Could not store message ID for player', playerId, ':', error);
   }
 }
 

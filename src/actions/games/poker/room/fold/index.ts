@@ -1,5 +1,4 @@
 import { HandlerContext } from '@/modules/core/handler';
-import { tryEditMessageText } from '@/modules/core/telegramHelpers';
 import { 
   validateRoomIdWithError,
   validatePlayerIdWithError,
@@ -10,6 +9,8 @@ import {
   register,
   POKER_ACTIONS
 } from '../../_utils/pokerUtils';
+import { updateAllPlayersInRoom } from '../../services/playerNotificationService';
+import { bot } from '@/bot';
 
 // Export the action key for consistency and debugging
 export const key = 'games.poker.room.fold';
@@ -34,21 +35,27 @@ async function handleFold(context: HandlerContext, query: Record<string, string>
     // Process the fold action
     const updatedRoom = await processBettingAction(validatedRoomId, validatedPlayerId, 'fold');
     
+    // Check if this player is still the current player
+    const isCurrentPlayer = updatedRoom.players[updatedRoom.currentPlayerIndex].id === validatedPlayerId;
+    
     // Generate updated game state display
     const gameStateDisplay = getGameStateDisplay(updatedRoom, validatedPlayerId);
-    const keyboard = generateGameActionKeyboard(updatedRoom, validatedPlayerId, false);
+    const keyboard = generateGameActionKeyboard(updatedRoom, validatedPlayerId, isCurrentPlayer);
     
-    // Update the message
-    await tryEditMessageText(ctx, gameStateDisplay, {
+    // Update the message for the current player
+    await ctx.replySmart(gameStateDisplay, {
       parse_mode: 'HTML',
       reply_markup: keyboard
     });
+    
+    // Update messages for all other players
+    await updateAllPlayersInRoom(bot, updatedRoom, validatedPlayerId);
     
   } catch (error) {
     console.error('Fold action error:', error);
     
     const errorMessage = createUserFriendlyError(error as Error);
-    await tryEditMessageText(ctx, `❌ Failed to fold: ${errorMessage}`);
+    await ctx.replySmart(`❌ Failed to fold: ${errorMessage}`);
   }
 }
 

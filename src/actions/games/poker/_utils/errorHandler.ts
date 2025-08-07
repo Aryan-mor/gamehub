@@ -167,7 +167,7 @@ export function validateRoomIdWithError(roomId: string): RoomId {
       throw createPokerError('MISSING_PARAMETER', 'Room ID is required');
     }
     
-    if (!/^room_[a-zA-Z0-9]{12}$/.test(roomId)) {
+    if (!/^room_[a-zA-Z0-9_-]{12,}$/.test(roomId)) {
       throw createPokerError('INVALID_ROOM_ID', `Invalid room ID format: ${roomId}`);
     }
     

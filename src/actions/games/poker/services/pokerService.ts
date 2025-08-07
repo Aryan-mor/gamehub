@@ -6,7 +6,8 @@ import {
   RoomStatus,
   PokerPlayer,
   PlayerId,
-  RoomId
+  RoomId,
+  Card
 } from '../types';
 import { logFunctionStart, logFunctionEnd, logError } from '@/modules/core/logger';
 // eslint-disable-next-line no-restricted-imports
@@ -179,47 +180,29 @@ export const getPokerRoom = async (roomId: RoomId): Promise<PokerRoom | null> =>
     
     if (creatorError) throw creatorError;
     
-    // Check if there's a cached room object in settings
-    const cachedRoom = settings?.room as PokerRoom | undefined;
-    
-    // Use cached room data if available and more recent, otherwise use database data
-    let finalPlayers = players;
-    let finalSettings = settings;
-    
-    if (cachedRoom && cachedRoom.players && cachedRoom.players.length >= players.length) {
-      // Use cached data if it has more players (more up-to-date)
-      finalPlayers = cachedRoom.players;
-      finalSettings = {
-        ...settings,
-        smallBlind: cachedRoom.smallBlind,
-        bigBlind: cachedRoom.bigBlind,
-        turnTimeoutSec: cachedRoom.turnTimeoutSec
-      };
-    }
-    
-    // Reconstruct room from database data
+    // Build the room object
     const room: PokerRoom = {
-      id: roomData.room_id as RoomId,
+      id: roomId,
       name: roomData.name,
       status: roomData.status as RoomStatus,
-      players: finalPlayers,
-      currentPlayerIndex: 0,
-      dealerIndex: 0,
-      smallBlindIndex: 0,
-      bigBlindIndex: 0,
-      pot: 0,
-      currentBet: 0,
-      minRaise: (finalSettings?.smallBlind as number) * 2 || 100,
-      deck: [],
-      communityCards: [],
-      bettingRound: 'preflop',
-      smallBlind: (finalSettings?.smallBlind as number) || 50,
-      bigBlind: (finalSettings?.bigBlind as number) || 100,
+      players: settings.players as PokerPlayer[] || players, // Use settings.players if available, fallback to player_data
+      currentPlayerIndex: settings.currentPlayerIndex as number || 0,
+      dealerIndex: settings.dealerIndex as number || 0,
+      smallBlindIndex: settings.smallBlindIndex as number || 0,
+      bigBlindIndex: settings.bigBlindIndex as number || 0,
+      pot: settings.pot as number || 0,
+      currentBet: settings.currentBet as number || 0,
+      minRaise: settings.minRaise as number || roomData.stake_amount * 2,
+      deck: settings.deck as Card[] || [],
+      communityCards: settings.communityCards as Card[] || [],
+      bettingRound: (settings.bettingRound as 'preflop' | 'flop' | 'turn' | 'river') || 'preflop',
+      smallBlind: settings.smallBlind as number || roomData.stake_amount,
+      bigBlind: settings.bigBlind as number || roomData.stake_amount * 2,
       minPlayers: 2,
       maxPlayers: roomData.max_players,
-      isPrivate: roomData.is_private,
-      turnTimeoutSec: (finalSettings?.turnTimeoutSec as number) || 30,
-      createdBy: creatorData.telegram_id.toString() as PlayerId,
+      isPrivate: settings.isPrivate as boolean || roomData.is_private,
+      turnTimeoutSec: settings.turnTimeoutSec as number || 60,
+      createdBy: creatorData.telegram_id,
       createdAt: new Date(roomData.created_at).getTime(),
       updatedAt: new Date(roomData.updated_at).getTime()
     };
@@ -254,10 +237,7 @@ export const updatePokerRoom = async (
       .from('rooms')
       .update({
         status: updates.status || currentRoom.status,
-        settings: {
-          ...currentRoom,
-          room: updatedRoom
-        },
+        settings: updatedRoom,
         updated_at: new Date().toISOString()
       })
       .eq('room_id', roomId);
@@ -417,6 +397,8 @@ export const leavePokerRoom = async (roomId: RoomId, playerId: PlayerId): Promis
       .eq('telegram_id', playerId)
       .single();
     
+    console.log(`🔍 USER LOOKUP: playerId=${playerId}, userData=`, userData, `userError=`, userError);
+    
     if (userError && userError.code !== 'PGRST116') {
       throw userError;
     }
@@ -429,15 +411,27 @@ export const leavePokerRoom = async (roomId: RoomId, playerId: PlayerId): Promis
         .eq('room_id', roomId)
         .single();
       
+      console.log(`🔍 ROOM LOOKUP: roomId=${roomId}, roomData=`, roomData);
+      
       if (roomData) {
+        console.log(`🔍 Removing player ${playerId} (UUID: ${userData.id}) from room ${roomId} (UUID: ${roomData.id})`);
         const { error: playerError } = await supabase
           .from('room_players')
           .delete()
           .eq('room_id', roomData.id)
           .eq('user_id', userData.id);
         
-        if (playerError) throw playerError;
+        if (playerError) {
+          console.error(`❌ Error removing player from room_players:`, playerError);
+          throw playerError;
+        } else {
+          console.log(`✅ Successfully removed player ${playerId} from room_players table`);
+        }
+      } else {
+        console.log(`⚠️ Room ${roomId} not found in database`);
       }
+    } else {
+      console.log(`⚠️ User ${playerId} not found in database`);
     }
     
     // Prepare updates
@@ -586,6 +580,13 @@ export const getPokerRoomsForPlayer = async (playerId: PlayerId): Promise<PokerR
         if (playersData) {
           const players = playersData.map(p => p.player_data as PokerPlayer);
           const settings = roomData.settings as Record<string, unknown>;
+          
+          // Check if the current user is actually in this room's players list
+          const userIsInRoom = players.some(p => p.id === playerId);
+          if (!userIsInRoom) {
+            // User is not in this room anymore, skip it
+            continue;
+          }
           
           // Get creator's telegram_id
           const { data: creatorData } = await supabase

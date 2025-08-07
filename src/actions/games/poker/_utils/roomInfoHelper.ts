@@ -89,7 +89,7 @@ export function getRoomInfoForUser(room: PokerRoom, userId: PlayerId): string {
     hour: '2-digit', 
     minute: '2-digit' 
   });
-  message += `\nآخرین بروزرسانی: ${timestamp} (به زمان کاربر)`;
+  message += `\nآخرین بروزرسانی: ${timestamp}`;
   
   return message;
 }
@@ -100,19 +100,30 @@ export function getRoomInfoForUser(room: PokerRoom, userId: PlayerId): string {
 export function generateRoomInfoKeyboard(room: PokerRoom, userId: PlayerId): {
   inline_keyboard: Array<Array<{ text: string; callback_data: string } | { text: string; switch_inline_query: string }>>
 } {
-  const isCreator = room.createdBy === userId;
+  const isCreator = String(room.createdBy) === String(userId);
   const canStartGame = isCreator && room.players.length >= room.minPlayers && room.status === 'waiting';
+  
+  console.log(`🔍 START GAME BUTTON DEBUG:`);
+  console.log(`  - userId: "${userId}" (type: ${typeof userId})`);
+  console.log(`  - room.createdBy: "${room.createdBy}" (type: ${typeof room.createdBy})`);
+  console.log(`  - isCreator: ${isCreator}`);
+  console.log(`  - players.length: ${room.players.length}, minPlayers: ${room.minPlayers}`);
+  console.log(`  - room.status: ${room.status}`);
+  console.log(`  - canStartGame: ${canStartGame}`);
   
   const buttons: Array<Array<{ text: string; callback_data: string } | { text: string; switch_inline_query: string }>> = [];
   
   // Start Game button (only for creator when conditions are met)
   if (canStartGame) {
+    console.log(`✅ Adding Start Game button for room ${room.id}`);
     buttons.push([
       {
         text: '🎮 شروع بازی',
         callback_data: `${POKER_ACTIONS.START_GAME}?r=${room.id}`
       }
     ]);
+  } else {
+    console.log(`❌ NOT adding Start Game button - conditions not met`);
   }
   
   // Share button (only when room is not full) - using switch_inline_query to open contacts

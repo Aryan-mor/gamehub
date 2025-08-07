@@ -1,5 +1,4 @@
 import { HandlerContext } from '@/modules/core/handler';
-import { tryEditMessageText } from '@/modules/core/telegramHelpers';
 import { generateGameEndKeyboard } from '../../buttonHelpers';
 import { trackGameStatistics } from '../../services/gameResultService';
 import { getPokerRoom } from '../../services/pokerService';
@@ -51,7 +50,7 @@ async function handleGameEnd(context: HandlerContext, query: Record<string, stri
     // Generate game end keyboard with options
     const keyboard = generateGameEndKeyboard(roomId);
     
-    await tryEditMessageText(ctx, message, {
+    await ctx.replySmart(message, {
       parse_mode: 'HTML',
       reply_markup: keyboard
     });
@@ -60,7 +59,7 @@ async function handleGameEnd(context: HandlerContext, query: Record<string, stri
     console.error('Game end display error:', error);
     
     const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-    await tryEditMessageText(ctx, `❌ Failed to show game results: ${errorMessage}`);
+    await ctx.replySmart(`❌ Failed to show game results: ${errorMessage}`);
   }
 }
 

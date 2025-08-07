@@ -3,7 +3,7 @@ import { Bot } from 'grammy';
 import { InlineQueryResult } from 'grammy/types';
 import { loggingMiddleware } from './modules/core/logger';
 import { sendMessage, answerCallbackQuery, parseCallbackData, extractUserInfo } from './modules/core/telegramHelpers';
-
+import { initializeI18n, i18nMiddleware, I18nContext } from './modules/core/i18n';
 
 import { setMessageUpdater } from './modules/core/messageUpdater';
 // Archived games are no longer imported - using new auto-discovery router system
@@ -13,6 +13,8 @@ import { PlayerId } from './actions/games/poker/types';
 import { logFunctionStart, logFunctionEnd, logError } from './modules/core/logger';
 import { api } from './lib/api';
 import { Context } from 'grammy';
+import { SmartContext } from './types';
+import { smartReplyPlugin } from './plugins/smart-reply';
 
 /**
  * GameHub Telegram Bot
@@ -47,10 +49,16 @@ if (!token.match(/^\d+:[A-Za-z0-9_-]+$/)) {
   );
 }
 
-export const bot = new Bot(token);
+export const bot = new Bot<I18nContext>(token);
 
 // Add logging middleware
 bot.use(loggingMiddleware);
+
+// Add i18n middleware
+bot.use(i18nMiddleware());
+
+// Add smart reply plugin
+bot.use(smartReplyPlugin());
 
 // Add active game redirect middleware (early in the chain)
 bot.use(async (ctx, next) => {
@@ -269,7 +277,7 @@ bot.command('start', async (ctx) => {
     logFunctionEnd('startCommand', {}, { userId: userInfo.userId, action: 'regular' });
   } catch (error) {
     logError('startCommand', error as Error, {});
-    await ctx.reply('🎮 Welcome to GameHub!\n\nUse /help to see available commands.');
+    await ctx.replySmart('🎮 Welcome to GameHub!\n\nUse /help to see available commands.');
   }
 });
 
@@ -297,7 +305,7 @@ bot.command('help', async (ctx) => {
     logFunctionEnd('helpCommand', {}, { userId: userInfo.userId });
   } catch (error) {
     logError('helpCommand', error as Error, {});
-    await ctx.reply('❌ Failed to show help.');
+    await ctx.replySmart('❌ Failed to show help.');
   }
 });
 
@@ -325,7 +333,7 @@ bot.command('balance', async (ctx) => {
     logFunctionEnd('balanceCommand', {}, { userId: userInfo.userId });
   } catch (error) {
     logError('balanceCommand', error as Error, {});
-    await ctx.reply('❌ Failed to get balance.');
+    await ctx.replySmart('❌ Failed to get balance.');
   }
 });
 
@@ -351,7 +359,7 @@ bot.command('freecoin', async (ctx) => {
     logFunctionEnd('freecoinCommand', {}, { userId: userInfo.userId });
   } catch (error) {
     logError('freecoinCommand', error as Error, {});
-    await ctx.reply('❌ Failed to claim free coins.');
+    await ctx.replySmart('❌ Failed to claim free coins.');
   }
 });
 
@@ -377,7 +385,7 @@ bot.command('poker', async (ctx) => {
     logFunctionEnd('pokerCommand', {}, { userId: userInfo.userId });
   } catch (error) {
     logError('pokerCommand', error as Error, {});
-    await ctx.reply('❌ Failed to start poker game.');
+    await ctx.replySmart('❌ Failed to start poker game.');
   }
 });
 
@@ -406,7 +414,7 @@ bot.inlineQuery(/^gpj-/, async (ctx) => {
     
     // Get room information
     const { getPokerRoom } = await import('./actions/games/poker/services/pokerService');
-    const { isValidRoomId } = await import('./utils/typeGuards');
+    const { isValidRoomId } = await import('./actions/games/poker/_utils/typeGuards');
     
     if (!isValidRoomId(roomId)) {
       console.log(`❌ Invalid room ID format: ${roomId}`);
@@ -492,7 +500,7 @@ bot.command('games', async (ctx) => {
     logFunctionEnd('gamesCommand', {}, { userId: userInfo.userId });
   } catch (error) {
     logError('gamesCommand', error as Error, {});
-    await ctx.reply('❌ Failed to fetch your games.');
+    await ctx.replySmart('❌ Failed to fetch your games.');
   }
 });
 
@@ -1180,6 +1188,10 @@ const startBot = async (): Promise<void> => {
   
   try {
     console.log('🚀 Starting GameHub bot...');
+    
+    // Initialize i18n
+    await initializeI18n();
+    console.log('✅ i18n initialized');
     
     // Initialize MessageUpdater
     setMessageUpdater(bot);

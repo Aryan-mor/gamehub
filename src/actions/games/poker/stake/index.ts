@@ -1,9 +1,10 @@
 import { HandlerContext } from '@/modules/core/handler';
-import { tryEditMessageText } from '@/modules/core/telegramHelpers';
 import { generateMainMenuKeyboard } from '../buttonHelpers';
 import { deductCoins, getUser } from '@/modules/core/userService';
 import { validateUser } from '../_utils/validateUser';
 import { logFunctionStart, logFunctionEnd, logError } from '@/modules/core/logger';
+// Example usage of card image service
+// import { generateAndSendCardImage } from '@/utils/cardImageService';
 
 // Export the action key for consistency and debugging
 export const key = 'games.poker.stake';
@@ -51,7 +52,7 @@ async function handleStake(context: HandlerContext, query: Record<string, string
     
     const keyboard = generateMainMenuKeyboard();
     
-    await tryEditMessageText(ctx, message, {
+    await ctx.replySmart(message, {
       parse_mode: 'HTML',
       reply_markup: keyboard
     });
@@ -63,7 +64,7 @@ async function handleStake(context: HandlerContext, query: Record<string, string
     
     const errorMessage = error instanceof Error ? error.message : 'خطا در تنظیم شرط. لطفاً دوباره تلاش کنید.';
     
-    await tryEditMessageText(ctx, `❌ ${errorMessage}`);
+    await ctx.replySmart(`❌ ${errorMessage}`);
   }
 }
 

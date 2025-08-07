@@ -1,5 +1,4 @@
 import { HandlerContext } from '@/modules/core/handler';
-import { tryEditMessageText } from '@/modules/core/telegramHelpers';
 import { generateMainMenuKeyboard } from '../../buttonHelpers';
 import { createPokerRoom } from '../../services/pokerService';
 import { validatePlayerId } from '../../_utils/typeGuards';
@@ -64,7 +63,7 @@ async function handleNewGame(context: HandlerContext): Promise<void> {
     
     const keyboard = generateMainMenuKeyboard();
     
-    await tryEditMessageText(ctx, message, {
+    await ctx.replySmart(message, {
       parse_mode: 'HTML',
       reply_markup: keyboard
     });
@@ -73,7 +72,7 @@ async function handleNewGame(context: HandlerContext): Promise<void> {
     console.error('New game action error:', error);
     
     const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-    await tryEditMessageText(ctx, `❌ Failed to create new room: ${errorMessage}`);
+    await ctx.replySmart(`❌ Failed to create new room: ${errorMessage}`);
   }
 }
 
