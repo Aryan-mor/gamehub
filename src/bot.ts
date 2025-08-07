@@ -21,7 +21,7 @@ import { GameHubContext, initializeCorePlugins, getPluginMiddlewareChain } from 
  * - SIGTERM: Graceful shutdown
  * - Exits immediately to prevent double signal issues
  */
-// Temporarily disabled other games to focus on trivia
+// Focus on poker game
 // import { registerDiceHandlers } from './games/dice';
 // import { registerBasketballHandlers } from './games/basketball';
 // import { registerFootballHandlers } from './games/football';
@@ -140,7 +140,7 @@ bot.use(async (ctx, next) => {
   
   await next();
 });
-// Temporarily disabled other games to focus on trivia
+// Focus on poker game
 // registerDiceHandlers(bot);
 // registerBasketballHandlers(bot);
 // registerFootballHandlers(bot);
@@ -873,7 +873,7 @@ bot.callbackQuery(/^[a-z0-9]{2,5}(\?.*)?$/, async (ctx) => {
   }
 });
 
-// Temporarily disabled to focus on trivia
+// Focus on poker game
 // bot.callbackQuery(/.*"action":"newgame".*/, async (ctx) => {
 //   try {
 //     const userInfo = extractUserInfo(ctx);
@@ -1294,29 +1294,7 @@ bot.on('message', async (ctx) => {
 bot.on('inline_query', async (ctx) => {
   const query = ctx.inlineQuery.query;
   
-  // Handle trivia game sharing
-  if (query.startsWith('trivia_')) {
-    const gameId = query.substring(7); // Remove "trivia_" prefix to get full game ID
-    if (gameId) {
-      const results: InlineQueryResult[] = [
-        {
-          type: 'article',
-          id: `share_${gameId}`,
-          title: '🧠 Share Trivia Game',
-          input_message_content: {
-            message_text: `🧠 <b>Trivia Challenge!</b>\n\nI've started a new trivia game. Click below to join and test your knowledge!`,
-            parse_mode: 'HTML',
-          },
-          reply_markup: {
-            inline_keyboard: [
-              [{ text: '🎮 Join Game', callback_data: JSON.stringify({ action: 'trivia_join', gameId }) }]
-            ]
-          }
-        }
-      ];
-      await ctx.answerInlineQuery(results, { cache_time: 0 });
-    }
-  }
+
   
   // Handle poker room sharing
   if (query.startsWith('join_room_')) {
