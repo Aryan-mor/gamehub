@@ -34,13 +34,13 @@ async function handleBalance(context: HandlerContext): Promise<void> {
       displayName = user.username;
     }
     
-    const balanceMessage = `💰 <b>Your Coin Balance</b>\n\n` +
-      `👤 <b>User:</b> ${displayName}\n` +
-      `🪙 <b>Coins:</b> ${userData.coins} coins\n\n` +
-      `💡 <b>Tips:</b>\n` +
-      `• Use /freecoin to claim daily coins\n` +
-      `• Win more coins by playing poker\n` +
-      `• Stake coins to increase your winnings`;
+    const balanceMessage = `${ctx.t('bot.balance.title')}\n\n` +
+      `${ctx.t('bot.balance.user')}: ${displayName}\n` +
+      `${ctx.t('bot.balance.coins')}: ${userData.coins} ${ctx.t('bot.balance.coinUnit')}\n\n` +
+      `${ctx.t('bot.balance.tips.title')}:\n` +
+      `• ${ctx.t('bot.balance.tips.freecoin')}\n` +
+      `• ${ctx.t('bot.balance.tips.poker')}\n` +
+      `• ${ctx.t('bot.balance.tips.stake')}`;
     
     await ctx.replySmart(balanceMessage, { 
       parse_mode: 'HTML'
@@ -50,7 +50,7 @@ async function handleBalance(context: HandlerContext): Promise<void> {
     console.error('Balance action error:', error);
     
     // Fallback message
-    await ctx.replySmart('❌ Failed to fetch balance. Please try again later.');
+    await ctx.replySmart(ctx.t('bot.balance.error'));
   }
 }
 

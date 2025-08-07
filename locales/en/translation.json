@@ -94,6 +94,37 @@
       "notFound": "Not found",
       "invalidInput": "Invalid input",
       "permissionDenied": "Permission denied"
+    },
+    "balance": {
+      "title": "💰 <b>Your Coin Balance</b>",
+      "user": "👤 <b>User</b>",
+      "coins": "🪙 <b>Coins</b>",
+      "coinUnit": "coins",
+      "tips": {
+        "title": "💡 <b>Tips</b>",
+        "freecoin": "Use /freecoin to claim daily coins",
+        "poker": "Win more coins by playing poker",
+        "stake": "Stake coins to increase your winnings"
+      },
+      "error": "❌ Failed to fetch balance. Please try again later."
+    },
+    "freecoin": {
+      "success": {
+        "title": "🎉 <b>Free Coins Claimed!</b>",
+        "received": "✅ You received <b>20 coins</b>!",
+        "newBalance": "💰 <b>New Balance</b>",
+        "nextClaim": "⏰ <b>Next Claim:</b> Available in 24 hours",
+        "tip": "💡 <b>Tip:</b> Use these coins to play poker and win more!"
+      },
+      "wait": {
+        "title": "⏰ <b>Free Coins Not Available</b>",
+        "alreadyClaimed": "❌ You've already claimed your daily coins today.",
+        "nextClaim": "⏳ <b>Next Claim:</b> Available in",
+        "hours": "hours",
+        "currentBalance": "💰 <b>Current Balance</b>",
+        "tip": "💡 <b>Tip:</b> Play poker to earn more coins!"
+      },
+      "error": "❌ Failed to claim free coins. Please try again later."
     }
   }
 } 

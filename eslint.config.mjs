@@ -44,34 +44,19 @@ const eslintConfig = [
           selector: "MemberExpression[object.name='ctx'][property.name='editMessageText']",
           message: "Use ctx.replySmart() instead of ctx.editMessageText()",
         },
-        // Prevent hardcoded user-facing strings
+        // Prevent hardcoded user-facing strings in ctx.replySmart first parameter
         {
-          "selector": "Literal[value='🎮 GameHub Bot']",
-          "message": "Do not use hardcoded user-facing strings. Use ctx.t('bot.start.title') instead"
+          "selector": "CallExpression[callee.object.name='ctx'][callee.property.name='replySmart'] > Literal:first-child",
+          "message": "Use ctx.t() for user-facing strings in ctx.replySmart(). Example: ctx.replySmart(ctx.t('bot.start.welcome'))"
+        },
+        // Prevent hardcoded user-facing strings in button text properties
+        {
+          "selector": "Property[key.name='text'] > Literal[value=/^[🎮📖🃏❌✅🎯💰🪙🚪➕➡️ℹ️▶️🔒🌐👥⏱️🎴🎯⏳📊🔥🎉🏠📝🔙🎮📋🎯💰❓]/]",
+          "message": "Use ctx.t() for button text. Example: text: ctx.t('bot.poker.actions.fold')"
         },
         {
-          "selector": "Literal[value='Welcome to GameHub! Choose a game to play:']",
-          "message": "Do not use hardcoded user-facing strings. Use ctx.t('bot.start.description') instead"
-        },
-        {
-          "selector": "Literal[value='📖 GameHub Help']",
-          "message": "Do not use hardcoded user-facing strings. Use ctx.t('bot.help.title') instead"
-        },
-        {
-          "selector": "Literal[value='🃏 Start Poker']",
-          "message": "Do not use hardcoded user-facing strings. Use ctx.t('bot.poker.start.createRoom') instead"
-        },
-        {
-          "selector": "Literal[value='Join Room']",
-          "message": "Do not use hardcoded user-facing strings. Use ctx.t('bot.poker.start.joinRoom') instead"
-        },
-        {
-          "selector": "Literal[value='❌ Error']",
-          "message": "Do not use hardcoded user-facing strings. Use ctx.t('bot.common.error') instead"
-        },
-        {
-          "selector": "Literal[value='✅ Success']",
-          "message": "Do not use hardcoded user-facing strings. Use ctx.t('bot.common.success') instead"
+          "selector": "Property[key.name='text'] > Literal[value=/^(تخلیه|کال|ریز|چک|آل-این|بازگشت|شروع|پیوستن|ایجاد|ترک|دعوت|تایید|لغو|بله|خیر)$/]",
+          "message": "Use ctx.t() for Persian button text. Example: text: ctx.t('bot.poker.actions.fold')"
         }
       ],
     },
