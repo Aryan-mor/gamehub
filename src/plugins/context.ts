@@ -37,6 +37,38 @@ export interface GameHubContext extends Context {
     formatTimeRemaining: (milliseconds: number) => string;
   };
 
+  // Poker Plugin
+  poker: {
+    createButtonTemplates: () => Record<string, { text: string; callback_data: string }>;
+    generateMainMenuKeyboard: () => { inline_keyboard: { text: string; callback_data: string }[][] };
+    generateRoomManagementKeyboard: (roomId: string) => { inline_keyboard: { text: string; callback_data: string }[][] };
+    generateGameActionKeyboard: (roomId: string, includeAllIn?: boolean) => { inline_keyboard: { text: string; callback_data: string }[][] };
+    generateStakeSelectionKeyboard: () => { inline_keyboard: { text: string; callback_data: string }[][] };
+    generateRaiseAmountKeyboard: (roomId: string) => { inline_keyboard: { text: string; callback_data: string }[][] };
+  };
+
+  // Keyboard Plugin
+  keyboard: {
+    generateButton: (
+      action: string,
+      params?: Record<string, string>,
+      templates?: Record<string, { text: string; callback_data: string }>
+    ) => { text: string; callback_data: string };
+    generateButtons: (
+      actions: string[],
+      params?: Record<string, string>,
+      templates?: Record<string, { text: string; callback_data: string }>
+    ) => { text: string; callback_data: string }[];
+    createInlineKeyboard: (buttons: { text: string; callback_data: string }[]) => { inline_keyboard: { text: string; callback_data: string }[][] };
+    createCustomKeyboard: (
+      layout: string[][],
+      templates: Record<string, { text: string; callback_data: string }>,
+      params?: Record<string, string>
+    ) => { inline_keyboard: { text: string; callback_data: string }[][] };
+    buildCallbackData: (action: string, params?: Record<string, string>) => string;
+    parseCallbackData: (data: string) => Record<string, unknown>;
+  };
+
   // Telegram Plugin
   telegram: {
     sendMessage: (
