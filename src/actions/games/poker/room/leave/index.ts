@@ -1,6 +1,6 @@
 import { HandlerContext } from '@/modules/core/handler';
 import { Context } from 'grammy';
-import { generateMainMenuKeyboard } from '../../buttonHelpers';
+// Use ctx.poker.generateMainMenuKeyboard() instead
 import { 
   validateRoomIdWithError,
   validatePlayerIdWithError,
@@ -93,7 +93,7 @@ async function handleLeave(context: HandlerContext, query: Record<string, string
     }
 
     // Generate main menu keyboard
-    const keyboard = generateMainMenuKeyboard();
+    const keyboard = ctx.poker.generateMainMenuKeyboard();
 
     console.log(`🚪 SENDING LEAVE MESSAGE:`);
     console.log(`  Message: ${message}`);

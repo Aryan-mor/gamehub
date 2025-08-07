@@ -1,5 +1,5 @@
 import { HandlerContext } from '@/modules/core/handler';
-import { generateMainMenuKeyboard } from '../../buttonHelpers';
+// Use ctx.poker.generateMainMenuKeyboard() instead
 import { createPokerRoom } from '../../services/pokerService';
 import { validatePlayerId } from '../../_utils/typeGuards';
 import { CreateRoomRequest } from '../../types';
@@ -61,7 +61,7 @@ async function handleNewGame(context: HandlerContext): Promise<void> {
       `🎮 <b>Available Actions:</b>\n` +
       `Choose what you'd like to do:`;
     
-    const keyboard = generateMainMenuKeyboard();
+    const keyboard = ctx.poker.generateMainMenuKeyboard();
     
     await ctx.replySmart(message, {
       parse_mode: 'HTML',

@@ -1,5 +1,5 @@
 import { HandlerContext } from '@/modules/core/handler';
-import { generateMainMenuKeyboard } from '../buttonHelpers';
+// Use ctx.poker.generateMainMenuKeyboard() instead
 import { deductCoins, getUser } from '@/modules/core/userService';
 import { validateUser } from '../_utils/validateUser';
 import { logFunctionStart, logFunctionEnd, logError } from '@/modules/core/logger';
@@ -50,7 +50,7 @@ async function handleStake(context: HandlerContext, query: Record<string, string
       `💳 موجودی جدید: <b>${userData.coins - stakeAmount} سکه</b>\n\n` +
       `🎮 آماده شروع بازی!`;
     
-    const keyboard = generateMainMenuKeyboard();
+    const keyboard = ctx.poker.generateMainMenuKeyboard();
     
     await ctx.replySmart(message, {
       parse_mode: 'HTML',

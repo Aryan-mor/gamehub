@@ -1,5 +1,5 @@
 import { HandlerContext } from '@/modules/core/handler';
-import { generateMainMenuKeyboard } from '../buttonHelpers';
+// Use ctx.poker.generateMainMenuKeyboard() instead
 import { getPlayerStatistics } from '../services/gameResultService';
 import { validatePlayerId } from '../_utils/typeGuards';
 
@@ -54,7 +54,7 @@ async function handleStats(context: HandlerContext): Promise<void> {
       `• Focus on position and pot odds\n` +
       `• Don't chase draws without proper odds`;
     
-    const keyboard = generateMainMenuKeyboard();
+    const keyboard = ctx.poker.generateMainMenuKeyboard();
     
     await ctx.replySmart(message, {
       parse_mode: 'HTML',

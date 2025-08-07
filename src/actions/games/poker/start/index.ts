@@ -1,6 +1,6 @@
 import { HandlerContext } from '@/modules/core/handler';
 import { isValidUserId } from '@/utils/typeGuards';
-import { generateMainMenuKeyboard } from '../buttonHelpers';
+// Use ctx.poker.generateMainMenuKeyboard() instead
 import { register } from '@/modules/core/compact-router';
 import { POKER_ACTIONS } from '../compact-codes';
 
@@ -33,7 +33,7 @@ async function handlePokerStart(context: HandlerContext): Promise<void> {
       `🎯 Choose an action below:`;
     
     // Generate dynamic keyboard using the new button system
-    const keyboard = generateMainMenuKeyboard();
+    const keyboard = ctx.poker.generateMainMenuKeyboard();
     
     // Use replySmart to handle message editing/sending
     await ctx.replySmart(message, { 
