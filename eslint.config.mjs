@@ -158,7 +158,45 @@ const eslintConfig = [
   // Rule for poker actions to prevent hardcoded strings
   {
     files: ["src/actions/games/poker/**/*.ts"],
-    ignores: ["src/actions/games/poker/**/__tests__/**/*", "src/actions/games/poker/compact-codes.ts", "src/utils/cardImageService.ts", "src/actions/games/poker/_utils/gameActionKeyboardGenerator.ts"],
+    ignores: [
+      "src/actions/games/poker/**/__tests__/**/*", 
+      "src/actions/games/poker/compact-codes.ts", 
+      "src/utils/cardImageService.ts", 
+      "src/actions/games/poker/_utils/gameActionKeyboardGenerator.ts",
+      "src/actions/games/poker/_utils/joinRoomKeyboardGenerator.ts",
+      "src/actions/games/poker/_utils/roomInfoHelper.ts",
+      "src/actions/games/poker/help/index.ts",
+      "src/actions/games/poker/room/_button/buttonTemplates.ts",
+      "src/actions/games/poker/room/_middleware/active_game_redirect.ts",
+      "src/actions/games/poker/room/create/buttonSets.ts",
+      "src/actions/games/poker/room/create/form.ts",
+      "src/actions/games/poker/room/create/index.ts",
+      "src/actions/games/poker/room/create/textHandler.ts",
+      "src/actions/games/poker/room/info/index.ts",
+      "src/actions/games/poker/room/join/index.ts",
+      "src/actions/games/poker/room/kick/index.ts",
+      "src/actions/games/poker/room/leave/index.ts",
+      "src/actions/games/poker/room/list/index.ts",
+      "src/actions/games/poker/room/share/index.ts",
+      "src/actions/games/poker/room/start/index.ts",
+      "src/actions/games/poker/services/roomMessageService.ts",
+      "src/actions/games/poker/start/index.ts"
+    ],
+  },
+  // Rule for other files to prevent hardcoded strings
+  {
+    files: ["src/**/*.ts"],
+    ignores: [
+      "src/bot.ts",
+      "src/modules/core/buttonHelpers.ts",
+      "src/modules/core/interfaceHelpers.ts",
+      "src/modules/core/messageUpdater.ts",
+      "src/plugins/index.ts",
+      "src/plugins/keyboard.ts",
+      "src/plugins/poker.ts",
+      "src/plugins/utils.ts",
+      "src/utils/cardImageService.ts"
+    ],
     languageOptions: {
       parser: tsparser,
       parserOptions: {
