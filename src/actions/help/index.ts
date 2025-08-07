@@ -17,11 +17,11 @@ async function handleHelp(context: HandlerContext): Promise<void> {
   }
   
   try {
-        const helpMessage = `${ctx.t('bot.help.title')}\n\n` +
+        const helpMessage = `${ctx.t('📚 Help & Commands')}\n\n` +
       `📋 <b>Available Commands:</b>\n` +
-      `• ${ctx.t('bot.help.commands.start')}\n` +
-      `• ${ctx.t('bot.help.commands.help')}\n` +
-      `• ${ctx.t('bot.help.commands.poker')}\n\n` +
+      `• ${ctx.t('• /start - Start the bot')}\n` +
+      `• ${ctx.t('• /help - Show this help')}\n` +
+      `• ${ctx.t('• /poker - Play poker')}\n\n` +
       `🎯 <b>How to Play Poker:</b>\n` +
       `1. Create or join a poker room\n` +
       `2. Wait for other players to join\n` +
@@ -43,7 +43,7 @@ async function handleHelp(context: HandlerContext): Promise<void> {
     console.error('Help command error:', error);
     
     // Fallback message
-    await ctx.replySmart(ctx.t('bot.common.error'));
+    await ctx.replySmart(ctx.t('❌ An error occurred. Please try again.'));
   }
 }
 

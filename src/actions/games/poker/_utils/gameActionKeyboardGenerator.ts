@@ -25,13 +25,13 @@ export function generateGameActionKeyboard(
       inline_keyboard: [
         [
           {
-            text: ctx.t('bot.poker.buttons.utility.refresh'),
+            text: ctx.t('🔄 Refresh'),
             callback_data: createPokerActionCallback('REFRESH_GAME', room.id)
           }
         ],
         [
           {
-            text: ctx.t('bot.poker.buttons.room.leave'),
+            text: ctx.t('🚪 Leave Room'),
             callback_data: createPokerActionCallback('LEAVE_ROOM', room.id)
           }
         ]
@@ -60,7 +60,7 @@ export function generateGameActionKeyboard(
   } else {
     buttons.push([
       {
-        text: ctx.t('bot.poker.buttons.game.check'),
+        text: ctx.t('✅ Check'),
         callback_data: createPokerActionCallback('CHECK', room.id)
       }
     ]);
@@ -69,7 +69,7 @@ export function generateGameActionKeyboard(
   // Fold button
   buttons.push([
     {
-      text: ctx.t('bot.poker.buttons.game.fold'),
+      text: ctx.t('⬇️ Fold'),
       callback_data: createPokerActionCallback('FOLD', room.id)
     }
   ]);
@@ -85,7 +85,7 @@ export function generateGameActionKeyboard(
   if ((currentPlayer.chips || 0) > 0) {
     buttons.push([
       {
-        text: ctx.t('bot.poker.buttons.game.allIn'),
+        text: ctx.t('💥 All In'),
         callback_data: createPokerActionCallback('ALL_IN', room.id)
       }
     ]);

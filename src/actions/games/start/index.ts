@@ -25,12 +25,12 @@ async function handleStartGame(context: HandlerContext): Promise<void> {
     
     // Create game selection buttons
     const buttons = [
-      { text: ctx.t('bot.games.poker.title'), callbackData: { action: pokerStartKey } },
+      { text: ctx.t('🎴 Poker'), callbackData: { action: pokerStartKey } },
     ];
     
     const keyboard = createOptimizedKeyboard(buttons, true);
     
-    const message = ctx.t('bot.games.start.message');
+    const message = ctx.t('🎮 <b>GameHub - Poker Focus</b>\n\n🃏 Challenge your friends in competitive poker games!\n\nJoin rooms, play Texas Hold\'em, and compete for coins.');
     
     // Use replySmart to handle message editing/sending
     await ctx.replySmart(message, { 
@@ -42,7 +42,7 @@ async function handleStartGame(context: HandlerContext): Promise<void> {
     console.error('StartGame action error:', error);
     
     // Fallback message
-    await ctx.replySmart(ctx.t('bot.games.start.fallback'));
+    await ctx.replySmart(ctx.t('🎮 Game selection is currently available for Poker only.'));
   }
 }
 

@@ -26,7 +26,7 @@ export class I18nPlugin implements GameHubPlugin {
         .use(Backend)
         .init({
           backend: {
-            loadPath: './locales/{{lng}}/{{ns}}.json',
+            loadPath: process.cwd() + '/locales/{{lng}}/{{ns}}.json',
           },
           fallbackLng: 'en',
           debug: false,
@@ -53,6 +53,12 @@ export class I18nPlugin implements GameHubPlugin {
         const userLanguage = ctx.from?.language_code || 'en';
         const language = i18next.languages.includes(userLanguage) ? userLanguage : 'en';
         const result = i18next.t(key, { lng: language, ...options });
+        
+        // If result is empty string and language is English, return the key itself
+        if (language === 'en' && result === '') {
+          return key;
+        }
+        
         return typeof result === 'string' ? result : key;
       }
     };

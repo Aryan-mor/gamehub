@@ -35,24 +35,29 @@ async function handleStart(context: HandlerContext): Promise<void> {
     const userData = await getUser(user.id);
     
     // Build welcome message
-    let welcome = `${ctx.t('bot.start.title')}\n\n` +
-      `${ctx.t('bot.start.description')}\n\n` +
-      `💰 ${ctx.t('bot.start.earnCoins')}\n\n` +
-      `🎯 ${ctx.t('bot.start.chooseAction')}`;
+    let welcome = `${ctx.t('🎮 <b>GameHub</b>\n\nWelcome to GameHub! Choose a game to start playing.')}\n\n` +
+      `💰 ${ctx.t('Earn and claim daily Coins with /freecoin!')}\n\n` +
+      `🎯 ${ctx.t('Choose an action below:')}`;
     
     // Give 100 coins to new users
     if (userData.coins === 0 && !userData.lastFreeCoinAt) {
       await addCoins(user.id, 100, 'initial grant');
-      welcome = `${ctx.t('bot.start.welcomeBonus')}\n\n` + welcome;
+      welcome = `${ctx.t('🎉 You received <b>100 Coins</b> for joining!')}\n\n` + welcome;
     }
     
-    // Create buttons
+    // Create buttons with proper translation
+    const createRoomText = ctx.t('🏠 Create Room');
+    const joinRoomText = ctx.t('🚪 Join Room');
+    const freeCoinText = ctx.t('🪙 Free Coin');
+    const balanceText = ctx.t('💰 Balance');
+    const helpText = ctx.t('❓ Help');
+    
     const buttons = [
-      { text: ctx.t('bot.poker.start.createRoom'), callbackData: { action: pokerGameStartKey } },
-      { text: ctx.t('bot.poker.start.joinRoom'), callbackData: { action: gamesStartKey } },
-      { text: ctx.t('bot.start.freeCoin'), callbackData: { action: freecoinKey } },
-      { text: ctx.t('bot.start.balance'), callbackData: { action: balanceKey } },
-      { text: ctx.t('bot.start.help'), callbackData: { action: helpKey } },
+      { text: createRoomText, callbackData: { action: pokerGameStartKey } },
+      { text: joinRoomText, callbackData: { action: gamesStartKey } },
+      { text: freeCoinText, callbackData: { action: freecoinKey } },
+      { text: balanceText, callbackData: { action: balanceKey } },
+      { text: helpText, callbackData: { action: helpKey } },
     ];
     
     const keyboard = createOptimizedKeyboard(buttons);
@@ -67,7 +72,7 @@ async function handleStart(context: HandlerContext): Promise<void> {
     console.error('Start command error:', error);
     
     // Fallback message
-    await ctx.replySmart(ctx.t('bot.start.welcome'));
+    await ctx.replySmart(ctx.t('🎮 <b>GameHub</b>\n\nWelcome to GameHub! Choose a game to start playing.'));
   }
 }
 

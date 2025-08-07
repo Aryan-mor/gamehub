@@ -33,18 +33,25 @@ export class LoggingPlugin implements GameHubPlugin {
     const startTime = Date.now();
     const messageType = ctx.message ? 'message' : ctx.update.callback_query ? 'callback_query' : 'other';
     
-    ctx.log.debug(`📱 Telegram update: ${messageType}`, { messageType });
+    // Safety check for log property
+    if (ctx.log?.debug) {
+      ctx.log.debug(`📱 Telegram update: ${messageType}`, { messageType });
+    }
     
     try {
       await next();
       const duration = Date.now() - startTime;
-      ctx.log.debug(`✅ Request completed in ${duration}ms`, { duration });
+      if (ctx.log?.debug) {
+        ctx.log.debug(`✅ Request completed in ${duration}ms`, { duration });
+      }
     } catch (error) {
       const duration = Date.now() - startTime;
-      ctx.log.error(`❌ Request failed after ${duration}ms`, { 
-        duration, 
-        error: error instanceof Error ? error.message : String(error) 
-      });
+      if (ctx.log?.error) {
+        ctx.log.error(`❌ Request failed after ${duration}ms`, { 
+          duration, 
+          error: error instanceof Error ? error.message : String(error) 
+        });
+      }
       throw error;
     }
   };

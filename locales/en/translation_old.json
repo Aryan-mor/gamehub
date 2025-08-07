@@ -1,0 +1,19 @@
+{
+  "bot": {
+    "financial": {
+      "wallet": {
+        "title": "💰 <b>Wallet</b>",
+        "balance": "Balance",
+        "deposit": "Deposit",
+        "withdraw": "Withdraw",
+        "history": "Transaction History"
+      },
+      "freecoin": {
+        "title": "🎁 <b>Free Coins</b>",
+        "daily": "Daily Bonus",
+        "invite": "Invite Friends",
+        "claim": "Claim"
+      }
+    }
+  }
+}

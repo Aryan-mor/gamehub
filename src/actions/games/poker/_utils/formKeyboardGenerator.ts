@@ -54,7 +54,7 @@ export function generateConfirmationKeyboard(roomId: string, ctx?: GameHubContex
     inline_keyboard: [
       [
         {
-          text: ctx.t('bot.poker.buttons.utility.share'),
+          text: ctx.t('🔗 Share'),
           callback_data: `games.poker.room.share?roomId=${roomId}`
         }
       ]
@@ -77,13 +77,13 @@ export function generateInviteKeyboard(roomId: string, ctx?: GameHubContext): {
     inline_keyboard: [
       [
         {
-          text: ctx.t('bot.poker.buttons.utility.share'),
+          text: ctx.t('🔗 Share'),
           callback_data: `games.poker.room.share?roomId=${roomId}`
         }
       ],
       [
         {
-          text: ctx.t('bot.poker.buttons.navigation.back'),
+          text: ctx.t('🔙 Back'),
           callback_data: `games.poker.room.join?roomId=${roomId}`
         }
       ]

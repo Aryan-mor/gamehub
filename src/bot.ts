@@ -13,6 +13,7 @@ import { logFunctionStart, logFunctionEnd, logError } from './modules/core/logge
 import { api } from './lib/api';
 import { Context } from 'grammy';
 import { GameHubContext, initializeCorePlugins, getPluginMiddlewareChain } from './plugins';
+import { sendMessage, answerCallbackQuery, parseCallbackData } from './modules/core/telegramHelpers';
 
 /**
  * GameHub Telegram Bot

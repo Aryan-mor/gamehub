@@ -163,8 +163,12 @@ export class PluginRegistry {
     
     // Apply all plugin context builders
     for (const plugin of this.plugins.values()) {
-      const pluginContext = plugin.buildContext(ctx);
-      Object.assign(baseContext, pluginContext);
+      try {
+        const pluginContext = plugin.buildContext(ctx);
+        Object.assign(baseContext, pluginContext);
+      } catch (error) {
+        console.error(`Error building context for plugin ${plugin.name}:`, error);
+      }
     }
 
     return baseContext;
@@ -173,16 +177,28 @@ export class PluginRegistry {
   /**
    * Create middleware chain for all plugins
    */
-  createMiddlewareChain(): (ctx: GameHubContext, next: () => Promise<void>) => Promise<void> {
-    return async (ctx: GameHubContext, next: () => Promise<void>): Promise<void> => {
-      // Apply all plugin middlewares in order
-      for (const plugin of this.plugins.values()) {
-        await plugin.middleware(ctx, async () => {
-          // Continue to next plugin or final handler
-        });
-      }
+  createMiddlewareChain(): (ctx: Context, next: () => Promise<void>) => Promise<void> {
+    return async (ctx: Context, next: () => Promise<void>): Promise<void> => {
+      // Build the complete GameHubContext with all plugins
+      const gameHubContext = this.buildContext(ctx);
       
-      await next();
+      // Create a proper middleware chain
+      const pluginMiddlewares = Array.from(this.plugins.values());
+      
+      // Execute middleware chain recursively
+      const executeMiddleware = async (index: number): Promise<void> => {
+        if (index >= pluginMiddlewares.length) {
+          // All plugins processed, call the final next()
+          await next();
+          return;
+        }
+        
+        const plugin = pluginMiddlewares[index];
+        await plugin.middleware(gameHubContext, () => executeMiddleware(index + 1));
+      };
+      
+      // Start the middleware chain
+      await executeMiddleware(0);
     };
   }
 }

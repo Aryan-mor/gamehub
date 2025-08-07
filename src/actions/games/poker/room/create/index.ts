@@ -19,24 +19,6 @@ async function handleCreate(context: HandlerContext): Promise<void> {
   console.log(`Starting room creation form for user ${user.id}`);
   
   try {
-    // Check if user is already in an active room
-    // const hasActiveRoom = await checkUserActiveRoom(); // This line was removed as per the new_code
-    // if (hasActiveRoom) {
-    //   const message = `❌ <b>خطا در ساخت روم</b>\n\n` +
-    //     `شما در حال حاضر در یک روم فعال هستید.\n` +
-    //     `لطفاً ابتدا از روم فعلی خارج شوید.`;
-      
-    //   await tryEditMessageText(ctx, message, {
-    //     parse_mode: 'HTML',
-    //     reply_markup: {
-    //       inline_keyboard: [[
-    //         { text: '🔙 بازگشت به منو', callback_data: 'games.poker.backToMenu' }
-    //       ]]
-    //     }
-    //   });
-    //   return;
-    // }
-    
     // Initialize form state
     const formState = { ...defaultFormState };
     global.formStates.set(user.id.toString(), formState);
@@ -47,15 +29,15 @@ async function handleCreate(context: HandlerContext): Promise<void> {
   } catch (error) {
     console.error('Room creation form start error:', error);
     
-    const message = `❌ <b>خطا در شروع فرم</b>\n\n` +
-      `متأسفانه مشکلی در شروع فرم ساخت روم پیش آمده.\n` +
-      `لطفاً دوباره تلاش کنید.`;
+    const message = ctx.t('❌ <b>Game Start Error</b>\n\nSorry, there was a problem starting the game.\nPlease try again.', {
+      fallback: '❌ <b>خطا در شروع فرم</b>\n\nمتأسفانه مشکلی در شروع فرم ساخت روم پیش آمده.\nلطفاً دوباره تلاش کنید.'
+    });
     
     await ctx.replySmart(message, {
       parse_mode: 'HTML',
       reply_markup: {
         inline_keyboard: [[
-          { text: '🔙 بازگشت به منو', callback_data: 'games.poker.backToMenu' }
+          { text: ctx.t('🔙 Back to Menu'), callback_data: 'games.poker.backToMenu' }
         ]]
       }
     });
@@ -280,84 +262,78 @@ async function showFormStep(context: HandlerContext, formState: FormState): Prom
   
   switch (step) {
     case 'name':
-      message = `🏠 <b>ساخت روم پوکر</b>\n\n` +
-        `📝 <b>مرحله ۱: نام روم</b>\n\n` +
-        `لطفاً نام روم خود را وارد کنید:\n` +
-        `• حداقل ۳ کاراکتر\n` +
-        `• حداکثر ۳۰ کاراکتر\n\n` +
-        `<i>برای ادامه، نام روم را در پیام بعدی تایپ کنید...</i>`;
+      message = ctx.t('🏠 <b>Create Poker Room</b>\n\n📝 <b>Step 1: Room Name</b>\n\nPlease enter your room name:\n• Minimum 3 characters\n• Maximum 30 characters\n\n<i>Type the room name in the next message to continue...</i>', {
+        fallback: `🏠 <b>ساخت روم پوکر</b>\n\n📝 <b>مرحله ۱: نام روم</b>\n\nلطفاً نام روم خود را وارد کنید:\n• حداقل ۳ کاراکتر\n• حداکثر ۳۰ کاراکتر\n\n<i>برای ادامه، نام روم را در پیام بعدی تایپ کنید...</i>`
+      });
       
       keyboard = {
         inline_keyboard: [[
-          { text: '🔙 بازگشت به منو', callback_data: 'games.poker.backToMenu' }
+          { text: ctx.t('🔙 Back to Menu'), callback_data: 'games.poker.backToMenu' }
         ]]
       };
       break;
       
     case 'privacy':
-      message = `🏠 <b>ساخت روم پوکر</b>\n\n` +
-        `🔒 <b>مرحله ۲: نوع روم</b>\n\n` +
-        `نوع روم خود را انتخاب کنید:\n\n` +
-        `🔒 <b>خصوصی:</b> فقط با لینک دعوت قابل ورود\n` +
-        `🌐 <b>عمومی:</b> در لیست روم‌های عمومی نمایش داده می‌شود`;
+      message = ctx.t('🏠 <b>Create Poker Room</b>\n\n🔒 <b>Step 2: Room Type</b>\n\nChoose your room type:\n\n🔒 <b>Private:</b> Only accessible via invite link\n🌐 <b>Public:</b> Shows in public room list', {
+        fallback: `🏠 <b>ساخت روم پوکر</b>\n\n🔒 <b>مرحله ۲: نوع روم</b>\n\nنوع روم خود را انتخاب کنید:\n\n🔒 <b>خصوصی:</b> فقط با لینک دعوت قابل ورود\n🌐 <b>عمومی:</b> در لیست روم‌های عمومی نمایش داده می‌شود`
+      });
       
-      // keyboard = generateFormStepKeyboard(step); // This line was removed as per the new_code
+      // keyboard = generateFormStepKeyboard(step);
       break;
       
     case 'maxPlayers':
-      message = `🏠 <b>ساخت روم پوکر</b>\n\n` +
-        `👥 <b>مرحله ۳: تعداد بازیکنان</b>\n\n` +
-        `حداکثر تعداد بازیکنان را انتخاب کنید:`;
+      message = ctx.t('🏠 <b>Create Poker Room</b>\n\n👥 <b>Step 3: Player Count</b>\n\nSelect maximum number of players:', {
+        fallback: `🏠 <b>ساخت روم پوکر</b>\n\n👥 <b>مرحله ۳: تعداد بازیکنان</b>\n\nحداکثر تعداد بازیکنان را انتخاب کنید:`
+      });
       
-      // keyboard = generateFormStepKeyboard(step); // This line was removed as per the new_code
+      // keyboard = generateFormStepKeyboard(step);
       break;
       
     case 'smallBlind':
-      message = `🏠 <b>ساخت روم پوکر</b>\n\n` +
-        `💰 <b>مرحله ۴: مقدار Small Blind</b>\n\n` +
-        `مقدار Small Blind را انتخاب کنید:\n` +
-        `(Big Blind = ۲ × Small Blind)`;
+      message = ctx.t('🏠 <b>Create Poker Room</b>\n\n💰 <b>Step 4: Small Blind Amount</b>\n\nSelect Small Blind amount:\n(Big Blind = 2 × Small Blind)', {
+        fallback: `🏠 <b>ساخت روم پوکر</b>\n\n💰 <b>مرحله ۴: مقدار Small Blind</b>\n\nمقدار Small Blind را انتخاب کنید:\n(Big Blind = ۲ × Small Blind)`
+      });
       
-      // keyboard = generateFormStepKeyboard(step); // This line was removed as per the new_code
+      // keyboard = generateFormStepKeyboard(step);
       break;
       
     case 'timeout':
-      message = `🏠 <b>ساخت روم پوکر</b>\n\n` +
-        `⏱️ <b>مرحله ۵: زمان تایم‌اوت</b>\n\n` +
-        `زمان تایم‌اوت هر نوبت را انتخاب کنید:`;
+      message = ctx.t('🏠 <b>Create Poker Room</b>\n\n⏱️ <b>Step 5: Turn Timeout</b>\n\nSelect timeout for each turn:', {
+        fallback: `🏠 <b>ساخت روم پوکر</b>\n\n⏱️ <b>مرحله ۵: زمان تایم‌اوت</b>\n\nزمان تایم‌اوت هر نوبت را انتخاب کنید:`
+      });
       
-      // keyboard = generateFormStepKeyboard(step); // This line was removed as per the new_code
+      // keyboard = generateFormStepKeyboard(step);
       break;
       
     case 'confirmation':
-
-      message = `🏠 <b>ساخت روم پوکر</b>\n\n` +
-        `✅ <b>مرحله ۶: تایید نهایی</b>\n\n` +
-        `📊 <b>مشخصات روم:</b>\n` +
-        `• نام: ${data.name}\n` +
-        `• نوع: ${data.isPrivate ? '🔒 خصوصی' : '🌐 عمومی'}\n` +
-        `• تعداد بازیکنان: ${data.maxPlayers} نفر\n` +
-        `• Small Blind: ${data.smallBlind} سکه\n` +
-        `• تایم‌اوت: ${data.turnTimeoutSec} ثانیه\n\n` +
-        `آیا می‌خواهید روم را با این مشخصات بسازید؟`;
+      message = ctx.t('🏠 <b>Create Poker Room</b>\n\n✅ <b>Step 6: Final Confirmation</b>\n\n📊 <b>Room Details:</b>\n• Name: {{name}}\n• Type: {{isPrivate}} ? \'🔒 Private\' : \'🌐 Public\'\n• Players: {{maxPlayers}} players\n• Small Blind: {{smallBlind}} coins\n• Timeout: {{turnTimeoutSec}} seconds\n\nDo you want to create the room with these settings?', {
+        name: data.name,
+        isPrivate: data.isPrivate,
+        maxPlayers: data.maxPlayers,
+        smallBlind: data.smallBlind,
+        turnTimeoutSec: data.turnTimeoutSec,
+        fallback: `🏠 <b>ساخت روم پوکر</b>\n\n✅ <b>مرحله ۶: تایید نهایی</b>\n\n📊 <b>مشخصات روم:</b>\n• نام: ${data.name}\n• نوع: ${data.isPrivate ? '🔒 خصوصی' : '🌐 عمومی'}\n• تعداد بازیکنان: ${data.maxPlayers} نفر\n• Small Blind: ${data.smallBlind} سکه\n• تایم‌اوت: ${data.turnTimeoutSec} ثانیه\n\nآیا می‌خواهید روم را با این مشخصات بسازید؟`
+      });
       
-      // keyboard = generateFormStepKeyboard(step); // This line was removed as per the new_code
+      // keyboard = generateFormStepKeyboard(step);
       break;
       
-          default:
-        message = `❌ <b>خطا</b>\n\nمرحله نامعتبر`;
-        keyboard = {
-          inline_keyboard: [[
-            { text: '🔙 بازگشت به منو', callback_data: 'games.poker.backToMenu' }
-          ]]
-        };
-    }
-    
-    await ctx.replySmart(message, {
-      parse_mode: 'HTML',
-      reply_markup: keyboard
-    });
+    default:
+      message = ctx.t('❌ <b>Error</b>\n\nInvalid step', {
+        fallback: '❌ <b>خطا</b>\n\nمرحله نامعتبر'
+      });
+      keyboard = {
+        inline_keyboard: [[
+          { text: ctx.t('🔙 Back to Menu'), callback_data: 'games.poker.backToMenu' }
+        ]]
+      };
   }
+  
+  await ctx.replySmart(message, {
+    parse_mode: 'HTML',
+    reply_markup: keyboard
+  });
+}
   
   // Self-register with compact router
 import { register } from '@/modules/core/compact-router';

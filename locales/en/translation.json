@@ -1,209 +1,119 @@
 {
-  "bot": {
-    "start": {
-      "title": "🎮 GameHub Bot",
-      "description": "Welcome to GameHub! Choose a game to play:",
-      "welcome": "Welcome to GameHub! 🎮\n\nChoose a game to start playing:",
-      "earnCoins": "Earn and claim daily Coins with /freecoin!",
-      "chooseAction": "Choose an action below:",
-      "welcomeBonus": "🎉 You received <b>100 Coins</b> for joining!",
-      "freeCoin": "🪙 Free Coin",
-      "balance": "💰 Balance",
-      "help": "❓ Help"
-    },
-    "help": {
-      "title": "📖 GameHub Help",
-      "description": "Here's how to use GameHub:",
-      "commands": {
-        "start": "/start - Start the bot",
-        "help": "/help - Show this help message",
-        "poker": "/poker - Start poker game",
-        "balance": "/balance - Check your coin balance",
-        "freecoin": "/freecoin - Claim daily free coins"
-      },
-      "gameplay": {
-        "title": "🎯 How to Play Poker:",
-        "steps": "1. Create or join a poker room\n2. Wait for other players to join\n3. Start the game when ready\n4. Use Call, Fold, Raise, or Check actions\n5. Best 5-card hand wins the pot!"
-      },
-      "coins": {
-        "title": "💰 Coin System:",
-        "description": "• Earn coins by winning games\n• Claim 20 free coins daily with /freecoin\n• Use coins to stake in games"
-      },
-      "support": {
-        "title": "❓ Need More Help?",
-        "description": "Contact support or check the game rules."
-      }
-    },
-    "poker": {
-      "title": "🃏 Poker Game",
-      "start": {
-        "title": "🃏 Poker Game",
-        "description": "Welcome to Poker! Create or join a room to start playing.",
-        "createRoom": "Create Room",
-        "joinRoom": "Join Room",
-        "listRooms": "List Rooms"
-      },
-      "room": {
-        "create": {
-          "title": "Create Poker Room",
-          "name": "Room Name",
-          "privacy": "Private Room",
-          "maxPlayers": "Max Players",
-          "smallBlind": "Small Blind",
-          "timeout": "Timeout (seconds)",
-          "confirm": "Create Room",
-          "cancel": "Cancel"
-        },
-        "join": {
-          "title": "Join Poker Room",
-          "enterRoomId": "Enter Room ID:",
-          "roomNotFound": "Room not found",
-          "roomFull": "Room is full",
-          "alreadyJoined": "You are already in this room",
-          "joinSuccess": "Successfully joined room"
-        },
-        "info": {
-          "title": "Room Information",
-          "players": "Players",
-          "status": "Status",
-          "waiting": "Waiting",
-          "playing": "Playing",
-          "finished": "Finished"
-        },
-        "game": {
-          "start": "Start Game",
-          "ready": "Ready",
-          "notReady": "Not Ready",
-          "leave": "Leave Room",
-          "share": "Share Room"
-        },
-        "actions": {
-          "fold": "Fold",
-          "call": "Call",
-          "raise": "Raise",
-          "check": "Check",
-          "allIn": "All In"
-        },
-        "buttons": {
-          "navigation": {
-            "backToMenu": "🔙 Back to Menu",
-            "back": "🔙 Back"
-          },
-          "room": {
-            "createRoom": "🏠 Create Room",
-            "joinRoom": "🚪 Join Room",
-            "listRooms": "📋 List Rooms",
-            "roomInfo": "📊 Room Info",
-            "leaveRoom": "🚪 Leave Room",
-            "kickPlayer": "👢 Kick Player"
-          },
-          "game": {
-            "startGame": "🎮 Start Game",
-            "playAgain": "🔄 Play Again",
-            "newGame": "🆕 New Game",
-            "viewStats": "📊 Stats",
-            "gameEnd": "🏁 Game End",
-            "history": "📜 History",
-            "spectate": "👁️ Spectate"
-          },
-          "create": {
-            "title": "Create Poker Room",
-            "name": "Room Name",
-            "privacy": {
-              "private": "🔒 Private",
-              "public": "🌐 Public"
-            },
-            "maxPlayers": {
-              "2": "👥 2 Players",
-              "4": "👥 4 Players", 
-              "6": "👥 6 Players",
-              "8": "👥 8 Players"
-            },
-            "smallBlind": {
-              "50": "💰 50",
-              "100": "💰 100",
-              "200": "💰 200",
-              "500": "💰 500"
-            },
-            "timeout": {
-              "60": "⏱️ 60 seconds",
-              "120": "⏱️ 2 minutes",
-              "300": "⏱️ 5 minutes",
-              "600": "⏱️ 10 minutes"
-            },
-            "confirm": "✅ Create Room",
-            "edit": "✏️ Edit"
-          },
-          "stake": {
-            "2": "2 Coins",
-            "5": "5 Coins",
-            "10": "10 Coins",
-            "20": "20 Coins",
-            "50": "50 Coins"
-          },
-          "raise": {
-            "5": "+5",
-            "10": "+10",
-            "25": "+25",
-            "50": "+50",
-            "100": "+100"
-          },
-          "utility": {
-            "refresh": "🔄 Refresh",
-            "help": "❓ Help"
-          }
-        }
-      }
-    },
-    "common": {
-      "error": "❌ Error",
-      "success": "✅ Success",
-      "cancel": "❌ Cancel",
-      "back": "⬅️ Back",
-      "loading": "⏳ Loading...",
-      "notFound": "Not found",
-      "invalidInput": "Invalid input",
-      "permissionDenied": "Permission denied"
-    },
-    "games": {
-      "start": {
-        "message": "🎮 <b>GameHub - Poker Focus</b>\n\n🃏 Challenge your friends in competitive poker games!\n\nJoin rooms, play Texas Hold'em, and compete for coins.",
-        "fallback": "🎮 Game selection is currently available for Poker only."
-      },
-      "poker": {
-        "title": "🃏 Poker Game"
-      }
-    },
-    "balance": {
-      "title": "💰 <b>Your Coin Balance</b>",
-      "user": "👤 <b>User</b>",
-      "coins": "🪙 <b>Coins</b>",
-      "coinUnit": "coins",
-      "tips": {
-        "title": "💡 <b>Tips</b>",
-        "freecoin": "Use /freecoin to claim daily coins",
-        "poker": "Win more coins by playing poker",
-        "stake": "Stake coins to increase your winnings"
-      },
-      "error": "❌ Failed to fetch balance. Please try again later."
-    },
-    "freecoin": {
-      "success": {
-        "title": "🎉 <b>Free Coins Claimed!</b>",
-        "received": "✅ You received <b>20 coins</b>!",
-        "newBalance": "💰 <b>New Balance</b>",
-        "nextClaim": "⏰ <b>Next Claim:</b> Available in 24 hours",
-        "tip": "💡 <b>Tip:</b> Use these coins to play poker and win more!"
-      },
-      "wait": {
-        "title": "⏰ <b>Free Coins Not Available</b>",
-        "alreadyClaimed": "❌ You've already claimed your daily coins today.",
-        "nextClaim": "⏳ <b>Next Claim:</b> Available in",
-        "hours": "hours",
-        "currentBalance": "💰 <b>Current Balance</b>",
-        "tip": "💡 <b>Tip:</b> Play poker to earn more coins!"
-      },
-      "error": "❌ Failed to claim free coins. Please try again later."
-    }
-  }
-} 
+  "2": "",
+  "5": "",
+  "10": "",
+  "20": "",
+  "50": "",
+  "💰 <b>Your Coin Balance</b>": "",
+  "👤 <b>User</b>": "",
+  "🪙 <b>Coins</b>": "",
+  "coins": "",
+  "💡 <b>Tips</b>": "",
+  "Use /freecoin to claim daily coins": "",
+  "Win more coins by playing poker": "",
+  "Stake coins to increase your winnings": "",
+  "❌ Failed to fetch balance. Please try again later.": "",
+  "🎉 <b>Free Coins Claimed!</b>": "",
+  "✅ You received <b>20 coins</b>!": "",
+  "💰 <b>New Balance</b>": "",
+  "⏰ <b>Free Coins Not Available</b>": "",
+  "❌ You have already claimed your daily coins today.": "",
+  "hours": "",
+  "💰 <b>Current Balance</b>": "",
+  "❌ Failed to claim free coins. Please try again later.": "",
+  "🔗 Share": "",
+  "🔙 Back": "",
+  "🔄 Refresh": "",
+  "🚪 Leave Room": "",
+  "✅ Check": "",
+  "⬇️ Fold": "",
+  "💥 All In": "",
+  "🔙 Back to Menu": "",
+  "🏠 Create Room": "🏠 Create Room",
+  "🚪 Join Room": "🚪 Join Room",
+  "📋 List Rooms": "",
+  "📊 Room Info": "",
+  "👢 Kick Player": "",
+  "▶️ Start Game": "▶️ Start Game",
+  "📞 Call": "",
+  "⬆️ Raise": "",
+  "🔄 Play Again": "",
+  "🆕 New Game": "",
+  "📊 View Stats": "",
+  "🏁 Game End": "",
+  "📜 History": "",
+  "👁️ Spectate": "",
+  "👥 2 Players": "",
+  "👥 4 Players": "",
+  "👥 6 Players": "",
+  "👥 8 Players": "",
+  "💰 50": "",
+  "💰 100": "",
+  "💰 200": "",
+  "💰 500": "",
+  "⏱️ 60 seconds": "",
+  "⏱️ 2 minutes": "",
+  "⏱️ 5 minutes": "",
+  "⏱️ 10 minutes": "",
+  "✅ Confirm": "",
+  "✏️ Edit": "",
+  "💰 +5": "",
+  "💰 +10": "",
+  "💰 +25": "",
+  "💰 +50": "",
+  "💰 +100": "",
+  "❌ <b>Form Error</b>\n\nForm information is incomplete.\nPlease complete the form first.": "❌ <b>Form Error</b>\n\nForm information is incomplete.\nPlease complete the form first.",
+  "❌ Unknown step. Please try again.": "",
+  "🌐 Public": "",
+  "🔒 Private": "",
+  "✅ Create Room": "",
+  "🔗 Share Room": "",
+  "❌ <b>Room Creation Error</b>\n\nSorry, there was a problem creating the room.\nPlease try again.": "❌ <b>Room Creation Error</b>\n\nSorry, there was a problem creating the room.\nPlease try again.",
+  "❌ <b>Game Start Error</b>\n\nSorry, there was a problem starting the game.\nPlease try again.": "❌ <b>Game Start Error</b>\n\nSorry, there was a problem starting the game.\nPlease try again.",
+  "❌ <b>Error</b>\n\nInvalid step": "❌ <b>Error</b>\n\nInvalid step",
+  "🎴 Poker": "",
+  "🎮 <b>GameHub - Poker Focus</b>\n\n🃏 Challenge your friends in competitive poker games!\n\nJoin rooms, play Texas Hold'em, and compete for coins.": "",
+  "🎮 Game selection is currently available for Poker only.": "",
+  "📚 Help & Commands": "",
+  "• /start - Start the bot": "",
+  "• /help - Show this help": "",
+  "• /poker - Play poker": "",
+  "❌ An error occurred. Please try again.": "",
+  "🎮 <b>GameHub</b>\n\nWelcome to GameHub! Choose a game to start playing.": "🎮 <b>GameHub</b>\n\nWelcome to GameHub! Choose a game to start playing.",
+  "Earn and claim daily Coins with /freecoin!": "",
+  "🎉 You received <b>100 Coins</b> for joining!": "",
+  "🪙 Free Coin": "",
+  "💰 Balance": "",
+  "❓ Help": "",
+  "🎴 <b>Poker</b>\n\nWelcome to Poker! Create or join a room to start playing.": "🎴 <b>Poker</b>\n\nWelcome to Poker! Create or join a room to start playing.",
+  "Missing translation key": "Missing translation key",
+  "✅ Success!": "✅ Success!",
+  "❓ <b>Help</b>\n\nHow can I help you?": "❓ <b>Help</b>\n\nHow can I help you?",
+  "✅ Ready": "✅ Ready",
+  "❌ Not Ready": "❌ Not Ready",
+  "🪙 Stake 5": "",
+  "🪙 Stake 10": "",
+  "🪙 Stake 25": "",
+  "🪙 Stake 50": "",
+  "💰 Raise 10": "",
+  "💰 Raise 25": "",
+  "💰 Raise 50": "",
+  "💰 Raise 100": "",
+  "❌ You": "",
+  "🎮 GameHub Bot": "",
+  "bot.poker.room.create.steps.timeoutStep": "",
+  "bot.poker.room.create.errors.startError": "",
+  "bot.start.title": "fa",
+  "bot.poker.start.title": "en",
+  "bot.missing.key": "en",
+  "bot.common.success": "en",
+  "bot.help.title": "fa",
+  "🏠 <b>Room Created Successfully!</b>\n\n✅ New poker room is ready!\n\n🎯 <b>Room Details:</b>\n• Name: {{roomName}}\n• Type: {{isPrivate}} ? '🔒 Private' : '🌐 Public'\n• Players: {{playerCount}}/{{maxPlayers}}\n• Small Blind: {{smallBlind}} coins\n• Timeout: {{turnTimeoutSec}} seconds\n\n📊 <b>Next Steps:</b>\n• Invite your friends\n• Wait for players to join\n• Start the game": "🏠 <b>Room Created Successfully!</b>\n\n✅ New poker room is ready!\n\n🎯 <b>Room Details:</b>\n• Name: {{roomName}}\n• Type: {{isPrivate}} ? '🔒 Private' : '🌐 Public'\n• Players: {{playerCount}}/{{maxPlayers}}\n• Small Blind: {{smallBlind}} coins\n• Timeout: {{turnTimeoutSec}} seconds\n\n📊 <b>Next Steps:</b>\n• Invite your friends\n• Wait for players to join\n• Start the game",
+  "🏠 <b>Create Poker Room</b>\n\n📝 <b>Step 1: Room Name</b>\n\nPlease enter your room name:\n• Minimum 3 characters\n• Maximum 30 characters\n\n<i>Type the room name in the next message to continue...</i>": "🏠 <b>Create Poker Room</b>\n\n📝 <b>Step 1: Room Name</b>\n\nPlease enter your room name:\n• Minimum 3 characters\n• Maximum 30 characters\n\n<i>Type the room name in the next message to continue...</i>",
+  "🏠 <b>Create Poker Room</b>\n\n🔒 <b>Step 2: Room Type</b>\n\nChoose your room type:\n\n🔒 <b>Private:</b> Only accessible via invite link\n🌐 <b>Public:</b> Shows in public room list": "🏠 <b>Create Poker Room</b>\n\n🔒 <b>Step 2: Room Type</b>\n\nChoose your room type:\n\n🔒 <b>Private:</b> Only accessible via invite link\n🌐 <b>Public:</b> Shows in public room list",
+  "🏠 <b>Create Poker Room</b>\n\n👥 <b>Step 3: Player Count</b>\n\nSelect maximum number of players:": "🏠 <b>Create Poker Room</b>\n\n👥 <b>Step 3: Player Count</b>\n\nSelect maximum number of players:",
+  "🏠 <b>Create Poker Room</b>\n\n💰 <b>Step 4: Small Blind Amount</b>\n\nSelect Small Blind amount:\n(Big Blind = 2 × Small Blind)": "🏠 <b>Create Poker Room</b>\n\n💰 <b>Step 4: Small Blind Amount</b>\n\nSelect Small Blind amount:\n(Big Blind = 2 × Small Blind)",
+  "🏠 <b>Create Poker Room</b>\n\n⏱️ <b>Step 5: Turn Timeout</b>\n\nSelect timeout for each turn:": "🏠 <b>Create Poker Room</b>\n\n⏱️ <b>Step 5: Turn Timeout</b>\n\nSelect timeout for each turn:",
+  "🏠 <b>Create Poker Room</b>\n\n✅ <b>Step 6: Final Confirmation</b>\n\n📊 <b>Room Details:</b>\n• Name: {{name}}\n• Type: {{isPrivate}} ? '🔒 Private' : '🌐 Public'\n• Players: {{maxPlayers}} players\n• Small Blind: {{smallBlind}} coins\n• Timeout: {{turnTimeoutSec}} seconds\n\nDo you want to create the room with these settings?": "🏠 <b>Create Poker Room</b>\n\n✅ <b>Step 6: Final Confirmation</b>\n\n📊 <b>Room Details:</b>\n• Name: {{name}}\n• Type: {{isPrivate}} ? '🔒 Private' : '🌐 Public'\n• Players: {{maxPlayers}} players\n• Small Blind: {{smallBlind}} coins\n• Timeout: {{turnTimeoutSec}} seconds\n\nDo you want to create the room with these settings?",
+  "�� Raise 100": ""
+}

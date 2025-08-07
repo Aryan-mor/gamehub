@@ -1,6 +1,6 @@
 import { HandlerContext } from '@/modules/core/handler';
 
-import { generateRaiseAmountKeyboard, generateGameEndKeyboard, generateGameActionKeyboard } from '../../buttonHelpers';
+// Use plugin system for keyboard generation
 import { getGameStateDisplay } from '../../services/gameStateService';
 import { getPokerRoom } from '../../services/pokerService';
 import { validateRoomId, validatePlayerId } from '../../_utils/typeGuards';
@@ -50,7 +50,7 @@ async function handleGame(context: HandlerContext, query: Record<string, string>
     let keyboard;
     if (room.status === 'finished') {
       // Game is finished - show game end options
-      keyboard = generateGameEndKeyboard(roomId);
+      keyboard = ctx.poker.generateGameEndKeyboard(roomId);
     } else if (room.status === 'playing' && isCurrentPlayerTurn) {
       // Player can act - show game actions
       const player = room.players.find(p => p.id === validatedPlayerId);
@@ -59,17 +59,17 @@ async function handleGame(context: HandlerContext, query: Record<string, string>
         
         if (canRaise) {
           // Show raise options
-          keyboard = generateRaiseAmountKeyboard(roomId);
+          keyboard = ctx.poker.generateRaiseAmountKeyboard(roomId);
         } else {
           // Show basic game actions
-          keyboard = generateGameActionKeyboard(roomId, false);
+          keyboard = ctx.poker.generateGameActionKeyboard(roomId, false);
         }
       } else {
-        keyboard = generateGameActionKeyboard(roomId, false);
+        keyboard = ctx.poker.generateGameActionKeyboard(roomId, false);
       }
     } else {
       // Not player's turn - show view-only keyboard
-      keyboard = generateGameActionKeyboard(roomId, true);
+      keyboard = ctx.poker.generateGameActionKeyboard(roomId, true);
     }
     
     await ctx.replySmart(message, {

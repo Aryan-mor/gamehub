@@ -28,105 +28,105 @@ export class PokerPlugin implements GameHubPlugin {
           return {
             // Navigation buttons
             back: {
-              text: gameHubCtx.t('bot.poker.buttons.navigation.back'),
+              text: gameHubCtx.t('🔙 Back'),
               callback_data: 'back'
             },
             backToMenu: {
-              text: gameHubCtx.t('bot.poker.buttons.navigation.backToMenu'),
+              text: gameHubCtx.t('🔙 Back to Menu'),
               callback_data: 'backToMenu'
             },
 
             // Room management buttons
             createRoom: {
-              text: gameHubCtx.t('bot.poker.buttons.room.create'),
+              text: gameHubCtx.t('🏠 Create Room'),
               callback_data: 'createRoom'
             },
             joinRoom: {
-              text: gameHubCtx.t('bot.poker.buttons.room.join'),
+              text: gameHubCtx.t('🚪 Join Room'),
               callback_data: 'joinRoom'
             },
             leaveRoom: {
-              text: gameHubCtx.t('bot.poker.buttons.room.leave'),
+              text: gameHubCtx.t('🚪 Leave Room'),
               callback_data: 'leaveRoom'
             },
             startGame: {
-              text: gameHubCtx.t('bot.poker.buttons.room.startGame'),
+              text: gameHubCtx.t('▶️ Start Game'),
               callback_data: 'startGame'
             },
             ready: {
-              text: gameHubCtx.t('bot.poker.buttons.room.ready'),
+              text: gameHubCtx.t('✅ Ready'),
               callback_data: 'ready'
             },
             notReady: {
-              text: gameHubCtx.t('bot.poker.buttons.room.notReady'),
+              text: gameHubCtx.t('❌ Not Ready'),
               callback_data: 'notReady'
             },
 
             // Game action buttons
             call: {
-              text: gameHubCtx.t('bot.poker.buttons.game.call'),
+              text: gameHubCtx.t('📞 Call'),
               callback_data: 'call'
             },
             fold: {
-              text: gameHubCtx.t('bot.poker.buttons.game.fold'),
+              text: gameHubCtx.t('⬇️ Fold'),
               callback_data: 'fold'
             },
             raise: {
-              text: gameHubCtx.t('bot.poker.buttons.game.raise'),
+              text: gameHubCtx.t('⬆️ Raise'),
               callback_data: 'raise'
             },
             check: {
-              text: gameHubCtx.t('bot.poker.buttons.game.check'),
+              text: gameHubCtx.t('✅ Check'),
               callback_data: 'check'
             },
             allIn: {
-              text: gameHubCtx.t('bot.poker.buttons.game.allIn'),
+              text: gameHubCtx.t('💥 All In'),
               callback_data: 'allIn'
             },
 
             // Stake buttons
             stake5: {
-              text: gameHubCtx.t('bot.poker.buttons.stake.stake5'),
+              text: gameHubCtx.t('🪙 Stake 5'),
               callback_data: 'stake5'
             },
             stake10: {
-              text: gameHubCtx.t('bot.poker.buttons.stake.stake10'),
+              text: gameHubCtx.t('🪙 Stake 10'),
               callback_data: 'stake10'
             },
             stake25: {
-              text: gameHubCtx.t('bot.poker.buttons.stake.stake25'),
+              text: gameHubCtx.t('🪙 Stake 25'),
               callback_data: 'stake25'
             },
             stake50: {
-              text: gameHubCtx.t('bot.poker.buttons.stake.stake50'),
+              text: gameHubCtx.t('🪙 Stake 50'),
               callback_data: 'stake50'
             },
 
             // Raise buttons
             raise10: {
-              text: gameHubCtx.t('bot.poker.buttons.raise.raise10'),
+              text: gameHubCtx.t('💰 Raise 10'),
               callback_data: 'raise10'
             },
             raise25: {
-              text: gameHubCtx.t('bot.poker.buttons.raise.raise25'),
+              text: gameHubCtx.t('💰 Raise 25'),
               callback_data: 'raise25'
             },
             raise50: {
-              text: gameHubCtx.t('bot.poker.buttons.raise.raise50'),
+              text: gameHubCtx.t('💰 Raise 50'),
               callback_data: 'raise50'
             },
             raise100: {
-              text: gameHubCtx.t('bot.poker.buttons.raise.raise100'),
+              text: gameHubCtx.t('💰 Raise 100'),
               callback_data: 'raise100'
             },
 
             // Utility buttons
             refresh: {
-              text: gameHubCtx.t('bot.poker.buttons.utility.refresh'),
+              text: gameHubCtx.t('🔄 Refresh'),
               callback_data: 'refresh'
             },
             help: {
-              text: gameHubCtx.t('bot.poker.buttons.utility.help'),
+              text: gameHubCtx.t('❓ Help'),
               callback_data: 'help'
             }
           };

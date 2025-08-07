@@ -48,7 +48,7 @@ async function handleGameEnd(context: HandlerContext, query: Record<string, stri
     const message = gameResultMessage + actionMessage;
     
     // Generate game end keyboard with options
-    const keyboard = ctx.poker.generateGameEndKeyboard(roomId);
+    const keyboard = ctx.poker.generateGameActionKeyboard(roomId, false);
     
     await ctx.replySmart(message, {
       parse_mode: 'HTML',

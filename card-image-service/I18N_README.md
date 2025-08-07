@@ -36,7 +36,7 @@ card-image-service/
 ```typescript
 // In bot commands
 bot.command('start', (ctx) => {
-  ctx.reply(`${ctx.t('bot.start.title')}\n\n${ctx.t('bot.start.description')}`);
+  ctx.reply(`${ctx.t('🎴 Card Image Service Bot')}\n\n${ctx.t('This bot is used for generating and sending card images.')}`);
 });
 ```
 
@@ -45,8 +45,8 @@ bot.command('start', (ctx) => {
 import { InlineKeyboard } from 'grammy';
 
 const keyboard = new InlineKeyboard()
-  .text(ctx.t('bot.start.title'), 'start_command')
-  .text(ctx.t('bot.status.running'), 'status_command');
+  .text(ctx.t('🎴 Card Image Service Bot'), 'start_command')
+.text(ctx.t('✅ Card Image Service is running'), 'status_command');
 ```
 
 ### Error Handling
@@ -54,7 +54,7 @@ const keyboard = new InlineKeyboard()
 try {
   // Some operation
 } catch (error) {
-  ctx.reply(ctx.t('bot.cache.error.stats'));
+  ctx.reply(ctx.t('❌ Error getting cache stats'));
 }
 ```
 
@@ -70,15 +70,15 @@ The bot automatically detects the user's language from `ctx.from?.language_code`
 
 ### Structure
 All translation keys follow a hierarchical structure:
-- `bot.start.title`: Bot start command title
-- `bot.start.description`: Bot start command description
-- `bot.status.running`: Status command response
-- `bot.cache.stats.title`: Cache statistics title
-- `bot.cache.stats.totalEntries`: Cache total entries label
-- `bot.cache.stats.expiredEntries`: Cache expired entries label
-- `bot.cache.cleared`: Cache cleared success message
-- `bot.cache.error.stats`: Cache stats error message
-- `bot.cache.error.clear`: Cache clear error message
+- `🎴 Card Image Service Bot`: Bot start command title
+- `This bot is used for generating and sending card images.`: Bot start command description
+- `✅ Card Image Service is running`: Status command response
+- `📊 Cache Statistics`: Cache statistics title
+- `Total entries`: Cache total entries label
+- `Expired entries`: Cache expired entries label
+- `🗑️ Cache cleared successfully`: Cache cleared success message
+- `❌ Error getting cache stats`: Cache stats error message
+- `❌ Error clearing cache`: Cache clear error message
 
 ### Adding New Translations
 
@@ -107,7 +107,7 @@ All translation keys follow a hierarchical structure:
 
 3. **Use in code**:
 ```typescript
-ctx.reply(ctx.t('bot.new.feature'));
+ctx.reply(ctx.t('🎉 New Feature Available!'));
 ```
 
 ## Testing
@@ -133,7 +133,7 @@ The project includes ESLint rules that prevent hardcoded user-facing strings. Th
 ctx.reply('🎴 Card Image Service Bot');
 
 // ✅ This is the correct way
-ctx.reply(ctx.t('bot.start.title'));
+ctx.reply(ctx.t('🎴 Card Image Service Bot'));
 ```
 
 ## Configuration

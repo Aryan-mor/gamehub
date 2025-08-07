@@ -38,8 +38,8 @@ async function handleSpectate(context: HandlerContext, query: Record<string, str
     // Create spectator view
     const spectatorMessage = createSpectatorView(room);
     
-    // Generate spectator keyboard
-    const keyboard = ctx.poker.generateSpectatorKeyboard(roomId);
+    // Generate spectator keyboard (use game action keyboard for now)
+    const keyboard = ctx.poker.generateGameActionKeyboard(roomId, true);
     
     await ctx.replySmart(spectatorMessage, {
       parse_mode: 'HTML',

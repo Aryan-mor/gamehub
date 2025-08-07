@@ -1,124 +1,70 @@
 import { HandlerContext } from '@/modules/core/handler';
-import { register } from '@/modules/core/compact-router';
+import { FormState, updateFormState } from '../../_utils/formStateManager';
 import { POKER_ACTIONS } from '../../compact-codes';
-import { logFunctionStart, logFunctionEnd, logError } from '@/modules/core/logger';
-import { Context } from 'grammy';
-import { FormState } from '../../_utils/formStateManager';
-import { PlayerId } from '../../types';
-
-
-// Global form state storage (shared with other handlers)
-declare global {
-  var formStates: Map<string, FormState>;
-}
-
-if (!global.formStates) {
-  global.formStates = new Map<string, FormState>();
-}
-
-// Export the action key for consistency and debugging
-export const key = 'games.poker.room.create.form';
+import { CreateRoomFormData, CreateRoomRequest } from '../../types';
+import { GameHubContext } from '@/plugins';
 
 /**
- * Handle room creation form steps
- * Processes compact callback data to stay within Telegram's 64-byte limit
+ * Handle form step navigation and data input
  */
 async function handleForm(context: HandlerContext, query: Record<string, string> = {}): Promise<void> {
-  logFunctionStart('handleForm', { query });
-  
   const { user, ctx } = context;
-  
-  // For compact router, params are passed directly in query
-  // For legacy router, callback_data is passed
   const { s: step, v: value } = query;
   
-  if (!step || !value) {
-    logError('handleForm', new Error('No step or value provided'), { query });
-    return;
+  console.log(`Processing form step: ${step} = ${value} for user ${user.id}`);
+  
+  // Validate required parameters
+  if (!step || value === undefined) {
+    return; // Silently return if missing parameters
   }
   
   try {
-    console.log(`Processing form step: ${step} = ${value} for user ${user.id}`);
-    
-    // Get or create form state for this user
     const userId = user.id.toString();
-    let formState = global.formStates.get(userId);
+    const formState = global.formStates.get(userId) || { ...defaultFormState };
     
-    if (!formState) {
-      formState = { 
-        step: 'name', 
-        data: {
-          name: '',
-          isPrivate: false,
-          maxPlayers: 2,
-          smallBlind: 1,
-          turnTimeoutSec: 30
-        }, 
-        isComplete: false 
-      };
-      global.formStates.set(userId, formState);
+    // Map step names to field names
+    const fieldMap: Record<string, keyof CreateRoomFormData> = {
+      'name': 'name',
+      'privacy': 'isPrivate',
+      'maxPlayers': 'maxPlayers',
+      'smallBlind': 'smallBlind',
+      'timeout': 'turnTimeoutSec'
+    };
+    
+    const field = fieldMap[step];
+    if (!field) {
+      throw new Error(`Unknown step: ${step}`);
     }
     
-    // Ensure formState.data exists
-    if (!formState.data) {
-      formState.data = {
-        name: '',
-        isPrivate: false,
-        maxPlayers: 2,
-        smallBlind: 1,
-        turnTimeoutSec: 30
-      };
+    // Convert value to appropriate type
+    let typedValue: string | number | boolean = value;
+    if (field === 'isPrivate') {
+      typedValue = value === 'true';
+    } else if (field === 'maxPlayers' || field === 'smallBlind' || field === 'turnTimeoutSec') {
+      typedValue = parseInt(value, 10);
     }
     
-    // Update form state based on step
-    switch (step) {
-      case 'name':
-        formState.data.name = value;
-        formState.step = 'name';
-        await handleNameStep(ctx, value);
-        break;
-      case 'privacy':
-        formState.data.isPrivate = value === 'true';
-        formState.step = 'privacy';
-        await handlePrivacyStep(ctx, value === 'true');
-        break;
-      case 'maxPlayers':
-        const maxPlayersValue = parseInt(value, 10) as 2 | 4 | 6 | 8;
-        formState.data.maxPlayers = maxPlayersValue;
-        formState.step = 'maxPlayers';
-        await handleMaxPlayersStep(ctx, maxPlayersValue);
-        break;
-      case 'smallBlind':
-        formState.data.smallBlind = parseInt(value, 10);
-        formState.step = 'smallBlind';
-        await handleSmallBlindStep(ctx, parseInt(value, 10));
-        break;
-      case 'timeout':
-        formState.data.turnTimeoutSec = parseInt(value, 10);
-        formState.step = 'timeout';
-        formState.isComplete = true; // Mark as complete when timeout is set
-        await handleTimeoutStep(ctx, parseInt(value, 10));
-        break;
-      default:
-        throw new Error(`Unknown form step: ${step}`);
-    }
+    // Update form data based on step
+    const updatedState = updateFormState(formState, field, typedValue);
     
-    // Save updated form state
-    global.formStates.set(userId, formState);
+    // Save updated state
+    global.formStates.set(userId, updatedState);
     
-    logFunctionEnd('handleForm', { step, value }, { userId: user.id });
+    // Show next step
+    await showFormStep(context, updatedState);
     
   } catch (error) {
-    logError('handleForm', error as Error, { query });
+    console.error('Form step handling error:', error);
     
-    const errorMessage = error instanceof Error ? error.message : 'خطای نامشخص رخ داده است';
-    const message = `❌ <b>خطا در پردازش فرم</b>\n\n${errorMessage}`;
+    const message = ctx.t('❌ <b>Form Error</b>\n\nForm information is incomplete.\nPlease complete the form first.', {
+      fallback: '❌ <b>خطا در پردازش فرم</b>\n\nمتأسفانه مشکلی در پردازش اطلاعات فرم پیش آمده.\nلطفاً دوباره تلاش کنید.'
+    });
     
     await ctx.replySmart(message, {
       parse_mode: 'HTML',
       reply_markup: {
         inline_keyboard: [[
-          { text: '🔙 بازگشت به منو', callback_data: POKER_ACTIONS.BACK_TO_MENU }
+          { text: ctx.t('🔙 Back to Menu'), callback_data: 'games.poker.backToMenu' }
         ]]
       }
     });
@@ -126,21 +72,71 @@ async function handleForm(context: HandlerContext, query: Record<string, string>
 }
 
 /**
+ * Show form step with appropriate message and keyboard
+ */
+async function showFormStep(context: HandlerContext, formState: FormState): Promise<void> {
+  const { ctx } = context;
+  const { step, data } = formState;
+  
+  switch (step) {
+    case 'name':
+      await handleNameStep(ctx, data.name || '');
+      break;
+      
+    case 'privacy':
+      await handlePrivacyStep(ctx, data.isPrivate || false);
+      break;
+      
+    case 'maxPlayers':
+      await handleMaxPlayersStep(ctx, data.maxPlayers || 4);
+      break;
+      
+    case 'smallBlind':
+      await handleSmallBlindStep(ctx, data.smallBlind || 100);
+      break;
+      
+    case 'timeout':
+      await handleTimeoutStep(ctx, data.turnTimeoutSec || 120);
+      break;
+      
+    case 'confirmation':
+      await handleConfirmCreate(context);
+      break;
+      
+    default:
+      const message = ctx.t('❌ Unknown step. Please try again.', {
+        step,
+        fallback: `❌ <b>خطا در پردازش فرم</b>\n\nمرحله نامعتبر: ${step}`
+      });
+      
+      await ctx.replySmart(message, {
+        parse_mode: 'HTML',
+        reply_markup: {
+          inline_keyboard: [[
+            { text: ctx.t('🔙 Back to Menu'), callback_data: 'games.poker.backToMenu' }
+          ]]
+        }
+      });
+  }
+}
+
+/**
  * Handle name step
  */
-async function handleNameStep(ctx: Context, name: string): Promise<void> {
-  const message = `📝 <b>نام روم</b>\n\n` +
-    `✅ "${name}" انتخاب شد.\n\n` +
-    `در مرحله بعدی نوع روم را انتخاب کنید:`;
+async function handleNameStep(ctx: GameHubContext, name: string): Promise<void> {
+        const message = ctx.t('🏠 <b>Create Poker Room</b>\n\n📝 <b>Step 1: Room Name</b>\n\nPlease enter your room name:\n• Minimum 3 characters\n• Maximum 30 characters\n\n<i>Type the room name in the next message to continue...</i>', {
+    name,
+    fallback: `�� <b>نام روم</b>\n\n✅ "${name}" انتخاب شد.\n\nدر مرحله بعدی نوع روم را انتخاب کنید:`
+  });
   
   const keyboard = {
     inline_keyboard: [
       [
-        { text: '🌐 عمومی', callback_data: `${POKER_ACTIONS.FORM_STEP}?s=privacy&v=false` },
-        { text: '🔒 خصوصی', callback_data: `${POKER_ACTIONS.FORM_STEP}?s=privacy&v=true` }
+        { text: ctx.t('🌐 Public'), callback_data: `${POKER_ACTIONS.FORM_STEP}?s=privacy&v=false` },
+        { text: ctx.t('🔒 Private'), callback_data: `${POKER_ACTIONS.FORM_STEP}?s=privacy&v=true` }
       ],
       [
-        { text: '🔙 بازگشت', callback_data: POKER_ACTIONS.BACK }
+        { text: ctx.t('🔙 Back'), callback_data: POKER_ACTIONS.BACK }
       ]
     ]
   };
@@ -154,23 +150,28 @@ async function handleNameStep(ctx: Context, name: string): Promise<void> {
 /**
  * Handle privacy step
  */
-async function handlePrivacyStep(ctx: Context, isPrivate: boolean): Promise<void> {
-  const message = `🔒 <b>نوع روم</b>\n\n` +
-    `✅ ${isPrivate ? 'خصوصی' : 'عمومی'} انتخاب شد.\n\n` +
-    `در مرحله بعدی تعداد حداکثر بازیکنان را انتخاب کنید:`;
+async function handlePrivacyStep(ctx: GameHubContext, isPrivate: boolean): Promise<void> {
+  const privacyType = isPrivate ? 
+    ctx.t('🔒 Private') : 
+    ctx.t('🌐 Public');
+    
+        const message = ctx.t('🏠 <b>Create Poker Room</b>\n\n🔒 <b>Step 2: Privacy</b>\n\nChoose room privacy:', {
+    privacyType,
+    fallback: `🔒 <b>نوع روم</b>\n\n✅ ${privacyType} انتخاب شد.\n\nدر مرحله بعدی تعداد حداکثر بازیکنان را انتخاب کنید:`
+  });
   
   const keyboard = {
     inline_keyboard: [
       [
-        { text: '👥 ۲ نفر', callback_data: `${POKER_ACTIONS.FORM_STEP}?s=maxPlayers&v=2` },
-        { text: '👥 ۴ نفر', callback_data: `${POKER_ACTIONS.FORM_STEP}?s=maxPlayers&v=4` }
+        { text: ctx.t('👥 2 Players'), callback_data: `${POKER_ACTIONS.FORM_STEP}?s=maxPlayers&v=2` },
+        { text: ctx.t('👥 4 Players'), callback_data: `${POKER_ACTIONS.FORM_STEP}?s=maxPlayers&v=4` }
       ],
       [
-        { text: '👥 ۶ نفر', callback_data: `${POKER_ACTIONS.FORM_STEP}?s=maxPlayers&v=6` },
-        { text: '👥 ۸ نفر', callback_data: `${POKER_ACTIONS.FORM_STEP}?s=maxPlayers&v=8` }
+        { text: ctx.t('👥 6 Players'), callback_data: `${POKER_ACTIONS.FORM_STEP}?s=maxPlayers&v=6` },
+        { text: ctx.t('👥 8 Players'), callback_data: `${POKER_ACTIONS.FORM_STEP}?s=maxPlayers&v=8` }
       ],
       [
-        { text: '🔙 بازگشت', callback_data: POKER_ACTIONS.BACK }
+        { text: ctx.t('🔙 Back'), callback_data: POKER_ACTIONS.BACK }
       ]
     ]
   };
@@ -184,28 +185,29 @@ async function handlePrivacyStep(ctx: Context, isPrivate: boolean): Promise<void
 /**
  * Handle max players step
  */
-async function handleMaxPlayersStep(ctx: Context, maxPlayers: number): Promise<void> {
-  const _message = `👥 <b>حداکثر بازیکنان</b>\n\n` +
-    `✅ ${maxPlayers} نفر انتخاب شد.\n\n` +
-    `در مرحله بعدی مقدار Small Blind را انتخاب کنید:`;
+async function handleMaxPlayersStep(ctx: GameHubContext, maxPlayers: number): Promise<void> {
+        const message = ctx.t('🏠 <b>Create Poker Room</b>\n\n👥 <b>Step 3: Max Players</b>\n\nSelect maximum players:', {
+    maxPlayers,
+    fallback: `👥 <b>حداکثر بازیکنان</b>\n\n✅ ${maxPlayers} نفر انتخاب شد.\n\nدر مرحله بعدی مقدار Small Blind را انتخاب کنید:`
+  });
   
   const keyboard = {
     inline_keyboard: [
       [
-        { text: '💰 ۵۰', callback_data: `${POKER_ACTIONS.FORM_STEP}?s=smallBlind&v=50` },
-        { text: '💰 ۱۰۰', callback_data: `${POKER_ACTIONS.FORM_STEP}?s=smallBlind&v=100` }
+        { text: ctx.t('💰 50'), callback_data: `${POKER_ACTIONS.FORM_STEP}?s=smallBlind&v=50` },
+        { text: ctx.t('💰 100'), callback_data: `${POKER_ACTIONS.FORM_STEP}?s=smallBlind&v=100` }
       ],
       [
-        { text: '💰 ۲۰۰', callback_data: `${POKER_ACTIONS.FORM_STEP}?s=smallBlind&v=200` },
-        { text: '💰 ۵۰۰', callback_data: `${POKER_ACTIONS.FORM_STEP}?s=smallBlind&v=500` }
+        { text: ctx.t('💰 200'), callback_data: `${POKER_ACTIONS.FORM_STEP}?s=smallBlind&v=200` },
+        { text: ctx.t('💰 500'), callback_data: `${POKER_ACTIONS.FORM_STEP}?s=smallBlind&v=500` }
       ],
       [
-        { text: '🔙 بازگشت', callback_data: POKER_ACTIONS.BACK }
+        { text: ctx.t('🔙 Back'), callback_data: POKER_ACTIONS.BACK }
       ]
     ]
   };
   
-  await ctx.replySmart(_message, {
+  await ctx.replySmart(message, {
     parse_mode: 'HTML',
     reply_markup: keyboard
   });
@@ -214,28 +216,29 @@ async function handleMaxPlayersStep(ctx: Context, maxPlayers: number): Promise<v
 /**
  * Handle small blind step
  */
-async function handleSmallBlindStep(ctx: Context, smallBlind: number): Promise<void> {
-  const _message = `💰 <b>Small Blind</b>\n\n` +
-    `✅ ${smallBlind} سکه انتخاب شد.\n\n` +
-    `در مرحله بعدی زمان تایم‌اوت را انتخاب کنید:`;
+async function handleSmallBlindStep(ctx: GameHubContext, smallBlind: number): Promise<void> {
+        const message = ctx.t('🏠 <b>Create Poker Room</b>\n\n💰 <b>Step 4: Small Blind</b>\n\nSelect small blind amount:', {
+    smallBlind,
+    fallback: `💰 <b>Small Blind</b>\n\n✅ ${smallBlind} سکه انتخاب شد.\n\nدر مرحله بعدی زمان تایم‌اوت را انتخاب کنید:`
+  });
   
   const keyboard = {
     inline_keyboard: [
       [
-        { text: '⏱️ ۶۰ ثانیه', callback_data: `${POKER_ACTIONS.FORM_STEP}?s=timeout&v=60` },
-        { text: '⏱️ ۲ دقیقه', callback_data: `${POKER_ACTIONS.FORM_STEP}?s=timeout&v=120` }
+        { text: ctx.t('⏱️ 60 seconds'), callback_data: `${POKER_ACTIONS.FORM_STEP}?s=timeout&v=60` },
+        { text: ctx.t('⏱️ 2 minutes'), callback_data: `${POKER_ACTIONS.FORM_STEP}?s=timeout&v=120` }
       ],
       [
-        { text: '⏱️ ۵ دقیقه', callback_data: `${POKER_ACTIONS.FORM_STEP}?s=timeout&v=300` },
-        { text: '⏱️ ۱۰ دقیقه', callback_data: `${POKER_ACTIONS.FORM_STEP}?s=timeout&v=600` }
+        { text: ctx.t('⏱️ 5 minutes'), callback_data: `${POKER_ACTIONS.FORM_STEP}?s=timeout&v=300` },
+        { text: ctx.t('⏱️ 10 minutes'), callback_data: `${POKER_ACTIONS.FORM_STEP}?s=timeout&v=600` }
       ],
       [
-        { text: '🔙 بازگشت', callback_data: POKER_ACTIONS.BACK }
+        { text: ctx.t('🔙 Back'), callback_data: POKER_ACTIONS.BACK }
       ]
     ]
   };
   
-  await ctx.replySmart(_message, {
+  await ctx.replySmart(message, {
     parse_mode: 'HTML',
     reply_markup: keyboard
   });
@@ -244,34 +247,32 @@ async function handleSmallBlindStep(ctx: Context, smallBlind: number): Promise<v
 /**
  * Handle timeout step
  */
-async function handleTimeoutStep(ctx: Context, timeout: number): Promise<void> {
-  const _message = `⏱️ <b>زمان تایم‌اوت</b>\n\n` +
-    `✅ ${timeout} ثانیه انتخاب شد.\n\n` +
-    `🎉 <b>فرم تکمیل شد!</b>\n\n` +
-    `برای ساخت روم روی دکمه زیر کلیک کنید:`;
+async function handleTimeoutStep(ctx: GameHubContext, timeout: number): Promise<void> {
+      const message = ctx.t('🏠 <b>Create Poker Room</b>\n\n⏱️ <b>Step 5: Turn Timeout</b>\n\nSelect timeout for each turn:', {
+    timeout,
+    fallback: `⏱️ <b>زمان تایم‌اوت</b>\n\n✅ ${timeout} ثانیه انتخاب شد.\n\nفرم تکمیل شد! حالا می‌توانید روم را بسازید.`
+  });
   
   const keyboard = {
     inline_keyboard: [
       [
-        { text: '✅ ساخت روم', callback_data: POKER_ACTIONS.CREATE_ROOM_CONFIRM }
+        { text: ctx.t('✅ Create Room'), callback_data: `${POKER_ACTIONS.FORM_STEP}?s=confirmation&v=create` },
+        { text: ctx.t('✏️ Edit'), callback_data: `${POKER_ACTIONS.FORM_STEP}?s=name&v=edit` }
       ],
       [
-        { text: '✏️ ویرایش', callback_data: POKER_ACTIONS.CREATE_ROOM_EDIT }
-      ],
-      [
-        { text: '🔙 بازگشت به منو', callback_data: POKER_ACTIONS.BACK_TO_MENU }
+        { text: ctx.t('🔙 Back to Menu'), callback_data: 'games.poker.backToMenu' }
       ]
     ]
   };
   
-  await ctx.replySmart(_message, {
+  await ctx.replySmart(message, {
     parse_mode: 'HTML',
     reply_markup: keyboard
   });
 }
 
 /**
- * Handle room creation confirmation
+ * Handle form confirmation and room creation
  */
 async function handleConfirmCreate(context: HandlerContext): Promise<void> {
   const { user, ctx } = context;
@@ -283,60 +284,87 @@ async function handleConfirmCreate(context: HandlerContext): Promise<void> {
     const formState = global.formStates.get(userId);
     
     if (!formState || !formState.isComplete) {
-      const message = `❌ <b>خطا در تایید روم</b>\n\n` +
-        `فرم تکمیل نشده است. لطفاً ابتدا تمام مراحل را تکمیل کنید.`;
+      const message = ctx.t('❌ <b>Form Error</b>\n\nForm information is incomplete.\nPlease complete the form first.', {
+        fallback: '❌ <b>خطا در تایید روم</b>\n\nاطلاعات فرم ناقص است.\nلطفاً ابتدا فرم را تکمیل کنید.'
+      });
       
       await ctx.replySmart(message, {
         parse_mode: 'HTML',
         reply_markup: {
           inline_keyboard: [[
-            { text: '🔙 بازگشت به منو', callback_data: POKER_ACTIONS.BACK_TO_MENU }
+            { text: ctx.t('🔙 Back to Menu'), callback_data: 'games.poker.backToMenu' }
           ]]
         }
       });
       return;
     }
     
-    // Create the room using the form data
-    const pokerService = await import('../../services/pokerService');
-    const { createPokerRoom } = pokerService;
-    
-    const room = await createPokerRoom({
+    // Create room using service
+    const roomData: CreateRoomRequest = {
       name: formState.data.name || '',
       isPrivate: formState.data.isPrivate || false,
-      maxPlayers: formState.data.maxPlayers || 2,
-      smallBlind: formState.data.smallBlind || 1,
-      turnTimeoutSec: formState.data.turnTimeoutSec || 30
-    }, user.id as unknown as PlayerId, user.username || 'Unknown', user.username, ctx.chat?.id);
+      maxPlayers: formState.data.maxPlayers || 4,
+      smallBlind: formState.data.smallBlind || 100,
+      turnTimeoutSec: formState.data.turnTimeoutSec || 120
+    };
+    
+    const room = await createPokerRoom(roomData, user.id, ctx);
     
     // Clear form state
     global.formStates.delete(userId);
     
-    // Instead of duplicating room info display, redirect to room info handler
-    // This ensures consistency and avoids code duplication
-    const roomInfoHandler = await import('../info/index');
-    await roomInfoHandler.default(context, { roomId: room.id });
+    // Show success message
+    const message = ctx.t('🏠 <b>Room Created Successfully!</b>\n\n✅ New poker room is ready!\n\n🎯 <b>Room Details:</b>\n• Name: {{roomName}}\n• Type: {{isPrivate}} ? \'🔒 Private\' : \'🌐 Public\'\n• Players: {{playerCount}}/{{maxPlayers}}\n• Small Blind: {{smallBlind}} coins\n• Timeout: {{turnTimeoutSec}} seconds\n\n📊 <b>Next Steps:</b>\n• Invite your friends\n• Wait for players to join\n• Start the game', {
+      roomName: room.name,
+      isPrivate: room.isPrivate,
+      playerCount: room.players.length,
+      maxPlayers: room.maxPlayers,
+      smallBlind: room.smallBlind,
+      turnTimeoutSec: room.turnTimeoutSec,
+      fallback: `🏠 <b>روم با موفقیت ساخته شد!</b>\n\n✅ روم پوکر جدید آماده است!\n\n🎯 <b>مشخصات روم:</b>\n• نام: ${room.name}\n• نوع: ${room.isPrivate ? '🔒 خصوصی' : '🌐 عمومی'}\n• تعداد بازیکنان: ${room.players.length}/${room.maxPlayers}\n• Small Blind: ${room.smallBlind} سکه\n• تایم‌اوت: ${room.turnTimeoutSec} ثانیه\n\n📊 <b>مراحل بعدی:</b>\n• دوستان خود را دعوت کنید\n• منتظر ورود بازیکنان باشید\n• بازی را شروع کنید`
+    });
+
+    const keyboard = {
+      inline_keyboard: [
+        [
+          { text: ctx.t('🔗 Share Room'), callback_data: `games.poker.room.share?roomId=${room.id}` }
+        ],
+        [
+          { text: ctx.t('🔙 Back to Menu'), callback_data: 'games.poker.start' }
+        ]
+      ]
+    };
+    
+    await ctx.replySmart(message, {
+      parse_mode: 'HTML',
+      reply_markup: keyboard
+    });
     
   } catch (error) {
     console.error('Room creation confirmation error:', error);
     
-    const message = `❌ <b>خطا در ساخت روم</b>\n\n` +
-      `متأسفانه مشکلی در ساخت روم پیش آمده.\n` +
-      `لطفاً دوباره تلاش کنید.`;
+    const message = ctx.t('❌ <b>Room Creation Error</b>\n\nSorry, there was a problem creating the room.\nPlease try again.', {
+      fallback: '❌ <b>خطا در ساخت روم</b>\n\nمتأسفانه مشکلی در ساخت روم پیش آمده.\nلطفاً دوباره تلاش کنید.'
+    });
     
     await ctx.replySmart(message, {
       parse_mode: 'HTML',
       reply_markup: {
         inline_keyboard: [[
-          { text: '🔙 بازگشت به منو', callback_data: POKER_ACTIONS.BACK_TO_MENU }
+          { text: ctx.t('🔙 Back to Menu'), callback_data: 'games.poker.backToMenu' }
         ]]
       }
     });
   }
 }
 
+// Import dependencies
+import { defaultFormState } from '../../_utils/formStateManager';
+import { createPokerRoom } from '../../services/pokerService';
+
 // Self-register with compact router
-register(POKER_ACTIONS.FORM_STEP, handleForm, 'Room Creation Form');
-register(POKER_ACTIONS.CREATE_ROOM_CONFIRM, handleConfirmCreate, 'Confirm Room Creation');
+import { register } from '@/modules/core/compact-router';
+
+register(POKER_ACTIONS.FORM_STEP, handleForm, 'Handle Form Step');
 
 export default handleForm; 

@@ -34,11 +34,11 @@ async function handleFreeCoin(context: HandlerContext): Promise<void> {
       await addCoins(user.id, 20, 'daily free coin');
       await setLastFreeCoinAt(user.id);
       
-      const successMessage = `${ctx.t('bot.freecoin.success.title')}\n\n` +
-        `${ctx.t('bot.freecoin.success.received')}\n\n` +
-        `${ctx.t('bot.freecoin.success.newBalance')}: ${userData.coins + 20} ${ctx.t('bot.balance.coinUnit')}\n\n` +
-        `${ctx.t('bot.freecoin.success.nextClaim')}\n\n` +
-        `${ctx.t('bot.freecoin.success.tip')}`;
+      const successMessage = `${ctx.t('🎉 <b>Free Coins Claimed!</b>')}\n\n` +
+        `${ctx.t('✅ You received <b>20 coins</b>!')}\n\n` +
+        `${ctx.t('💰 <b>New Balance</b>')}: ${userData.coins + 20} ${ctx.t('coins')}\n\n` +
+        `${ctx.t('⏰ <b>Next Claim:</b> Available in 24 hours')}\n\n` +
+        `${ctx.t('💡 <b>Tip:</b> Use these coins to play poker and win more!')}`;
       
       await ctx.replySmart(successMessage, { 
         parse_mode: 'HTML'
@@ -48,11 +48,11 @@ async function handleFreeCoin(context: HandlerContext): Promise<void> {
       const nextClaim = new Date(lastClaim.getTime() + 24 * 60 * 60 * 1000);
       const hoursLeft = Math.ceil((nextClaim.getTime() - now.getTime()) / (60 * 60 * 1000));
       
-      const waitMessage = `${ctx.t('bot.freecoin.wait.title')}\n\n` +
-        `${ctx.t('bot.freecoin.wait.alreadyClaimed')}\n\n` +
-        `${ctx.t('bot.freecoin.wait.nextClaim')}: ${hoursLeft} ${ctx.t('bot.freecoin.wait.hours')}\n\n` +
-        `${ctx.t('bot.freecoin.wait.currentBalance')}: ${userData.coins} ${ctx.t('bot.balance.coinUnit')}\n\n` +
-        `${ctx.t('bot.freecoin.wait.tip')}`;
+      const waitMessage = `${ctx.t('⏰ <b>Free Coins Not Available</b>')}\n\n` +
+        `${ctx.t('❌ You have already claimed your daily coins today.')}\n\n` +
+        `${ctx.t('⏳ <b>Next Claim:</b> Available in')}: ${hoursLeft} ${ctx.t('hours')}\n\n` +
+        `${ctx.t('💰 <b>Current Balance</b>')}: ${userData.coins} ${ctx.t('coins')}\n\n` +
+        `${ctx.t('💡 <b>Tip:</b> Play poker to earn more coins!')}`;
       
       await ctx.replySmart(waitMessage, { 
         parse_mode: 'HTML'
@@ -63,7 +63,7 @@ async function handleFreeCoin(context: HandlerContext): Promise<void> {
     console.error('Freecoin action error:', error);
     
     // Fallback message
-    await ctx.replySmart(ctx.t('bot.freecoin.error'));
+    await ctx.replySmart(ctx.t('❌ Failed to claim free coins. Please try again later.'));
   }
 }
 
