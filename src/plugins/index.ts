@@ -7,12 +7,16 @@ export { SmartReplyPlugin, smartReplyPluginInstance, smartReplyPlugin } from './
 export { I18nPlugin, i18nPluginInstance, i18nMiddleware } from './i18n';
 export { LoggingPlugin, loggingPluginInstance, loggingMiddleware } from './logging';
 export { UserPlugin, userPluginInstance } from './user';
+export { UtilsPlugin, utilsPluginInstance } from './utils';
+export { TelegramPlugin, telegramPluginInstance } from './telegram';
 
 // Plugin instances for easy access
 import { smartReplyPluginInstance } from './smart-reply';
 import { i18nPluginInstance } from './i18n';
 import { loggingPluginInstance } from './logging';
 import { userPluginInstance } from './user';
+import { utilsPluginInstance } from './utils';
+import { telegramPluginInstance } from './telegram';
 import { pluginRegistry } from './context';
 import { Context } from 'grammy';
 
@@ -26,6 +30,8 @@ export function initializeCorePlugins(): void {
   pluginRegistry.register(i18nPluginInstance);
   pluginRegistry.register(smartReplyPluginInstance);
   pluginRegistry.register(userPluginInstance);
+  pluginRegistry.register(utilsPluginInstance);
+  pluginRegistry.register(telegramPluginInstance);
 }
 
 /**

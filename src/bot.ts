@@ -1,7 +1,8 @@
 import 'dotenv/config';
 import { Bot } from 'grammy';
 import { InlineQueryResult } from 'grammy/types';
-import { sendMessage, answerCallbackQuery, parseCallbackData, extractUserInfo } from './modules/core/telegramHelpers';
+import { parseCallbackData } from './modules/core/telegramHelpers';
+import { extractUserInfo } from './plugins/user';
 
 import { setMessageUpdater } from './modules/core/messageUpdater';
 // Archived games are no longer imported - using new auto-discovery router system

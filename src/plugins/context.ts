@@ -31,6 +31,34 @@ export interface GameHubContext extends Context {
     isNewUser: boolean;
   };
 
+  // Utils Plugin
+  utils: {
+    formatCoins: (amount: number) => string;
+    formatTimeRemaining: (milliseconds: number) => string;
+  };
+
+  // Telegram Plugin
+  telegram: {
+    sendMessage: (
+      chatId: number,
+      text: string,
+      options?: {
+        parseMode?: 'HTML' | 'Markdown';
+        replyMarkup?: { inline_keyboard: Array<Array<{ text: string; callback_data: string }>> };
+      }
+    ) => Promise<void>;
+    editMessage: (
+      chatId: number,
+      messageId: number,
+      text: string,
+      options?: {
+        parseMode?: 'HTML' | 'Markdown';
+        replyMarkup?: { inline_keyboard: Array<Array<{ text: string; callback_data: string }>> };
+      }
+    ) => Promise<void>;
+    answerCallbackQuery: (callbackQueryId: string, text?: string) => Promise<void>;
+  };
+
   // Room Plugin (for poker games)
   room?: {
     id: string;

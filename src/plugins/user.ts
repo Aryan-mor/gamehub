@@ -3,6 +3,30 @@ import { GameHubContext, GameHubPlugin, ContextBuilder } from './context';
 import { getUser, setUserProfile } from '../modules/core/userService';
 
 /**
+ * Extract user information from context
+ */
+export const extractUserInfo = (ctx: Context): {
+  userId: string;
+  chatId: number;
+  username: string | undefined;
+  name: string | undefined;
+} => {
+  const from = ctx.from;
+  if (!from) {
+    throw new Error('User information not available');
+  }
+  
+  return {
+    userId: from.id.toString(),
+    chatId: ctx.chat?.id || from.id,
+    username: from.username || undefined,
+    name: from.first_name || from.last_name ? 
+      `${from.first_name || ''} ${from.last_name || ''}`.trim() : 
+      undefined,
+  };
+};
+
+/**
  * User Plugin
  * Provides user management and user-related context
  */
