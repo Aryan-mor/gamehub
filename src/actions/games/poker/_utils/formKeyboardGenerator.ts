@@ -1,48 +1,59 @@
 import { FormStep } from './formStateManager';
 import { formStepButtons } from '../room/create/buttonSets';
-import { generatePokerKeyboard } from '../buttonHelpers';
 
 /**
  * Generate keyboard for form step
+ * Note: This function requires ctx to be passed from the handler
  */
-export function generateFormStepKeyboard(step: FormStep): {
+export function generateFormStepKeyboard(step: FormStep, ctx?: any): {
   inline_keyboard: Array<Array<{ text: string; callback_data: string }>>
 } {
+  if (!ctx) {
+    throw new Error('Context is required for generateFormStepKeyboard');
+  }
+
+  const templates = ctx.poker.createButtonTemplates();
+  
   switch (step) {
     case 'name':
-      return generatePokerKeyboard(formStepButtons.nameInput, {}, false);
+      return ctx.keyboard.createCustomKeyboard(formStepButtons.nameInput, templates);
       
     case 'privacy':
-      return generatePokerKeyboard(formStepButtons.privacySelection, {}, false);
+      return ctx.keyboard.createCustomKeyboard(formStepButtons.privacySelection, templates);
       
     case 'maxPlayers':
-      return generatePokerKeyboard(formStepButtons.maxPlayersSelection, {}, false);
+      return ctx.keyboard.createCustomKeyboard(formStepButtons.maxPlayersSelection, templates);
       
     case 'smallBlind':
-      return generatePokerKeyboard(formStepButtons.smallBlindSelection, {}, false);
+      return ctx.keyboard.createCustomKeyboard(formStepButtons.smallBlindSelection, templates);
       
     case 'timeout':
-      return generatePokerKeyboard(formStepButtons.turnTimeoutSelection, {}, false);
+      return ctx.keyboard.createCustomKeyboard(formStepButtons.turnTimeoutSelection, templates);
       
     case 'confirmation':
-      return generatePokerKeyboard(formStepButtons.confirmation, {}, false);
+      return ctx.keyboard.createCustomKeyboard(formStepButtons.confirmation, templates);
       
     default:
-      return generatePokerKeyboard([['backToMenu']], {}, false);
+      return ctx.keyboard.createCustomKeyboard([['backToMenu']], templates);
   }
 }
 
 /**
  * Generate confirmation keyboard with invite button
+ * Note: This function requires ctx to be passed from the handler
  */
-export function generateConfirmationKeyboard(roomId: string): {
+export function generateConfirmationKeyboard(roomId: string, ctx?: any): {
   inline_keyboard: Array<Array<{ text: string; callback_data: string }>>
 } {
+  if (!ctx) {
+    throw new Error('Context is required for generateConfirmationKeyboard');
+  }
+
   return {
     inline_keyboard: [
       [
         {
-          text: '📤 Share Room',
+          text: ctx.t('bot.poker.buttons.utility.share'),
           callback_data: `games.poker.room.share?roomId=${roomId}`
         }
       ]
@@ -52,21 +63,26 @@ export function generateConfirmationKeyboard(roomId: string): {
 
 /**
  * Generate invite message keyboard
+ * Note: This function requires ctx to be passed from the handler
  */
-export function generateInviteKeyboard(roomId: string): {
+export function generateInviteKeyboard(roomId: string, ctx?: any): {
   inline_keyboard: Array<Array<{ text: string; callback_data: string }>>
 } {
+  if (!ctx) {
+    throw new Error('Context is required for generateInviteKeyboard');
+  }
+
   return {
     inline_keyboard: [
       [
         {
-          text: '📤 Share Room',
+          text: ctx.t('bot.poker.buttons.utility.share'),
           callback_data: `games.poker.room.share?roomId=${roomId}`
         }
       ],
       [
         {
-          text: '🔙 Back',
+          text: ctx.t('bot.poker.buttons.navigation.back'),
           callback_data: `games.poker.room.join?roomId=${roomId}`
         }
       ]

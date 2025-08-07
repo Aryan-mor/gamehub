@@ -4,27 +4,33 @@ import { RoomId } from '@/utils/types';
 
 /**
  * Generate game action keyboard for current player
+ * Note: This function requires ctx to be passed from the handler
  */
 export function generateGameActionKeyboard(
   room: PokerRoom,
   playerId: PlayerId,
-  isCurrentPlayer: boolean
+  isCurrentPlayer: boolean,
+  ctx?: any
 ): {
   inline_keyboard: Array<Array<{ text: string; callback_data: string }>>
 } {
+  if (!ctx) {
+    throw new Error('Context is required for generateGameActionKeyboard');
+  }
+
   if (!isCurrentPlayer) {
     // Show waiting keyboard for non-current players
     return {
       inline_keyboard: [
         [
           {
-            text: '🔄 بروزرسانی',
+            text: ctx.t('bot.poker.buttons.utility.refresh'),
             callback_data: createPokerActionCallback('REFRESH_GAME', room.id)
           }
         ],
         [
           {
-            text: '🚪 خروج از بازی',
+            text: ctx.t('bot.poker.buttons.room.leave'),
             callback_data: createPokerActionCallback('LEAVE_ROOM', room.id)
           }
         ]
