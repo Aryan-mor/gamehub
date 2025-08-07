@@ -99,7 +99,7 @@ async function handleLeave(context: HandlerContext, query: Record<string, string
     console.log(`  Message: ${message}`);
     console.log(`  Keyboard:`, keyboard);
 
-    // Use tryEditMessageText to update the existing message
+    // Use ctx.replySmart to update the existing message
     try {
       await ctx.replySmart(message, {
         parse_mode: 'HTML',

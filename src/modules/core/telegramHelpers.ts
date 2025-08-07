@@ -2,37 +2,7 @@
 import { Bot, Context } from 'grammy';
 import { SmartContext } from '../../types';
 
-/**
- * Try to edit message text first, fallback to sending new message
- * This provides a consistent way to update messages across the app
- * @deprecated Use ctx.replySmart() instead
- */
-export async function tryEditMessageText(
-  ctx: SmartContext,
-  text: string,
-  options?: { parse_mode?: 'HTML' | 'Markdown'; reply_markup?: { inline_keyboard: Array<Array<{ text: string; callback_data: string }>> } }
-): Promise<unknown> {
-  // Use the smart reply plugin instead
-  return await ctx.replySmart(text, options);
-}
 
-/**
- * Try to edit message reply markup first, fallback to sending new message
- * This provides a consistent way to update message keyboards across the app
- * @deprecated Use ctx.replySmart() instead
- */
-export async function tryEditMessageReplyMarkup(
-  ctx: SmartContext,
-  replyMarkup: { inline_keyboard: Array<Array<{ text: string; callback_data: string }>> },
-  fallbackText?: string,
-  fallbackOptions?: { parse_mode?: 'HTML' | 'Markdown'; reply_markup?: { inline_keyboard: Array<Array<{ text: string; callback_data: string }>> } }
-): Promise<unknown> {
-  // Use the smart reply plugin instead
-  return await ctx.replySmart(fallbackText || 'Message updated', { 
-    ...fallbackOptions, 
-    reply_markup: replyMarkup 
-  });
-}
 
 export const createInlineKeyboard = (buttons: Array<{
   text: string;
