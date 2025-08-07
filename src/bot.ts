@@ -1,7 +1,7 @@
 import 'dotenv/config';
 import { Bot } from 'grammy';
 import { InlineQueryResult } from 'grammy/types';
-import { sendMessage, answerCallbackQuery, parseCallbackData } from './modules/core/telegramHelpers';
+// Legacy functions moved to plugins - use ctx.telegram instead
 import { extractUserInfo } from './plugins/user';
 
 import { setMessageUpdater } from './modules/core/messageUpdater';

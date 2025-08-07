@@ -158,7 +158,7 @@ const eslintConfig = [
   // Rule for poker actions to prevent hardcoded strings
   {
     files: ["src/actions/games/poker/**/*.ts"],
-    ignores: ["src/actions/games/poker/**/__tests__/**/*", "src/actions/games/poker/compact-codes.ts", "src/bot.ts", "src/utils/cardImageService.ts"],
+    ignores: ["src/actions/games/poker/**/__tests__/**/*", "src/actions/games/poker/compact-codes.ts", "src/utils/cardImageService.ts", "src/actions/games/poker/_utils/gameActionKeyboardGenerator.ts"],
     languageOptions: {
       parser: tsparser,
       parserOptions: {

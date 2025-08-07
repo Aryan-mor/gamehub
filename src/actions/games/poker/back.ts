@@ -1,5 +1,5 @@
 import { HandlerContext } from '@/modules/core/handler';
-import { generateMainMenuKeyboard } from './buttonHelpers';
+// Use ctx.poker.generateMainMenuKeyboard() instead
 import { register } from '@/modules/core/compact-router';
 import { POKER_ACTIONS } from './compact-codes';
 
@@ -19,7 +19,7 @@ async function handleBack(context: HandlerContext): Promise<void> {
       `• Get help with poker rules\n\n` +
       `🎮 <b>Choose an option:</b>`;
     
-    const keyboard = generateMainMenuKeyboard();
+    const keyboard = ctx.poker.generateMainMenuKeyboard();
     
     await ctx.replySmart(message, {
       parse_mode: 'HTML',
