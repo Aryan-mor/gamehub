@@ -74,10 +74,11 @@ const eslintConfig = [
       ]
     },
   },
-  // New rule specifically for poker actions
+
+  // New rule specifically for poker actions and i18n
   {
-    files: ["src/actions/games/poker/**/*.ts"],
-    ignores: ["src/actions/games/poker/**/__tests__/**/*"],
+    files: ["src/actions/**/*.ts"],
+    ignores: ["src/actions/games/poker/**/__tests__/**/*", "src/actions/games/poker/compact-codes.ts"],
     languageOptions: {
       parser: tsparser,
       parserOptions: {
@@ -124,28 +125,13 @@ const eslintConfig = [
         {
           "selector": "Literal[value='gpsg']",
           "message": "Do not use hardcoded poker action codes. Use POKER_ACTIONS.START_GAME instead of 'gpsg'"
-        }
-      ]
-    },
-  },
-  // Rule for button templates to prevent hardcoded text
-  {
-    files: ["src/actions/games/poker/room/_button/**/*.ts"],
-    languageOptions: {
-      parser: tsparser,
-      parserOptions: {
-        ecmaVersion: 2020,
-        sourceType: "module",
-        project: "./tsconfig.json",
-      },
-    },
-    plugins: {
-      "@typescript-eslint": tseslint,
-    },
-    rules: {
-      // Prevent hardcoded user-facing strings in button text
-      "no-restricted-syntax": [
-        "error",
+        },
+        // Prevent hardcoded user-facing strings in ctx.replySmart first parameter
+        {
+          "selector": "CallExpression[callee.object.name='ctx'][callee.property.name='replySmart'] > Literal:first-child",
+          "message": "Use ctx.t() for user-facing strings in ctx.replySmart(). Example: ctx.replySmart(ctx.t('bot.start.welcome'))"
+        },
+        // Prevent hardcoded user-facing strings in button text properties
         {
           "selector": "Property[key.name='text'] > Literal[value=/^.+$/]",
           "message": "Use ctx.t() for all button text. Example: text: ctx.t('bot.poker.actions.fold')"

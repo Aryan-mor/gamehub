@@ -1,6 +1,5 @@
 import { HandlerContext } from '@/modules/core/handler';
 import { isValidUserId } from '@/utils/typeGuards';
-import { tryEditMessageText } from '@/modules/core/telegramHelpers';
 
 // Export the action key for consistency and debugging
 export const key = 'games.start';

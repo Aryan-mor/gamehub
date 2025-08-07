@@ -142,7 +142,7 @@ export function createOptimizedKeyboard(
   // Add back button if needed
   if (showBack) {
     keyboard.inline_keyboard.push([{
-      text: '⬅️ Back',
+      text: '⬅️ Back', // System button
       callback_data: JSON.stringify({ action: 'back' })
     }]);
   }

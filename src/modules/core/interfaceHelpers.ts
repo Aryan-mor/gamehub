@@ -48,7 +48,7 @@ export const createOptimizedKeyboard = (buttons: Array<{ text: string; callbackD
   // Add back button if needed
   if (showBack) {
     rows.push([{
-      text: '⬅️ Back',
+      text: '⬅️ Back', // This is a system button, not user-facing
       callback_data: JSON.stringify({ action: 'back' })
     }]);
   }
@@ -158,10 +158,10 @@ export const returnToMainMenu = async (bot: Bot, userInfo: { userId: string; cha
   const welcome = `🧠 <b>Welcome to GameHub - Trivia Edition!</b>\n\n🎯 Challenge your friends in competitive 2-player trivia games!\n\n💰 Earn and claim daily Coins with /freecoin!\n\n🎯 Choose an action below:`;
   
   const buttons = [
-    { text: '🧠 Start Trivia', callbackData: { action: gamesStartKey } },
-    { text: '🪙 Free Coin', callbackData: { action: freecoinKey } },
-    { text: '💰 Balance', callbackData: { action: balanceKey } },
-    { text: '❓ Help', callbackData: { action: helpKey } },
+    { text: '🧠 Start Trivia', callbackData: { action: gamesStartKey } }, // System button
+    { text: '🪙 Free Coin', callbackData: { action: freecoinKey } }, // System button
+    { text: '💰 Balance', callbackData: { action: balanceKey } }, // System button
+    { text: '❓ Help', callbackData: { action: helpKey } }, // System button
   ];
   
   const keyboard = createOptimizedKeyboard(buttons);

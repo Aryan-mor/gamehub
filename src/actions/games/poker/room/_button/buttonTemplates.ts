@@ -7,7 +7,7 @@ import { GameHubContext } from '@/plugins';
  * Uses compact action codes to stay within Telegram's 64-byte limit
  */
 
-export function createPokerButtonTemplates(ctx: GameHubContext) {
+export function createPokerButtonTemplates(ctx: GameHubContext): Record<string, { text: string; callback_data: string }> {
   return {
   // Navigation buttons
   backToMenu: {
