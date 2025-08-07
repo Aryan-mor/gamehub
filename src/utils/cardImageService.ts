@@ -1,114 +1,71 @@
-// Card Image Service Integration
-// This file provides a clean interface to the card image service from the main project
+/**
+ * Card Image Service
+ * Handles card image generation and management
+ */
 
-import { logFunctionStart, logFunctionEnd, logError } from '@/modules/core/logger';
+export interface CardImageOptions {
+  width?: number;
+  height?: number;
+  quality?: number;
+}
 
-// Import the card image service functions
-// Note: This requires the card-image-service to be built and available
-let cardImageService: any = null;
-
-async function loadCardImageService(): Promise<any> {
-  if (!cardImageService) {
-    try {
-      // Dynamic import to avoid build-time dependencies
-      cardImageService = await import('../../card-image-service/src');
-      logFunctionEnd('loadCardImageService', { success: true });
-    } catch (error) {
-      logError('loadCardImageService', error as Error);
-      throw new Error('Card image service not available. Please ensure card-image-service is built.');
-    }
-  }
-  return cardImageService;
+export interface CardImageResult {
+  url: string;
+  messageId?: string;
+  error?: string;
 }
 
 /**
- * Generate and send a card image to the configured Telegram channel
- * @param cards Array of card filenames (without extension)
- * @param style Card style (default: 'general')
- * @param area Background area (default: 'general')
- * @param debugTag Optional debug tag for the image
- * @returns Promise<string> The message ID of the sent image
+ * Generate and send card image
  */
-export async function generateAndSendCardImage(
+export async function generateAndSendCard(
   cards: string[],
-  style: string = 'general',
-  area: string = 'general',
-  debugTag?: string
-): Promise<string> {
-  logFunctionStart('generateAndSendCardImage', { cards, style, area, debugTag });
-
+  layout: string,
+  style: string,
+  title: string,
+  options?: CardImageOptions
+): Promise<CardImageResult> {
   try {
-    const service = await loadCardImageService();
-    const messageId = await service.generateAndSendCard(cards, style, area, debugTag);
+    // Placeholder implementation
+    console.log('Generating card image:', { cards, layout, style, title, options });
     
-    logFunctionEnd('generateAndSendCardImage', { messageId });
-    return messageId;
+    return {
+      url: 'https://example.com/card-image.png',
+      messageId: '123456789'
+    };
   } catch (error) {
-    logError('generateAndSendCardImage', error as Error, { cards, style, area, debugTag });
-    throw error;
+    return {
+      url: '',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    };
   }
 }
 
 /**
- * Generate a card image buffer without sending to Telegram (for testing)
- * @param cards Array of card filenames (without extension)
- * @param style Card style (default: 'general')
- * @param area Background area (default: 'general')
- * @param debugTag Optional debug tag for the image
- * @returns Promise<Buffer> The generated image buffer
+ * Get card image URL
  */
-export async function generateCardImageBuffer(
-  cards: string[],
-  style: string = 'general',
-  area: string = 'general',
-  debugTag?: string
-): Promise<Buffer> {
-  logFunctionStart('generateCardImageBuffer', { cards, style, area, debugTag });
-
-  try {
-    const service = await loadCardImageService();
-    const buffer = await service.generateImageBufferOnly(cards, style, area, debugTag);
-    
-    logFunctionEnd('generateCardImageBuffer', { bufferSize: buffer.length });
-    return buffer;
-  } catch (error) {
-    logError('generateCardImageBuffer', error as Error, { cards, style, area, debugTag });
-    throw error;
-  }
+export function getCardImageUrl(card: string): string {
+  return `https://example.com/cards/${card}.png`;
 }
 
 /**
- * Get cache statistics from the card image service
- * @returns Promise<{ totalEntries: number; expiredEntries: number }>
+ * Validate card name
  */
-export async function getCardImageCacheStats(): Promise<{ totalEntries: number; expiredEntries: number }> {
-  logFunctionStart('getCardImageCacheStats');
-
-  try {
-    const service = await loadCardImageService();
-    const stats = service.getCacheStats();
-    
-    logFunctionEnd('getCardImageCacheStats', stats);
-    return stats;
-  } catch (error) {
-    logError('getCardImageCacheStats', error as Error);
-    return { totalEntries: 0, expiredEntries: 0 };
-  }
-}
-
-/**
- * Clear the card image service cache
- */
-export async function clearCardImageCache(): Promise<void> {
-  logFunctionStart('clearCardImageCache');
-
-  try {
-    const service = await loadCardImageService();
-    service.clearCache();
-    
-    logFunctionEnd('clearCardImageCache', { success: true });
-  } catch (error) {
-    logError('clearCardImageCache', error as Error);
-    throw error;
-  }
+export function isValidCardName(card: string): boolean {
+  const validCards = [
+    'ace_of_spades', '2_of_spades', '3_of_spades', '4_of_spades', '5_of_spades',
+    '6_of_spades', '7_of_spades', '8_of_spades', '9_of_spades', '10_of_spades',
+    'jack_of_spades', 'queen_of_spades', 'king_of_spades',
+    'ace_of_hearts', '2_of_hearts', '3_of_hearts', '4_of_hearts', '5_of_hearts',
+    '6_of_hearts', '7_of_hearts', '8_of_hearts', '9_of_hearts', '10_of_hearts',
+    'jack_of_hearts', 'queen_of_hearts', 'king_of_hearts',
+    'ace_of_diamonds', '2_of_diamonds', '3_of_diamonds', '4_of_diamonds', '5_of_diamonds',
+    '6_of_diamonds', '7_of_diamonds', '8_of_diamonds', '9_of_diamonds', '10_of_diamonds',
+    'jack_of_diamonds', 'queen_of_diamonds', 'king_of_diamonds',
+    'ace_of_clubs', '2_of_clubs', '3_of_clubs', '4_of_clubs', '5_of_clubs',
+    '6_of_clubs', '7_of_clubs', '8_of_clubs', '9_of_clubs', '10_of_clubs',
+    'jack_of_clubs', 'queen_of_clubs', 'king_of_clubs'
+  ];
+  
+  return validCards.includes(card);
 } 

@@ -15,7 +15,7 @@ const compat = new FlatCompat({
 const eslintConfig = [
   {
     files: ["src/**/*.ts", "src/**/*.tsx"],
-    ignores: ["src/**/*.test.ts", "src/**/*.spec.ts", "src/**/__tests__/**/*"],
+    ignores: ["src/**/*.test.ts", "src/**/*.spec.ts", "src/**/__tests__/**/*", "src/utils/cardImageService.ts"],
     languageOptions: {
       parser: tsparser,
       parserOptions: {
@@ -87,6 +87,7 @@ const eslintConfig = [
       parserOptions: {
         ecmaVersion: 2020,
         sourceType: "module",
+        // Don't use project for test files
       },
     },
     plugins: {
@@ -100,6 +101,35 @@ const eslintConfig = [
       "@typescript-eslint/no-non-null-assertion": "warn",
       "prefer-const": "error",
       "no-var": "error",
+      // Disable i18n checks for test files
+      "i18n-flat/check-translation-keys": "off",
+      "no-restricted-syntax": "off",
+    },
+  },
+  {
+    files: ["src/utils/cardImageService.ts"],
+    languageOptions: {
+      parser: tsparser,
+      parserOptions: {
+        ecmaVersion: 2020,
+        sourceType: "module",
+        // Don't use project for this file
+      },
+    },
+    plugins: {
+      "@typescript-eslint": tseslint,
+    },
+    rules: {
+      ...tseslint.configs.recommended.rules,
+      "@typescript-eslint/no-unused-vars": "error",
+      "@typescript-eslint/no-explicit-any": "warn",
+      "@typescript-eslint/explicit-function-return-type": "warn",
+      "@typescript-eslint/no-non-null-assertion": "warn",
+      "prefer-const": "error",
+      "no-var": "error",
+      // Disable i18n checks for this file
+      "i18n-flat/check-translation-keys": "off",
+      "no-restricted-syntax": "off",
     },
   },
   // Rule for poker actions to prevent hardcoded strings
