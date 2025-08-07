@@ -1,11 +1,12 @@
 import { FormStep } from './formStateManager';
 import { formStepButtons } from '../room/create/buttonSets';
+import { GameHubContext } from '@/plugins';
 
 /**
  * Generate keyboard for form step
  * Note: This function requires ctx to be passed from the handler
  */
-export function generateFormStepKeyboard(step: FormStep, ctx?: any): {
+export function generateFormStepKeyboard(step: FormStep, ctx?: GameHubContext): {
   inline_keyboard: Array<Array<{ text: string; callback_data: string }>>
 } {
   if (!ctx) {
@@ -42,7 +43,7 @@ export function generateFormStepKeyboard(step: FormStep, ctx?: any): {
  * Generate confirmation keyboard with invite button
  * Note: This function requires ctx to be passed from the handler
  */
-export function generateConfirmationKeyboard(roomId: string, ctx?: any): {
+export function generateConfirmationKeyboard(roomId: string, ctx?: GameHubContext): {
   inline_keyboard: Array<Array<{ text: string; callback_data: string }>>
 } {
   if (!ctx) {
@@ -65,7 +66,7 @@ export function generateConfirmationKeyboard(roomId: string, ctx?: any): {
  * Generate invite message keyboard
  * Note: This function requires ctx to be passed from the handler
  */
-export function generateInviteKeyboard(roomId: string, ctx?: any): {
+export function generateInviteKeyboard(roomId: string, ctx?: GameHubContext): {
   inline_keyboard: Array<Array<{ text: string; callback_data: string }>>
 } {
   if (!ctx) {

@@ -1,6 +1,7 @@
 import { PokerRoom, PokerPlayer, PlayerId } from '../types';
 import { createPokerActionCallback, createPokerActionCallbackWithParams } from './pokerActionHelper';
 import { RoomId } from '@/utils/types';
+import { GameHubContext } from '@/plugins';
 
 /**
  * Generate game action keyboard for current player
@@ -10,7 +11,7 @@ export function generateGameActionKeyboard(
   room: PokerRoom,
   playerId: PlayerId,
   isCurrentPlayer: boolean,
-  ctx?: any
+  ctx?: GameHubContext
 ): {
   inline_keyboard: Array<Array<{ text: string; callback_data: string }>>
 } {
@@ -59,7 +60,7 @@ export function generateGameActionKeyboard(
   } else {
     buttons.push([
       {
-        text: '👁️ Check',
+        text: ctx.t('bot.poker.buttons.game.check'),
         callback_data: createPokerActionCallback('CHECK', room.id)
       }
     ]);
@@ -68,7 +69,7 @@ export function generateGameActionKeyboard(
   // Fold button
   buttons.push([
     {
-      text: '❌ Fold',
+      text: ctx.t('bot.poker.buttons.game.fold'),
       callback_data: createPokerActionCallback('FOLD', room.id)
     }
   ]);
@@ -84,7 +85,7 @@ export function generateGameActionKeyboard(
   if ((currentPlayer.chips || 0) > 0) {
     buttons.push([
       {
-        text: '🔥 All In',
+        text: ctx.t('bot.poker.buttons.game.allIn'),
         callback_data: createPokerActionCallback('ALL_IN', room.id)
       }
     ]);
