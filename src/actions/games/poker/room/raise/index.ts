@@ -6,7 +6,7 @@ import {
   getGameStateDisplay,
   generateGameActionKeyboard
 } from '../../_utils/pokerUtils';
-import { generateRaiseAmountKeyboard, } from '../../buttonHelpers';
+// Use ctx.poker.generateRaiseAmountKeyboard() instead
 import { processBettingAction, } from '../../services/gameStateService';
 import { } from '../../services/pokerService';
 import { } from '../../_utils/typeGuards';
@@ -103,7 +103,7 @@ async function showRaiseAmountSelection(context: HandlerContext, roomId: string)
       `📈 Minimum Raise: ${room.minRaise} coins\n\n` +
       `💡 Choose your raise amount:`;
     
-    const keyboard = generateRaiseAmountKeyboard(roomId);
+    const keyboard = ctx.poker.generateRaiseAmountKeyboard(roomId);
     
     await ctx.replySmart(message, {
       parse_mode: 'HTML',
