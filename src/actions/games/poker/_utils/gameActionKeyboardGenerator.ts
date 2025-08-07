@@ -94,7 +94,7 @@ export function generateGameActionKeyboard(
   // Navigation buttons
   buttons.push([
     {
-      text: ctx.t('poker.room.buttons.exitGame'),
+      text: '🚪 خروج از بازی',
       callback_data: createPokerActionCallback('LEAVE_ROOM', room.id)
     }
   ]);
@@ -141,7 +141,7 @@ function generateErrorKeyboard(): {
     inline_keyboard: [
       [
         {
-          text: ctx.t('poker.room.buttons.backToMenu'),
+          text: '🔙 بازگشت به منو',
           callback_data: createPokerActionCallbackWithParams('BACK', {})
         }
       ]
@@ -208,7 +208,7 @@ export function generateGameStateKeyboard(room: PokerRoom, player: PokerPlayer, 
     // Waiting for other player
     buttons.push([
       {
-        text: ctx.t('poker.room.buttons.update'),
+        text: '🔄 بروزرسانی',
         callback_data: createPokerActionCallback('REFRESH_GAME', room.id)
       }
     ]);
@@ -217,7 +217,7 @@ export function generateGameStateKeyboard(room: PokerRoom, player: PokerPlayer, 
   // Navigation buttons
   buttons.push([
     {
-      text: ctx.t('poker.room.buttons.exitGame'),
+      text: '🚪 خروج از بازی',
       callback_data: createPokerActionCallback('LEAVE_ROOM', room.id)
     }
   ]);
@@ -239,7 +239,7 @@ export function generateWaitingRoomKeyboard(roomId: RoomId, canStart: boolean): 
   if (canStart) {
     buttons.push([
       {
-        text: ctx.t('poker.room.buttons.startGame'),
+        text: '🎮 شروع بازی',
         callback_data: createPokerActionCallback('START_GAME', roomId)
       }
     ]);
@@ -260,7 +260,7 @@ export function generateWaitingRoomKeyboard(roomId: RoomId, canStart: boolean): 
   // Leave room button
   buttons.push([
     {
-      text: ctx.t('poker.room.buttons.leave'),
+      text: '🚪 خروج از روم',
       callback_data: `gpl?roomId=${roomId}`
     }
   ]);

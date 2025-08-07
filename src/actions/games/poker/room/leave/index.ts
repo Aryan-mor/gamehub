@@ -157,7 +157,7 @@ async function handleLeave(context: HandlerContext, query: Record<string, string
       parse_mode: 'HTML',
       reply_markup: {
         inline_keyboard: [[
-          { text: ctx.t('poker.room.buttons.backToMenu'), callback_data: 'games.poker.backToMenu' }
+          { text: '🔙 بازگشت به منو', callback_data: 'games.poker.backToMenu' }
         ]]
       }
     });

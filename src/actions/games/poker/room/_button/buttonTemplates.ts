@@ -102,13 +102,13 @@ export function createPokerButtonTemplates(ctx: GameHubContext): Record<string, 
     callback_data: POKER_ACTIONS.SPECTATE
   },
   refresh: {
-    text: ctx.t('poker.room.buttons.update'),
+    text: '🔄 بروزرسانی',
     callback_data: POKER_ACTIONS.REFRESH
   },
   
   // Share functionality
   share: {
-    text: ctx.t('poker.room.buttons.share'),
+    text: '📤 اشتراک‌گذاری',
     callback_data: POKER_ACTIONS.SHARE
   },
   
@@ -120,11 +120,11 @@ export function createPokerButtonTemplates(ctx: GameHubContext): Record<string, 
   
   // Form buttons using compact codes
   private: {
-    text: ctx.t('poker.room.info.type.private'),
+    text: '🔒 خصوصی',
     callback_data: generateFormCallbackData(POKER_ACTIONS.FORM_STEP, 'privacy', 'true')
   },
   public: {
-    text: ctx.t('poker.room.info.type.public'),
+    text: '🌐 عمومی',
     callback_data: generateFormCallbackData(POKER_ACTIONS.FORM_STEP, 'privacy', 'false')
   },
   maxPlayers2: {

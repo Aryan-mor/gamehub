@@ -48,8 +48,8 @@ export const formStepButtons = {
 // Form field options
 export const formOptions = {
   privacy: {
-    private: { text: ctx.t('poker.room.info.type.private'), value: true },
-    public: { text: ctx.t('poker.room.info.type.public'), value: false }
+    private: { text: '🔒 خصوصی', value: true },
+    public: { text: '🌐 عمومی', value: false }
   },
   
   maxPlayers: {
@@ -79,5 +79,5 @@ export const actionButtons = {
   confirmCreate: { text: '✅ ساخت روم', action: 'confirmCreate' },
   editForm: { text: '✏️ ویرایش', action: 'editForm' },
   back: { text: '🔙 بازگشت', action: 'back' },
-  backToMenu: { text: ctx.t('poker.room.buttons.backToMenu'), action: 'backToMenu' }
+  backToMenu: { text: '🔙 بازگشت به منو', action: 'backToMenu' }
 }; 

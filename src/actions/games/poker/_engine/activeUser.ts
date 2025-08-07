@@ -180,7 +180,7 @@ async function handleActiveGameState(
   message += `\n\n📊 <b>وضعیت شما:</b>\n` +
     `• سکه‌ها: ${player.chips}\n` +
     `• شرط فعلی: ${player.betAmount}\n` +
-    `ctx.t('poker.room.info.status') ${player.isFolded ? '❌ تا شده' : player.isAllIn ? '🔥 همه چیز' : '✅ فعال'}`;
+    `• وضعیت: ${player.isFolded ? '❌ تا شده' : player.isAllIn ? '🔥 همه چیز' : '✅ فعال'}`;
   
   // Generate appropriate keyboard based on turn and game state
   const keyboard = generateGameStateKeyboard(room, player, isMyTurn);
@@ -217,7 +217,7 @@ async function handleGameEndState(
     `💰 <b>پات نهایی:</b> ${room.pot} سکه\n\n` +
     `📊 <b>وضعیت شما:</b>\n` +
     `• سکه‌ها: ${player.chips}\n` +
-    `ctx.t('poker.room.info.status') ${player.isFolded ? '❌ تا شده' : player.isAllIn ? '🔥 همه چیز' : '✅ فعال'}\n\n` +
+    `• وضعیت: ${player.isFolded ? '❌ تا شده' : player.isAllIn ? '🔥 همه چیز' : '✅ فعال'}\n\n` +
     `🎮 برای شروع بازی جدید، از منوی اصلی استفاده کنید.`;
   
   const keyboard = generateErrorKeyboard(); // Changed from generateLeaveRoomKeyboard()

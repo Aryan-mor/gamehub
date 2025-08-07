@@ -100,7 +100,7 @@ async function handleRoomJoinConflict(
     inline_keyboard: [
       [{ text: '🔙 بازگشت به روم فعلی', callback_data: `gpj_b:${currentRoom.id}` }],
       [{ text: '🔄 خروج و پیوستن', callback_data: `gpj_lj:${currentRoom.id}:${targetRoomId}` }],
-      [{ text: ctx.t('poker.room.buttons.exitGame'), callback_data: `gpj_l:${currentRoom.id}` }]
+      [{ text: '🚪 خروج از بازی', callback_data: `gpj_l:${currentRoom.id}` }]
     ]
   };
   
