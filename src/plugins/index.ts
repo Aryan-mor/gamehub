@@ -31,7 +31,7 @@ export function initializeCorePlugins(): void {
 /**
  * Get the complete middleware chain for all registered plugins
  */
-export function getPluginMiddlewareChain() {
+export function getPluginMiddlewareChain(): ReturnType<typeof pluginRegistry.createMiddlewareChain> {
   return pluginRegistry.createMiddlewareChain();
 }
 

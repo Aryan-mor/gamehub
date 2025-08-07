@@ -1,5 +1,6 @@
 import { HandlerContext } from '@/modules/core/handler';
 import { isValidUserId } from '@/utils/typeGuards';
+import { tryEditMessageText } from '@/modules/core/telegramHelpers';
 
 // Export the action key for consistency and debugging
 export const key = 'games.start';
@@ -25,12 +26,12 @@ async function handleStartGame(context: HandlerContext): Promise<void> {
     
     // Create game selection buttons
     const buttons = [
-      { text: '🃏 Poker Game', callbackData: { action: pokerStartKey } },
+      { text: ctx.t('bot.games.poker.title'), callbackData: { action: pokerStartKey } },
     ];
     
     const keyboard = createOptimizedKeyboard(buttons, true);
     
-    const message = '🎮 <b>GameHub - Poker Focus</b>\n\n🃏 Challenge your friends in competitive poker games!\n\nJoin rooms, play Texas Hold\'em, and compete for coins.';
+    const message = ctx.t('bot.games.start.message');
     
     // Use replySmart to handle message editing/sending
     await ctx.replySmart(message, { 
@@ -42,7 +43,7 @@ async function handleStartGame(context: HandlerContext): Promise<void> {
     console.error('StartGame action error:', error);
     
     // Fallback message
-    await ctx.replySmart('🎮 Game selection is currently available for Poker only.');
+    await ctx.replySmart(ctx.t('bot.games.start.fallback'));
   }
 }
 

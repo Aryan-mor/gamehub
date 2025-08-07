@@ -35,6 +35,7 @@
       }
     },
     "poker": {
+      "title": "🃏 Poker Game",
       "start": {
         "title": "🃏 Poker Game",
         "description": "Welcome to Poker! Create or join a room to start playing.",
@@ -82,6 +83,71 @@
           "raise": "Raise",
           "check": "Check",
           "allIn": "All In"
+        },
+        "buttons": {
+          "navigation": {
+            "backToMenu": "🔙 Back to Menu",
+            "back": "🔙 Back"
+          },
+          "room": {
+            "createRoom": "🏠 Create Room",
+            "joinRoom": "🚪 Join Room",
+            "listRooms": "📋 List Rooms",
+            "roomInfo": "📊 Room Info",
+            "leaveRoom": "🚪 Leave Room",
+            "kickPlayer": "👢 Kick Player"
+          },
+          "game": {
+            "startGame": "🎮 Start Game",
+            "playAgain": "🔄 Play Again",
+            "newGame": "🆕 New Game",
+            "viewStats": "📊 Stats",
+            "gameEnd": "🏁 Game End",
+            "history": "📜 History",
+            "spectate": "👁️ Spectate"
+          },
+          "create": {
+            "title": "Create Poker Room",
+            "name": "Room Name",
+            "privacy": {
+              "private": "🔒 Private",
+              "public": "🌐 Public"
+            },
+            "maxPlayers": {
+              "2": "👥 2 Players",
+              "4": "👥 4 Players", 
+              "6": "👥 6 Players",
+              "8": "👥 8 Players"
+            },
+            "smallBlind": {
+              "50": "💰 50",
+              "100": "💰 100",
+              "200": "💰 200",
+              "500": "💰 500"
+            },
+            "timeout": {
+              "60": "⏱️ 60 seconds",
+              "120": "⏱️ 2 minutes",
+              "300": "⏱️ 5 minutes",
+              "600": "⏱️ 10 minutes"
+            },
+            "confirm": "✅ Create Room",
+            "edit": "✏️ Edit"
+          },
+          "stake": {
+            "2": "2 Coins",
+            "5": "5 Coins",
+            "10": "10 Coins",
+            "20": "20 Coins",
+            "50": "50 Coins"
+          },
+          "raise": {
+            "5": "+5",
+            "10": "+10",
+            "25": "+25",
+            "50": "+50",
+            "100": "+100"
+          }
         }
       }
     },
@@ -94,6 +160,15 @@
       "notFound": "Not found",
       "invalidInput": "Invalid input",
       "permissionDenied": "Permission denied"
+    },
+    "games": {
+      "start": {
+        "message": "🎮 <b>GameHub - Poker Focus</b>\n\n🃏 Challenge your friends in competitive poker games!\n\nJoin rooms, play Texas Hold'em, and compete for coins.",
+        "fallback": "🎮 Game selection is currently available for Poker only."
+      },
+      "poker": {
+        "title": "🃏 Poker Game"
+      }
     },
     "balance": {
       "title": "💰 <b>Your Coin Balance</b>",

@@ -41,7 +41,7 @@ export async function storePlayerMessage(
     // First try to delete existing record
     try {
       await api.roomMessages.deleteByRoomAndUser(roomId, playerId);
-    } catch (error) {
+    } catch {
       // Ignore if record doesn't exist
       console.log(`No existing message record to delete for player ${playerId} in room ${roomId}`);
     }
@@ -274,7 +274,7 @@ export async function sendNewRoomInfoToAllPlayers(
           // Remove old message from database
           try {
             await api.roomMessages.deleteByRoomAndUser(room.id, player.id);
-          } catch (error) {
+          } catch {
             // Ignore error if no existing message
           }
         }
@@ -341,7 +341,7 @@ export async function updateAllPlayersInRoom(
           );
           
           console.log(`✅ Updated existing message for player ${message.playerId} in room ${room.id}`);
-        } catch (editError) {
+        } catch {
           // If edit fails, send new message and store it
           console.log(`⚠️ Failed to edit message for player ${message.playerId}, sending new message`);
           
@@ -357,15 +357,15 @@ export async function updateAllPlayersInRoom(
           // Store the new message ID (remove old one first to avoid duplicate key error)
           try {
             await api.roomMessages.deleteByRoomAndUser(room.id, message.playerId);
-          } catch (error) {
+          } catch {
             // Ignore error if no existing message
           }
           await storePlayerMessage(room.id, message.playerId, sentMessage.message_id, message.chatId);
           
           console.log(`✅ Sent new message for player ${message.playerId} in room ${room.id}`);
         }
-      } catch (error) {
-        console.error(`❌ Failed to update/send message for player ${message.playerId}:`, error);
+      } catch {
+        console.error(`❌ Failed to update/send message for player ${message.playerId}`);
       }
     }
     

@@ -51,12 +51,8 @@ const eslintConfig = [
         },
         // Prevent hardcoded user-facing strings in button text properties
         {
-          "selector": "Property[key.name='text'] > Literal[value=/^[🎮📖🃏❌✅🎯💰🪙🚪➕➡️ℹ️▶️🔒🌐👥⏱️🎴🎯⏳📊🔥🎉🏠📝🔙🎮📋🎯💰❓]/]",
-          "message": "Use ctx.t() for button text. Example: text: ctx.t('bot.poker.actions.fold')"
-        },
-        {
-          "selector": "Property[key.name='text'] > Literal[value=/^(تخلیه|کال|ریز|چک|آل-این|بازگشت|شروع|پیوستن|ایجاد|ترک|دعوت|تایید|لغو|بله|خیر)$/]",
-          "message": "Use ctx.t() for Persian button text. Example: text: ctx.t('bot.poker.actions.fold')"
+          "selector": "Property[key.name='text'] > Literal[value=/^.+$/]",
+          "message": "Use ctx.t() for all button text. Example: text: ctx.t('bot.poker.actions.fold')"
         }
       ],
     },
@@ -81,7 +77,7 @@ const eslintConfig = [
   // New rule specifically for poker actions
   {
     files: ["src/actions/games/poker/**/*.ts"],
-    ignores: ["src/actions/games/poker/compact-codes.ts", "src/actions/games/poker/**/__tests__/**/*"],
+    ignores: ["src/actions/games/poker/**/__tests__/**/*"],
     languageOptions: {
       parser: tsparser,
       parserOptions: {
@@ -128,6 +124,31 @@ const eslintConfig = [
         {
           "selector": "Literal[value='gpsg']",
           "message": "Do not use hardcoded poker action codes. Use POKER_ACTIONS.START_GAME instead of 'gpsg'"
+        }
+      ]
+    },
+  },
+  // Rule for button templates to prevent hardcoded text
+  {
+    files: ["src/actions/games/poker/room/_button/**/*.ts"],
+    languageOptions: {
+      parser: tsparser,
+      parserOptions: {
+        ecmaVersion: 2020,
+        sourceType: "module",
+        project: "./tsconfig.json",
+      },
+    },
+    plugins: {
+      "@typescript-eslint": tseslint,
+    },
+    rules: {
+      // Prevent hardcoded user-facing strings in button text
+      "no-restricted-syntax": [
+        "error",
+        {
+          "selector": "Property[key.name='text'] > Literal[value=/^.+$/]",
+          "message": "Use ctx.t() for all button text. Example: text: ctx.t('bot.poker.actions.fold')"
         }
       ]
     },

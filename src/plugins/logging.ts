@@ -31,8 +31,6 @@ export class LoggingPlugin implements GameHubPlugin {
 
   middleware = async (ctx: GameHubContext, next: () => Promise<void>): Promise<void> => {
     const startTime = Date.now();
-    const userId = ctx.from?.id?.toString();
-    const chatId = ctx.chat?.id?.toString();
     const messageType = ctx.message ? 'message' : ctx.update.callback_query ? 'callback_query' : 'other';
     
     ctx.log.debug(`📱 Telegram update: ${messageType}`, { messageType });
