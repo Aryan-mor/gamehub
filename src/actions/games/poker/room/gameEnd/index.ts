@@ -1,5 +1,5 @@
 import { HandlerContext } from '@/modules/core/handler';
-import { generateGameEndKeyboard } from '../../buttonHelpers';
+// Use ctx.poker.generateGameEndKeyboard() instead
 import { trackGameStatistics } from '../../services/gameResultService';
 import { getPokerRoom } from '../../services/pokerService';
 import { validateRoomId, validatePlayerId } from '../../_utils/typeGuards';
@@ -48,7 +48,7 @@ async function handleGameEnd(context: HandlerContext, query: Record<string, stri
     const message = gameResultMessage + actionMessage;
     
     // Generate game end keyboard with options
-    const keyboard = generateGameEndKeyboard(roomId);
+    const keyboard = ctx.poker.generateGameEndKeyboard(roomId);
     
     await ctx.replySmart(message, {
       parse_mode: 'HTML',
