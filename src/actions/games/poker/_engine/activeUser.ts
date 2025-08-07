@@ -85,12 +85,12 @@ export async function handlePokerActiveUser(
 async function handleWaitingRoomState(
   ctx: Context, 
   room: PokerRoom, 
-  player: PokerPlayer, 
+  _player: PokerPlayer, 
   userId: PlayerId
 ): Promise<void> {
-  const isCreator = room.createdBy === userId;
-  const playerCount = room.players.length;
-  const maxPlayers = room.maxPlayers;
+  // const isCreator = room.createdBy === userId;
+  // const playerCount = room.players.length;
+  // const maxPlayers = room.maxPlayers;
   
   // Debug logging
   console.log(`🔍 ACTIVE USER DEBUG:`, {
