@@ -1,5 +1,5 @@
 import { HandlerContext } from '@/modules/core/handler';
-import { generateSpectatorKeyboard } from '../../buttonHelpers';
+// Use ctx.poker.generateSpectatorKeyboard() instead
 import { getPokerRoom } from '../../services/pokerService';
 import { validateRoomIdWithError, validatePlayerIdWithError } from '../../_utils/pokerUtils';
 import { PokerRoom, Card } from '../../types';
@@ -39,7 +39,7 @@ async function handleSpectate(context: HandlerContext, query: Record<string, str
     const spectatorMessage = createSpectatorView(room);
     
     // Generate spectator keyboard
-    const keyboard = generateSpectatorKeyboard(roomId);
+    const keyboard = ctx.poker.generateSpectatorKeyboard(roomId);
     
     await ctx.replySmart(spectatorMessage, {
       parse_mode: 'HTML',
