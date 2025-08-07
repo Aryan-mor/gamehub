@@ -1,7 +1,7 @@
 import 'dotenv/config';
 import { Bot } from 'grammy';
 import { InlineQueryResult } from 'grammy/types';
-import { parseCallbackData } from './modules/core/telegramHelpers';
+import { sendMessage, answerCallbackQuery, parseCallbackData } from './modules/core/telegramHelpers';
 import { extractUserInfo } from './plugins/user';
 
 import { setMessageUpdater } from './modules/core/messageUpdater';
