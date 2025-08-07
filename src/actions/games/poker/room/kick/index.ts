@@ -26,7 +26,7 @@ async function handleKick(context: HandlerContext, query: Record<string, string>
       parse_mode: 'HTML',
       reply_markup: {
         inline_keyboard: [[
-          { text: '🔙 بازگشت به منو', callback_data: 'games.poker.backToMenu' }
+          { text: ctx.t('poker.room.buttons.backToMenu'), callback_data: 'games.poker.backToMenu' }
         ]]
       }
     });
@@ -98,8 +98,8 @@ async function handleKick(context: HandlerContext, query: Record<string, string>
     const message = `👢 <b>بازیکن اخراج شد!</b>\n\n` +
       `✅ بازیکن <b>${displayName}</b> از روم اخراج شد.\n\n` +
       `🎯 <b>وضعیت روم:</b>\n` +
-      `• بازیکنان: ${updatedRoom.players.length}/${updatedRoom.maxPlayers}\n` +
-      `• وضعیت: ${updatedRoom.status}\n\n` +
+      `ctx.t('poker.room.status.waiting.players') ${updatedRoom.players.length}/${updatedRoom.maxPlayers}\n` +
+      `ctx.t('poker.room.info.status') ${updatedRoom.status}\n\n` +
       `📊 <b>مرحله بعد:</b>\n` +
       `• می‌توانید بازیکنان دیگر را اخراج کنید\n` +
       `• بازی را شروع کنید\n` +
@@ -124,10 +124,10 @@ async function handleKick(context: HandlerContext, query: Record<string, string>
       reply_markup: {
         inline_keyboard: [
           [
-            { text: '🔙 بازگشت به اطلاعات روم', callback_data: `games.poker.room.info?roomId=${roomIdParam}` }
+            { text: ctx.t('poker.room.buttons.backToRoomInfo'), callback_data: `games.poker.room.info?roomId=${roomIdParam}` }
           ],
           [
-            { text: '🔙 بازگشت به منو', callback_data: 'games.poker.backToMenu' }
+            { text: ctx.t('poker.room.buttons.backToMenu'), callback_data: 'games.poker.backToMenu' }
           ]
         ]
       }

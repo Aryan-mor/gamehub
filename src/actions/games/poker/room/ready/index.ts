@@ -44,7 +44,7 @@ async function handleReady(context: HandlerContext, query: Record<string, string
     const message = `✅ <b>آماده شدید!</b>\n\n` +
       `🏠 روم: <code>${updatedRoom.id}</code>\n` +
       `📊 نام: ${updatedRoom.name}\n\n` +
-      `👥 <b>بازیکنان:</b> ${readyPlayers}/${totalPlayers} آماده\n` +
+      `ctx.t('poker.room.info.playersTitle'):</b> ${readyPlayers}/${totalPlayers} آماده\n` +
       `🎯 <b>وضعیت:</b> ${updatedRoom.status}\n` +
       `💰 <b>شرط‌ها:</b> ${updatedRoom.smallBlind}/${updatedRoom.bigBlind} سکه\n\n` +
       `⏳ منتظر آماده شدن سایر بازیکنان...`;
