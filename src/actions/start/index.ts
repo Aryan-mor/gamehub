@@ -1,6 +1,5 @@
 import { HandlerContext } from '@/modules/core/handler';
 import { isValidUserId } from '@/utils/typeGuards';
-import { I18nContext } from '@/modules/core/i18n';
 
 // Export the action key for consistency and debugging
 export const key = 'start';
@@ -11,7 +10,6 @@ export const key = 'start';
  */
 async function handleStart(context: HandlerContext): Promise<void> {
   const { user, ctx } = context;
-  const i18nCtx = ctx as I18nContext;
   
   // Validate user ID
   if (!isValidUserId(user.id)) {
@@ -37,24 +35,24 @@ async function handleStart(context: HandlerContext): Promise<void> {
     const userData = await getUser(user.id);
     
     // Build welcome message
-    let welcome = `${i18nCtx.t('bot.start.title')}\n\n` +
-      `${i18nCtx.t('bot.start.description')}\n\n` +
-      `💰 Earn and claim daily Coins with /freecoin!\n\n` +
-      `🎯 Choose an action below:`;
+    let welcome = `${ctx.t('bot.start.title')}\n\n` +
+      `${ctx.t('bot.start.description')}\n\n` +
+      `💰 ${ctx.t('bot.start.earnCoins')}\n\n` +
+      `🎯 ${ctx.t('bot.start.chooseAction')}`;
     
     // Give 100 coins to new users
     if (userData.coins === 0 && !userData.lastFreeCoinAt) {
       await addCoins(user.id, 100, 'initial grant');
-      welcome = `🎉 You received <b>100 Coins</b> for joining!\n\n` + welcome;
+      welcome = `${ctx.t('bot.start.welcomeBonus')}\n\n` + welcome;
     }
     
     // Create buttons
     const buttons = [
-      { text: i18nCtx.t('bot.poker.start.createRoom'), callbackData: { action: pokerGameStartKey } },
-      { text: i18nCtx.t('bot.poker.start.joinRoom'), callbackData: { action: gamesStartKey } },
-      { text: '🪙 Free Coin', callbackData: { action: freecoinKey } },
-      { text: '💰 Balance', callbackData: { action: balanceKey } },
-      { text: '❓ Help', callbackData: { action: helpKey } },
+      { text: ctx.t('bot.poker.start.createRoom'), callbackData: { action: pokerGameStartKey } },
+      { text: ctx.t('bot.poker.start.joinRoom'), callbackData: { action: gamesStartKey } },
+      { text: ctx.t('bot.start.freeCoin'), callbackData: { action: freecoinKey } },
+      { text: ctx.t('bot.start.balance'), callbackData: { action: balanceKey } },
+      { text: ctx.t('bot.start.help'), callbackData: { action: helpKey } },
     ];
     
     const keyboard = createOptimizedKeyboard(buttons);
@@ -69,7 +67,7 @@ async function handleStart(context: HandlerContext): Promise<void> {
     console.error('Start command error:', error);
     
     // Fallback message
-    await ctx.replySmart(i18nCtx.t('bot.start.welcome'));
+    await ctx.replySmart(ctx.t('bot.start.welcome'));
   }
 }
 

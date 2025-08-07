@@ -1,9 +1,7 @@
 import 'dotenv/config';
 import { Bot } from 'grammy';
 import { InlineQueryResult } from 'grammy/types';
-import { loggingMiddleware } from './modules/core/logger';
 import { sendMessage, answerCallbackQuery, parseCallbackData, extractUserInfo } from './modules/core/telegramHelpers';
-import { initializeI18n, i18nMiddleware, I18nContext } from './modules/core/i18n';
 
 import { setMessageUpdater } from './modules/core/messageUpdater';
 // Archived games are no longer imported - using new auto-discovery router system
@@ -13,8 +11,7 @@ import { PlayerId } from './actions/games/poker/types';
 import { logFunctionStart, logFunctionEnd, logError } from './modules/core/logger';
 import { api } from './lib/api';
 import { Context } from 'grammy';
-import { SmartContext } from './types';
-import { smartReplyPlugin } from './plugins/smart-reply';
+import { GameHubContext, initializeCorePlugins, getPluginMiddlewareChain } from './plugins';
 
 /**
  * GameHub Telegram Bot
@@ -49,16 +46,13 @@ if (!token.match(/^\d+:[A-Za-z0-9_-]+$/)) {
   );
 }
 
-export const bot = new Bot<I18nContext>(token);
+export const bot = new Bot<GameHubContext>(token);
 
-// Add logging middleware
-bot.use(loggingMiddleware);
+// Initialize and register all core plugins
+initializeCorePlugins();
 
-// Add i18n middleware
-bot.use(i18nMiddleware());
-
-// Add smart reply plugin
-bot.use(smartReplyPlugin());
+// Add the complete plugin middleware chain
+bot.use(getPluginMiddlewareChain());
 
 // Add active game redirect middleware (early in the chain)
 bot.use(async (ctx, next) => {
@@ -174,7 +168,7 @@ async function handleRoomJoin(ctx: Context, userInfo: { userId: string; username
   const handleJoin = (await import('./actions/games/poker/room/join')).default;
   
   const context: HandlerContext = {
-    ctx,
+    ctx: ctx as any, // Temporary fix - ctx should already be GameHubContext
     user: {
       id: userInfo.userId as UserId,
       username: userInfo.username || 'Unknown'
@@ -1189,9 +1183,10 @@ const startBot = async (): Promise<void> => {
   try {
     console.log('🚀 Starting GameHub bot...');
     
-    // Initialize i18n
-    await initializeI18n();
-    console.log('✅ i18n initialized');
+    // Initialize i18n plugin
+    const { i18nPluginInstance } = await import('./plugins/i18n');
+    await i18nPluginInstance.initialize();
+    console.log('✅ i18n plugin initialized');
     
     // Initialize MessageUpdater
     setMessageUpdater(bot);

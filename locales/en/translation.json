@@ -3,7 +3,13 @@
     "start": {
       "title": "🎮 GameHub Bot",
       "description": "Welcome to GameHub! Choose a game to play:",
-      "welcome": "Welcome to GameHub! 🎮\n\nChoose a game to start playing:"
+      "welcome": "Welcome to GameHub! 🎮\n\nChoose a game to start playing:",
+      "earnCoins": "Earn and claim daily Coins with /freecoin!",
+      "chooseAction": "Choose an action below:",
+      "welcomeBonus": "🎉 You received <b>100 Coins</b> for joining!",
+      "freeCoin": "🪙 Free Coin",
+      "balance": "💰 Balance",
+      "help": "❓ Help"
     },
     "help": {
       "title": "📖 GameHub Help",
@@ -11,7 +17,21 @@
       "commands": {
         "start": "/start - Start the bot",
         "help": "/help - Show this help message",
-        "poker": "/poker - Start poker game"
+        "poker": "/poker - Start poker game",
+        "balance": "/balance - Check your coin balance",
+        "freecoin": "/freecoin - Claim daily free coins"
+      },
+      "gameplay": {
+        "title": "🎯 How to Play Poker:",
+        "steps": "1. Create or join a poker room\n2. Wait for other players to join\n3. Start the game when ready\n4. Use Call, Fold, Raise, or Check actions\n5. Best 5-card hand wins the pot!"
+      },
+      "coins": {
+        "title": "💰 Coin System:",
+        "description": "• Earn coins by winning games\n• Claim 20 free coins daily with /freecoin\n• Use coins to stake in games"
+      },
+      "support": {
+        "title": "❓ Need More Help?",
+        "description": "Contact support or check the game rules."
       }
     },
     "poker": {

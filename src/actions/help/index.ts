@@ -1,6 +1,5 @@
 import { HandlerContext } from '@/modules/core/handler';
 import { isValidUserId } from '@/utils/typeGuards';
-import { I18nContext } from '@/modules/core/i18n';
 
 // Export the action key for consistency and debugging
 export const key = 'help';
@@ -11,7 +10,6 @@ export const key = 'help';
  */
 async function handleHelp(context: HandlerContext): Promise<void> {
   const { user, ctx } = context;
-  const i18nCtx = ctx as I18nContext;
   
   // Validate user ID
   if (!isValidUserId(user.id)) {
@@ -19,11 +17,11 @@ async function handleHelp(context: HandlerContext): Promise<void> {
   }
   
   try {
-    const helpMessage = `${i18nCtx.t('bot.help.title')}\n\n` +
+        const helpMessage = `${ctx.t('bot.help.title')}\n\n` +
       `📋 <b>Available Commands:</b>\n` +
-      `• ${i18nCtx.t('bot.help.commands.start')}\n` +
-      `• ${i18nCtx.t('bot.help.commands.help')}\n` +
-      `• ${i18nCtx.t('bot.help.commands.poker')}\n\n` +
+      `• ${ctx.t('bot.help.commands.start')}\n` +
+      `• ${ctx.t('bot.help.commands.help')}\n` +
+      `• ${ctx.t('bot.help.commands.poker')}\n\n` +
       `🎯 <b>How to Play Poker:</b>\n` +
       `1. Create or join a poker room\n` +
       `2. Wait for other players to join\n` +
@@ -36,7 +34,7 @@ async function handleHelp(context: HandlerContext): Promise<void> {
       `• Use coins to stake in games\n\n` +
       `❓ <b>Need More Help?</b>\n` +
       `Contact support or check the game rules.`;
-    
+
     await ctx.replySmart(helpMessage, { 
       parse_mode: 'HTML'
     });
@@ -45,7 +43,7 @@ async function handleHelp(context: HandlerContext): Promise<void> {
     console.error('Help command error:', error);
     
     // Fallback message
-    await ctx.replySmart(i18nCtx.t('bot.common.error'));
+    await ctx.replySmart(ctx.t('bot.common.error'));
   }
 }
 

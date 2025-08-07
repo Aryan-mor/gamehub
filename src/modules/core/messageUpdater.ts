@@ -135,6 +135,6 @@ export function getMessageUpdater(bot?: Bot): MessageUpdater {
   return globalMessageUpdater;
 }
 
-export function setMessageUpdater(bot: Bot): void {
+export function setMessageUpdater(bot: Bot<any>): void {
   globalMessageUpdater = new MessageUpdater(bot);
 } 

@@ -1,8 +1,8 @@
-import { Context } from 'grammy';
 import { UserId } from '@/utils/types';
+import { GameHubContext } from '@/plugins';
 
 export interface HandlerContext {
-  ctx: Context; // Use Context from grammy for better type safety
+  ctx: GameHubContext; // Use GameHubContext for all plugin features
   user: {
     id: UserId;
     username: string;
