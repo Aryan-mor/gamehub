@@ -69,7 +69,7 @@ The tests cover:
 ### Router Test Example
 ```typescript
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { register, dispatch } from '@/modules/core/compact-router';
+// compact-router removed; use smart-router APIs if needed
 
 describe('My Feature Tests', () => {
   beforeEach(() => {

@@ -1,15 +1,10 @@
 import { Context } from "grammy";
+import { InlineKeyboardMarkup, ReplyKeyboardMarkup, ReplyKeyboardRemove, ForceReply } from "grammy/types";
 
 export interface SmartReplyOptions {
   chatId?: number | string;
   messageId?: number;
-  reply_markup?: { 
-    inline_keyboard: Array<Array<{ 
-      text: string; 
-      callback_data?: string;
-      switch_inline_query?: string;
-    }>> 
-  };
+  reply_markup?: InlineKeyboardMarkup | ReplyKeyboardMarkup | ReplyKeyboardRemove | ForceReply;
   parse_mode?: "HTML" | "Markdown" | "MarkdownV2";
 }
 

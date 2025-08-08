@@ -1,8 +1,6 @@
-import { HandlerContext } from '@/modules/core/handler';
+import { HandlerContext, createHandler } from '@/modules/core/handler';
 import { getPokerRoom } from '../../services/pokerService';
 import { validateRoomId, validatePlayerId } from '../../_utils/typeGuards';
-import { register } from '@/modules/core/compact-router';
-import { POKER_ACTIONS } from '../../compact-codes';
 import { getRoomInfoForUser, generateRoomInfoKeyboard } from '../../_utils/roomInfoHelper';
 import { getPlayerMessage, storePlayerMessage } from '../../services/roomMessageService';
 import { logFunctionStart, logFunctionEnd, logError } from '@/modules/core/logger';
@@ -19,11 +17,11 @@ async function handleInfo(context: HandlerContext, query: Record<string, string>
   const roomIdParam = roomId || r;
   
   logFunctionStart('handleInfo', { userId: user.id, roomId: roomIdParam, action });
-  console.log(`Processing room info request for user ${user.id}, roomId: ${roomIdParam}, action: ${action}`);
+  ctx.log.info('Processing room info request', { userId: user.id, roomId: roomIdParam, action });
   
   // Validate context has required information
   if (!ctx.chat?.id) {
-    console.error('❌ Missing chat ID in context');
+    ctx.log.error('Missing chat ID in context');
     logError('handleInfo', new Error('Missing chat ID in context'), { userId: user.id, roomId: roomIdParam });
     return;
   }
@@ -36,40 +34,39 @@ async function handleInfo(context: HandlerContext, query: Record<string, string>
       await handleShare(context, { roomId: roomIdParam });
       return;
     } catch (error) {
-      console.error('Share action error:', error);
-      const message = `❌ <b>خطا در اشتراک‌گذاری روم</b>\n\nخطا در پردازش درخواست اشتراک‌گذاری.`;
+      ctx.log.error('Share action error', { error: error instanceof Error ? error.message : String(error) });
+      const message = ctx.t('poker.room.info.error.share');
       
       try {
         await ctx.replySmart(message, {
           parse_mode: 'HTML',
           reply_markup: {
             inline_keyboard: [[
-              { text: '🔙 بازگشت به منو', callback_data: 'games.poker.backToMenu' }
+              { text: ctx.t('poker.room.buttons.backToMenu'), callback_data: ctx.keyboard.buildCallbackData('games.poker.back', {}) }
             ]]
           }
         });
       } catch (sendError) {
-        console.error('Failed to send share error message:', sendError);
+        ctx.log.error('Failed to send share error message', { error: sendError instanceof Error ? sendError.message : String(sendError) });
       }
       return;
     }
   }
   
   if (!roomIdParam) {
-    const message = `❌ <b>خطا در نمایش اطلاعات روم</b>\n\n` +
-      `شناسه روم مورد نیاز است.`;
+    const message = ctx.t('poker.room.info.error.missingRoomId');
     
     try {
       await ctx.replySmart(message, {
         parse_mode: 'HTML',
         reply_markup: {
           inline_keyboard: [[
-            { text: '🔙 بازگشت به منو', callback_data: 'games.poker.backToMenu' }
+            { text: ctx.t('poker.room.buttons.backToMenu'), callback_data: ctx.keyboard.buildCallbackData('games.poker.back', {}) }
           ]]
         }
       });
     } catch (sendError) {
-      console.error('Failed to send room ID error message:', sendError);
+      ctx.log.error('Failed to send room ID error message', { error: sendError instanceof Error ? sendError.message : String(sendError) });
     }
     return;
   }
@@ -92,7 +89,7 @@ async function handleInfo(context: HandlerContext, query: Record<string, string>
     }
     
     // Get personalized room information
-    const roomInfo = getRoomInfoForUser(room, validatedPlayerId);
+    const roomInfo = getRoomInfoForUser(room, validatedPlayerId, ctx);
     
     // Generate appropriate keyboard
     const keyboard = generateRoomInfoKeyboard(room, validatedPlayerId);
@@ -111,26 +108,27 @@ async function handleInfo(context: HandlerContext, query: Record<string, string>
       try {
         const { bot } = await import('@/bot');
         await bot.api.deleteMessage(existingMessage.chatId, existingMessage.messageId);
-        console.log(`🗑️ Deleted old message ${existingMessage.messageId} for player ${validatedPlayerId} in room ${validatedRoomId}`);
+        ctx.log.info('Deleted old message for player', { messageId: existingMessage.messageId, playerId: validatedPlayerId, roomId: validatedRoomId });
         
         // Remove old message from database
         const { api } = await import('@/lib/api');
         await api.roomMessages.deleteByRoomAndUser(validatedRoomId, validatedPlayerId);
       } catch (deleteError) {
-        console.log(`⚠️ Failed to delete old message for player ${validatedPlayerId}:`, deleteError);
+        ctx.log.warn('Failed to delete old message for player', { playerId: validatedPlayerId, error: deleteError instanceof Error ? deleteError.message : String(deleteError) });
         // Continue anyway - we'll send a new message
       }
     }
     
     // Send new message with proper error handling
-    let sentMessage;
+    let sentMessage: { message_id: number } | undefined;
     try {
-      sentMessage = await ctx.replySmart(roomInfo, {
+      await ctx.replySmart(roomInfo, {
         parse_mode: 'HTML',
         reply_markup: keyboard
       });
+      // replySmart may not return a message; skip storing if not available
     } catch (replyError) {
-      console.error('Failed to send room info message:', replyError);
+      ctx.log.error('Failed to send room info message', { error: replyError instanceof Error ? replyError.message : String(replyError) });
       
       // Fallback: try to edit if we have a callback query
       if (ctx.callbackQuery?.message) {
@@ -139,10 +137,10 @@ async function handleInfo(context: HandlerContext, query: Record<string, string>
             parse_mode: 'HTML',
             reply_markup: keyboard
           });
-          console.log('✅ Successfully edited existing message');
+          ctx.log.info('Successfully edited existing message');
           return;
         } catch (editError) {
-          console.error('Failed to edit message:', editError);
+          ctx.log.error('Failed to edit message', { error: editError instanceof Error ? editError.message : String(editError) });
           throw new Error('Unable to send or edit room info message');
         }
       } else {
@@ -151,36 +149,36 @@ async function handleInfo(context: HandlerContext, query: Record<string, string>
     }
     
     // Store the new message ID
-    if (sentMessage) {
+    if (sentMessage?.message_id) {
       await storePlayerMessage(validatedRoomId, validatedPlayerId, sentMessage.message_id, chatId);
-      console.log(`💾 Stored new message ID ${sentMessage.message_id} for player ${validatedPlayerId} in room ${validatedRoomId}`);
+      ctx.log.info('Stored new message ID', { messageId: sentMessage.message_id, playerId: validatedPlayerId, roomId: validatedRoomId });
     }
     
     logFunctionEnd('handleInfo', {}, { success: true, newMessageId: sentMessage?.message_id });
     
   } catch (error) {
-    console.error('Room info error:', error);
+    ctx.log.error('Room info error', { error: error instanceof Error ? error.message : String(error) });
     logError('handleInfo', error as Error);
     
     const errorMessage = error instanceof Error ? error.message : 'خطای نامشخص رخ داده است';
-    const message = `❌ <b>خطا در نمایش اطلاعات روم</b>\n\n${errorMessage}`;
+    const message = ctx.t('poker.room.info.error.generic', { error: errorMessage });
     
     try {
       await ctx.replySmart(message, {
         parse_mode: 'HTML',
         reply_markup: {
           inline_keyboard: [[
-            { text: '🔙 بازگشت به منو', callback_data: 'games.poker.backToMenu' }
+            { text: ctx.t('poker.room.buttons.backToMenu'), callback_data: ctx.keyboard.buildCallbackData('games.poker.back', {}) }
           ]]
         }
       });
     } catch (sendError) {
-      console.error('Failed to send error message:', sendError);
+      ctx.log.error('Failed to send error message', { error: sendError instanceof Error ? sendError.message : String(sendError) });
     }
   }
 }
 
 // Self-register with compact router
-register(POKER_ACTIONS.ROOM_INFO, handleInfo, 'Room Information');
+// Registration is handled by smart-router auto-discovery
 
-export default handleInfo; 
+export default createHandler(handleInfo); 

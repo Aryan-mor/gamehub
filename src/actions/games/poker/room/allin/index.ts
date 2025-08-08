@@ -1,11 +1,12 @@
-import { HandlerContext } from '@/modules/core/handler';
-import { 
+import { HandlerContext, createHandler } from '@/modules/core/handler';
+import {
   validateRoomIdWithError,
   validatePlayerIdWithError,
-  processBettingAction,
-  getGameStateDisplay,
-  generateGameActionKeyboard
+  processBettingAction
 } from '../../_utils/pokerUtils';
+import { getGameStateForUser } from '../../_utils/roomInfoHelper';
+import PokerKeyboardService from '../../services/pokerKeyboardService';
+import { StartQuerySchema } from '../../_utils/schemas';
 
 // Export the action key for consistency and debugging
 export const key = 'games.poker.room.allin';
@@ -15,11 +16,7 @@ export const key = 'games.poker.room.allin';
  */
 async function handleAllIn(context: HandlerContext, query: Record<string, string> = {}): Promise<void> {
   const { user, ctx } = context;
-  const { roomId } = query;
-  
-  if (!roomId) {
-    throw new Error('Room ID is required');
-  }
+  const { roomId } = StartQuerySchema.parse(query);
   
   try {
     // Validate IDs
@@ -30,8 +27,8 @@ async function handleAllIn(context: HandlerContext, query: Record<string, string
     const updatedRoom = await processBettingAction(validatedRoomId, validatedPlayerId, 'all-in');
     
     // Generate updated game state display
-    const gameStateDisplay = getGameStateDisplay(updatedRoom, validatedPlayerId);
-    const keyboard = generateGameActionKeyboard(updatedRoom, validatedPlayerId, false);
+    const gameStateDisplay = getGameStateForUser(updatedRoom, validatedPlayerId, ctx);
+    const keyboard = PokerKeyboardService.gameAction(updatedRoom, validatedPlayerId, false, ctx);
     
     // Update the message
     await ctx.replySmart(gameStateDisplay, {
@@ -40,11 +37,11 @@ async function handleAllIn(context: HandlerContext, query: Record<string, string
     });
     
   } catch (error) {
-    console.error('All-in action error:', error);
+    ctx.log.error('All-in action error', { error: error instanceof Error ? error.message : String(error) });
     
     const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-    await ctx.replySmart(`❌ Failed to go all-in: ${errorMessage}`);
+    await ctx.replySmart(ctx.t('poker.error.allin', { error: errorMessage }));
   }
 }
 
-export default handleAllIn; 
+export default createHandler(handleAllIn); 

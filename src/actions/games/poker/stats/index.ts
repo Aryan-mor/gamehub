@@ -1,4 +1,4 @@
-import { HandlerContext } from '@/modules/core/handler';
+import { HandlerContext, createHandler } from '@/modules/core/handler';
 // Use ctx.poker.generateMainMenuKeyboard() instead
 import { getPlayerStatistics } from '../services/gameResultService';
 import { validatePlayerId } from '../_utils/typeGuards';
@@ -62,11 +62,11 @@ async function handleStats(context: HandlerContext): Promise<void> {
     });
     
   } catch (error) {
-    console.error('Statistics display error:', error);
+    ctx.log.error('Statistics display error', { error: error instanceof Error ? error.message : String(error) });
     
     const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-    await ctx.replySmart(`❌ Failed to show statistics: ${errorMessage}`);
+    await ctx.replySmart(ctx.t('poker.error.stats', { error: errorMessage }));
   }
 }
 
-export default handleStats; 
+export default createHandler(handleStats); 

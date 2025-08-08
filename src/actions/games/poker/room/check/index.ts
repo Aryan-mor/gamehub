@@ -1,16 +1,17 @@
-import { HandlerContext } from '@/modules/core/handler';
-import { 
+import { HandlerContext, createHandler } from '@/modules/core/handler';
+import {
   validateRoomIdWithError,
   validatePlayerIdWithError,
   processBettingAction,
-  getGameStateDisplay,
-  generateGameActionKeyboard,
-  createUserFriendlyError,
-  register,
-  POKER_ACTIONS
+  createUserFriendlyError
 } from '../../_utils/pokerUtils';
+import { getGameStateForUser } from '../../_utils/roomInfoHelper';
+import PokerKeyboardService from '../../services/pokerKeyboardService';
 import { updateAllPlayersInRoom } from '../../services/playerNotificationService';
 import { bot } from '@/bot';
+import type { Bot } from 'grammy';
+import type { Context } from 'grammy';
+import { StartQuerySchema } from '../../_utils/schemas';
 
 // Export the action key for consistency and debugging
 export const key = 'games.poker.room.check';
@@ -20,16 +21,11 @@ export const key = 'games.poker.room.check';
  */
 async function handleCheck(context: HandlerContext, query: Record<string, string> = {}): Promise<void> {
   const { user, ctx } = context;
-  const { roomId, r } = query;
-  const roomIdParam = roomId || r;
-  
-  if (!roomIdParam) {
-    throw new Error('Room ID is required');
-  }
+  const { roomId: roomIdRaw } = StartQuerySchema.parse(query);
   
   try {
     // Validate IDs
-    const validatedRoomId = validateRoomIdWithError(roomIdParam);
+    const validatedRoomId = validateRoomIdWithError(roomIdRaw);
     const validatedPlayerId = validatePlayerIdWithError(user.id.toString());
     
     // Process the check action
@@ -39,8 +35,8 @@ async function handleCheck(context: HandlerContext, query: Record<string, string
     const isCurrentPlayer = updatedRoom.players[updatedRoom.currentPlayerIndex].id === validatedPlayerId;
     
     // Generate updated game state display
-    const gameStateDisplay = getGameStateDisplay(updatedRoom, validatedPlayerId);
-    const keyboard = generateGameActionKeyboard(updatedRoom, validatedPlayerId, isCurrentPlayer);
+    const gameStateDisplay = getGameStateForUser(updatedRoom, validatedPlayerId, ctx);
+    const keyboard = PokerKeyboardService.gameAction(updatedRoom, validatedPlayerId, isCurrentPlayer, ctx);
     
     // Update the message for the current player
     await ctx.replySmart(gameStateDisplay, {
@@ -49,17 +45,16 @@ async function handleCheck(context: HandlerContext, query: Record<string, string
     });
     
     // Update messages for all other players
-    await updateAllPlayersInRoom(bot, updatedRoom, validatedPlayerId);
+    await updateAllPlayersInRoom(bot as unknown as Bot<Context>, updatedRoom, validatedPlayerId);
     
   } catch (error) {
-    console.error('Check action error:', error);
+    ctx.log.error('Check action error', { error: error instanceof Error ? error.message : String(error) });
     
     const errorMessage = createUserFriendlyError(error as Error);
-    await ctx.replySmart(`❌ Failed to check: ${errorMessage}`);
+    await ctx.replySmart(ctx.t('poker.error.check', { error: errorMessage }));
   }
 }
 
-// Self-register with compact router
-register(POKER_ACTIONS.CHECK, handleCheck, 'Check');
+// Registration is handled by smart-router auto-discovery
 
-export default handleCheck; 
+export default createHandler(handleCheck); 

@@ -23,10 +23,11 @@ export interface UserWallet {
 /**
  * Get user wallet balance
  */
-export async function getUserBalance(): Promise<number> {
+export async function getUserBalance(ctx?: { log: { debug: (m: string, c?: Record<string, unknown>) => void } }): Promise<number> {
   // TODO: Implement actual database query
-  // For now, return a mock balance
-  return 1000;
+  const balance = 1000;
+  ctx?.log.debug('wallet:getUserBalance', { balance });
+  return balance;
 }
 
 /**
@@ -35,7 +36,8 @@ export async function getUserBalance(): Promise<number> {
 export async function updateUserBalance(
   userId: string, 
   amount: number, 
-  description: string
+  description: string,
+  ctx?: { log: { info: (m: string, c?: Record<string, unknown>) => void; error: (m: string, c?: Record<string, unknown>) => void } }
 ): Promise<boolean> {
   try {
     // TODO: Implement actual database transaction
@@ -43,11 +45,10 @@ export async function updateUserBalance(
     // 2. Validate sufficient funds for debit
     // 3. Update balance
     // 4. Log transaction
-    
-    console.log(`Wallet update: User ${userId}, Amount: ${amount}, Description: ${description}`);
+    ctx?.log.info('Wallet update', { userId, amount, description });
     return true;
   } catch (error) {
-    console.error('Wallet update error:', error);
+    ctx?.log.error('updateUserBalance', { error: error instanceof Error ? error.message : String(error), userId, amount });
     return false;
   }
 }
@@ -55,8 +56,9 @@ export async function updateUserBalance(
 /**
  * Check if user has sufficient funds
  */
-export async function hasSufficientFunds(_userId: string, requiredAmount: number): Promise<boolean> {
-  const balance = await getUserBalance();
+export async function hasSufficientFunds(_userId: string, requiredAmount: number, ctx?: { log: { debug: (m: string, c?: Record<string, unknown>) => void } }): Promise<boolean> {
+  const balance = await getUserBalance(ctx);
+  ctx?.log.debug('wallet:hasSufficientFunds', { requiredAmount, balance });
   return balance >= requiredAmount;
 }
 

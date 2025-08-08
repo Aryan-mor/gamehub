@@ -1,18 +1,15 @@
-import { 
-  PokerRoom, 
-  PokerPlayer
-} from '../types';
-import { logFunctionStart, logFunctionEnd, logError } from '@/modules/core/logger';
+import { PokerRoom, PokerPlayer } from '../types';
 
 /**
  * Notify all players in a room about game state changes
  */
 export async function notifyAllPlayers(
+  ctx: { log: { debug: (m: string, c?: Record<string, unknown>) => void; error: (m: string, c?: Record<string, unknown>) => void } },
   room: PokerRoom,
   message: string,
   includeCurrentPlayer = true
 ): Promise<void> {
-  logFunctionStart('notifyAllPlayers', { roomId: room.id, messageLength: message.length });
+  ctx.log.debug('notifyAllPlayers:start', { roomId: room.id, messageLength: message.length });
   
   try {
     const playersToNotify = includeCurrentPlayer 
@@ -22,18 +19,17 @@ export async function notifyAllPlayers(
     for (const player of playersToNotify) {
       if (player.chatId) {
         try {
-          // Send notification to player
-          // This would typically use a bot API call
-          console.log(`📤 Notifying player ${player.name} (${player.chatId}): ${message}`);
+          // Placeholder: integrate actual send via ctx.api when available
+          ctx.log.debug('notifyAllPlayers:notify', { player: player.name, chatId: player.chatId, length: message.length });
         } catch (error) {
-          console.error(`Failed to notify player ${player.name}:`, error);
+          ctx.log.error('notifyAllPlayers.send', { error: error instanceof Error ? error.message : String(error), playerId: player.id });
         }
       }
     }
     
-    logFunctionEnd('notifyAllPlayers', {}, { roomId: room.id });
+    ctx.log.debug('notifyAllPlayers:end', { roomId: room.id });
   } catch (error) {
-    logError('notifyAllPlayers', error as Error, { roomId: room.id });
+    ctx.log.error('notifyAllPlayers', { error: error instanceof Error ? error.message : String(error), roomId: room.id });
   }
 }
 
@@ -41,20 +37,20 @@ export async function notifyAllPlayers(
  * Notify specific player about game state
  */
 export async function notifyPlayer(
+  ctx: { log: { debug: (m: string, c?: Record<string, unknown>) => void; error: (m: string, c?: Record<string, unknown>) => void } },
   player: PokerPlayer,
   message: string
 ): Promise<void> {
-  logFunctionStart('notifyPlayer', { playerId: player.id, messageLength: message.length });
+  ctx.log.debug('notifyPlayer:start', { playerId: player.id, messageLength: message.length });
   
   try {
     if (player.chatId) {
-      // Send notification to specific player
-      console.log(`📤 Notifying player ${player.name} (${player.chatId}): ${message}`);
+      ctx.log.debug('notifyPlayer:notify', { player: player.name, chatId: player.chatId, length: message.length });
     }
     
-    logFunctionEnd('notifyPlayer', {}, { playerId: player.id });
+    ctx.log.debug('notifyPlayer:end', { playerId: player.id });
   } catch (error) {
-    logError('notifyPlayer', error as Error, { playerId: player.id });
+    ctx.log.error('notifyPlayer', { error: error instanceof Error ? error.message : String(error), playerId: player.id });
   }
 }
 
@@ -62,23 +58,24 @@ export async function notifyPlayer(
  * Notify about betting action
  */
 export async function notifyBettingAction(
+  ctx: { log: { debug: (m: string, c?: Record<string, unknown>) => void; error: (m: string, c?: Record<string, unknown>) => void } },
   room: PokerRoom,
   player: PokerPlayer,
   action: string,
   amount?: number
 ): Promise<void> {
-  logFunctionStart('notifyBettingAction', { roomId: room.id, playerId: player.id, action });
+  ctx.log.debug('notifyBettingAction:start', { roomId: room.id, playerId: player.id, action });
   
   try {
     const actionText = amount 
       ? `${player.name} ${action} ${amount} coins`
       : `${player.name} ${action}`;
     
-    await notifyAllPlayers(room, actionText, false);
+    await notifyAllPlayers(ctx, room, actionText, false);
     
-    logFunctionEnd('notifyBettingAction', {}, { roomId: room.id, playerId: player.id });
+    ctx.log.debug('notifyBettingAction:end', { roomId: room.id, playerId: player.id });
   } catch (error) {
-    logError('notifyBettingAction', error as Error, { roomId: room.id, playerId: player.id });
+    ctx.log.error('notifyBettingAction', { error: error instanceof Error ? error.message : String(error), roomId: room.id, playerId: player.id });
   }
 }
 
@@ -86,18 +83,19 @@ export async function notifyBettingAction(
  * Notify about round advancement
  */
 export async function notifyRoundAdvancement(
+  ctx: { log: { debug: (m: string, c?: Record<string, unknown>) => void; error: (m: string, c?: Record<string, unknown>) => void } },
   room: PokerRoom,
   newRound: string
 ): Promise<void> {
-  logFunctionStart('notifyRoundAdvancement', { roomId: room.id, newRound });
+  ctx.log.debug('notifyRoundAdvancement:start', { roomId: room.id, newRound });
   
   try {
     const message = `🔄 Round advanced to ${newRound}`;
-    await notifyAllPlayers(room, message);
+    await notifyAllPlayers(ctx, room, message);
     
-    logFunctionEnd('notifyRoundAdvancement', {}, { roomId: room.id });
+    ctx.log.debug('notifyRoundAdvancement:end', { roomId: room.id });
   } catch (error) {
-    logError('notifyRoundAdvancement', error as Error, { roomId: room.id });
+    ctx.log.error('notifyRoundAdvancement', { error: error instanceof Error ? error.message : String(error), roomId: room.id });
   }
 }
 
@@ -105,18 +103,19 @@ export async function notifyRoundAdvancement(
  * Notify about game end
  */
 export async function notifyGameEnd(
+  ctx: { log: { debug: (m: string, c?: Record<string, unknown>) => void; error: (m: string, c?: Record<string, unknown>) => void } },
   room: PokerRoom,
   winners: PokerPlayer[]
 ): Promise<void> {
-  logFunctionStart('notifyGameEnd', { roomId: room.id, winnerCount: winners.length });
+  ctx.log.debug('notifyGameEnd:start', { roomId: room.id, winnerCount: winners.length });
   
   try {
     const winnerNames = winners.map(w => w.name).join(', ');
     const message = `🏆 Game ended! Winners: ${winnerNames}`;
-    await notifyAllPlayers(room, message);
+    await notifyAllPlayers(ctx, room, message);
     
-    logFunctionEnd('notifyGameEnd', {}, { roomId: room.id });
+    ctx.log.debug('notifyGameEnd:end', { roomId: room.id });
   } catch (error) {
-    logError('notifyGameEnd', error as Error, { roomId: room.id });
+    ctx.log.error('notifyGameEnd', { error: error instanceof Error ? error.message : String(error), roomId: room.id });
   }
 } 

@@ -1,4 +1,4 @@
-import { HandlerContext } from '@/modules/core/handler';
+import { HandlerContext, createHandler } from '@/modules/core/handler';
 // Use ctx.poker.generateGameEndKeyboard() instead
 import { getHandHistory } from '../../services/gameResultService';
 import { getPokerRoom } from '../../services/pokerService';
@@ -51,11 +51,11 @@ async function handleHistory(context: HandlerContext, query: Record<string, stri
     });
     
   } catch (error) {
-    console.error('Hand history display error:', error);
+    ctx.log.error('Hand history display error', { error: error instanceof Error ? error.message : String(error) });
     
     const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-    await ctx.replySmart(`❌ Failed to show hand history: ${errorMessage}`);
+    await ctx.replySmart(ctx.t('poker.error.history', { error: errorMessage }));
   }
 }
 
-export default handleHistory; 
+export default createHandler(handleHistory); 

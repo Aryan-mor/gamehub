@@ -1,16 +1,13 @@
-import { 
-  PokerRoom, 
-  PlayerId 
-} from '../types';
-import { 
-  getPokerRoomsForPlayer 
-} from '../services/pokerService';
+import { PokerRoom, PlayerId } from '../types';
+import { getPokerRoomsForPlayer } from '../services/pokerService';
+import { GameHubContext } from '@/plugins';
 import { logFunctionStart, logFunctionEnd, logError } from '@/modules/core/logger';
 
 /**
  * Validate if a player can join a room
  */
 export async function validateRoomJoin(
+  ctx: GameHubContext,
   room: PokerRoom,
   playerId: PlayerId
 ): Promise<{
@@ -18,7 +15,7 @@ export async function validateRoomJoin(
   error?: string;
   activeRoom?: PokerRoom;
 }> {
-  logFunctionStart('validateRoomJoin', { roomId: room.id, playerId });
+  ctx.log.debug('validateRoomJoin:start', { roomId: room.id, playerId });
   
   try {
     // Check if room exists and is active
@@ -54,7 +51,7 @@ export async function validateRoomJoin(
       );
       
       if (activeRoom && activeRoom.id !== room.id) {
-        console.log(`🚫 VALIDATION FAILED: User ${playerId} is in room ${activeRoom.id} trying to join ${room.id}`);
+        ctx.log.warn('validateRoomJoin:already-in-another-room', { playerId, activeRoomId: activeRoom.id, targetRoomId: room.id });
         return {
           isValid: false,
           error: `شما در روم "${activeRoom.name}" هستید. ابتدا باید از آن روم خارج شوید.`,
@@ -65,10 +62,10 @@ export async function validateRoomJoin(
       // If getPokerRoomsForPlayer fails, check if it's a "no rooms found" error
       if (error instanceof Error && error.message.includes('Cannot coerce')) {
         // User has no rooms, allow join
-        console.log(`User ${playerId} has no rooms, allowing join`);
+        ctx.log.debug('validateRoomJoin:no-rooms-for-user', { playerId });
       } else {
         // Other error, log and continue
-        console.log(`Error checking user rooms for ${playerId}:`, error);
+        ctx.log.error('validateRoomJoin.getRooms', { error: error instanceof Error ? error.message : String(error), playerId });
       }
     }
     
@@ -80,11 +77,11 @@ export async function validateRoomJoin(
       };
     }
     
-    logFunctionEnd('validateRoomJoin', { isValid: true }, { roomId: room.id, playerId });
+    ctx.log.debug('validateRoomJoin:end', { isValid: true, roomId: room.id, playerId });
     return { isValid: true };
     
   } catch (error) {
-    logError('validateRoomJoin', error as Error, { roomId: room.id, playerId });
+    ctx.log.error('validateRoomJoin:error', { error: error instanceof Error ? error.message : String(error), roomId: room.id, playerId });
     return {
       isValid: false,
       error: 'Validation failed'

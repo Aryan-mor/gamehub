@@ -53,10 +53,7 @@ export function generateConfirmationKeyboard(roomId: string, ctx?: GameHubContex
   return {
     inline_keyboard: [
       [
-        {
-          text: ctx.t('🔗 Share'),
-          callback_data: `games.poker.room.share?roomId=${roomId}`
-        }
+        { text: ctx.t('poker.room.buttons.share'), callback_data: ctx.keyboard.buildCallbackData('games.poker.room.share', { roomId }) }
       ]
     ]
   };
@@ -76,16 +73,10 @@ export function generateInviteKeyboard(roomId: string, ctx?: GameHubContext): {
   return {
     inline_keyboard: [
       [
-        {
-          text: ctx.t('🔗 Share'),
-          callback_data: `games.poker.room.share?roomId=${roomId}`
-        }
+        { text: ctx.t('poker.room.buttons.share'), callback_data: ctx.keyboard.buildCallbackData('games.poker.room.share', { roomId }) }
       ],
       [
-        {
-          text: ctx.t('🔙 Back'),
-          callback_data: `games.poker.room.join?roomId=${roomId}`
-        }
+        { text: ctx.t('poker.room.buttons.back'), callback_data: ctx.keyboard.buildCallbackData('games.poker.room.join', { roomId }) }
       ]
     ]
   };

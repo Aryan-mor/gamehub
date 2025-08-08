@@ -1,13 +1,12 @@
-import { HandlerContext } from '@/modules/core/handler';
-import { 
-  validateRoomIdWithError,
-  validatePlayerIdWithError,
-  getPokerRoom,
-  getGameStateDisplay,
-  generateGameActionKeyboard
-} from '../../_utils/pokerUtils';
+import { HandlerContext, createHandler } from '@/modules/core/handler';
+import { getPokerRoom } from '../../_utils/pokerUtils';
+import { translatePokerError } from '../../_utils/validators';
+import { RaiseQuerySchema } from '../../_utils/schemas';
+import { validatePlayerIdWithError, validateRoomIdWithError } from '../../_utils/pokerUtils';
+import { getGameStateForUser } from '../../_utils/roomInfoHelper';
+import PokerKeyboardService from '../../services/pokerKeyboardService';
 // Use ctx.poker.generateRaiseAmountKeyboard() instead
-import { processBettingAction, } from '../../services/gameStateService';
+import { processBettingAction } from '../../services/gameStateService';
 import { } from '../../services/pokerService';
 import { } from '../../_utils/typeGuards';
 
@@ -19,25 +18,27 @@ export const key = 'games.poker.room.raise';
  */
 async function handleRaise(context: HandlerContext, query: Record<string, string>): Promise<void> {
   const { user, ctx } = context;
-  const { roomId, amount } = query;
+  const { roomId, amount } = RaiseQuerySchema.parse(query);
+  const playerId = validatePlayerIdWithError(String(user.id));
   
-  if (!roomId) {
-    throw new Error('Room ID is required');
-  }
-  
-  if (!amount) {
+  if (amount === undefined || amount === null) {
     // Show raise amount selection if no amount provided
-    await showRaiseAmountSelection(context, roomId);
+    if (!roomId) {
+      throw new Error('Invalid parameters');
+    }
+    await showRaiseAmountSelection(context, validateRoomIdWithError(roomId));
     return;
   }
   
-  console.log(`Processing raise action for room ${roomId} with amount ${amount}`);
+  ctx.log.info('Processing raise action', { roomId, amount, userId: user.id });
   
   try {
-    // Validate IDs
+    if (!roomId || !playerId || amount === undefined) {
+      throw new Error('Invalid parameters');
+    }
     const validatedRoomId = validateRoomIdWithError(roomId);
-    const validatedPlayerId = validatePlayerIdWithError(user.id.toString());
-    const raiseAmount = parseInt(amount);
+    const validatedPlayerId = playerId;
+    const raiseAmount = amount;
     
     if (isNaN(raiseAmount) || raiseAmount <= 0) {
       throw new Error('Invalid raise amount');
@@ -47,7 +48,7 @@ async function handleRaise(context: HandlerContext, query: Record<string, string
     const updatedRoom = await processBettingAction(validatedRoomId, validatedPlayerId, 'raise', raiseAmount);
     
     // Get updated game state
-    const gameStateMessage = getGameStateDisplay(updatedRoom, validatedPlayerId);
+    const gameStateMessage = getGameStateForUser(updatedRoom, validatedPlayerId, ctx);
     
     // Add action confirmation
     const actionMessage = `\n💰 <b>You raised to ${raiseAmount} coins!</b>\n\n`;
@@ -66,7 +67,7 @@ async function handleRaise(context: HandlerContext, query: Record<string, string
     const message = gameStateMessage + actionMessage + turnMessage;
     
     // Generate appropriate keyboard
-    const keyboard = generateGameActionKeyboard(updatedRoom, validatedPlayerId, isCurrentPlayerTurn);
+    const keyboard = PokerKeyboardService.gameAction(updatedRoom, validatedPlayerId, isCurrentPlayerTurn, ctx);
 
     await ctx.replySmart(message, {
       parse_mode: 'HTML',
@@ -74,10 +75,9 @@ async function handleRaise(context: HandlerContext, query: Record<string, string
     });
     
   } catch (error) {
-    console.error('Raise action error:', error);
-    
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-    await ctx.replySmart(`❌ Failed to raise: ${errorMessage}`, {
+    ctx.log.error('Raise action error', { error: error instanceof Error ? error.message : String(error) });
+    const message = translatePokerError(ctx, error, 'poker.error.raise');
+    await ctx.replySmart(message, {
       parse_mode: 'HTML'
     });
   }
@@ -86,12 +86,11 @@ async function handleRaise(context: HandlerContext, query: Record<string, string
 /**
  * Show raise amount selection keyboard
  */
-async function showRaiseAmountSelection(context: HandlerContext, roomId: string): Promise<void> {
+async function showRaiseAmountSelection(context: HandlerContext, roomId: import('../../types').RoomId): Promise<void> {
   const { ctx } = context;
   
   try {
-    const validatedRoomId = validateRoomIdWithError(roomId);
-    const room = await getPokerRoom(validatedRoomId);
+    const room = await getPokerRoom(roomId);
     
     if (!room) {
       throw new Error('Room not found');
@@ -111,13 +110,13 @@ async function showRaiseAmountSelection(context: HandlerContext, roomId: string)
     });
     
   } catch (error) {
-    console.error('Raise amount selection error:', error);
+    ctx.log.error('Raise amount selection error', { error: error instanceof Error ? error.message : String(error) });
     
     const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-    await ctx.replySmart(`❌ Failed to show raise options: ${errorMessage}`, {
+    await ctx.replySmart(ctx.t('poker.error.raiseOptions', { error: errorMessage }), {
       parse_mode: 'HTML'
     });
   }
 }
 
-export default handleRaise; 
+export default createHandler(handleRaise); 

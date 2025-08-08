@@ -1,4 +1,4 @@
-import { HandlerContext } from '@/modules/core/handler';
+import { HandlerContext, createHandler } from '@/modules/core/handler';
 // Use ctx.poker.generateGameEndKeyboard() instead
 import { trackGameStatistics } from '../../services/gameResultService';
 import { getPokerRoom } from '../../services/pokerService';
@@ -56,11 +56,11 @@ async function handleGameEnd(context: HandlerContext, query: Record<string, stri
     });
     
   } catch (error) {
-    console.error('Game end display error:', error);
+    ctx.log.error('Game end display error', { error: error instanceof Error ? error.message : String(error) });
     
     const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-    await ctx.replySmart(`❌ Failed to show game results: ${errorMessage}`);
+    await ctx.replySmart(ctx.t('poker.error.gameEnd', { error: errorMessage }));
   }
 }
 
-export default handleGameEnd; 
+export default createHandler(handleGameEnd); 

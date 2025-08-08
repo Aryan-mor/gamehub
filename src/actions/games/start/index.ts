@@ -1,4 +1,4 @@
-import { HandlerContext } from '@/modules/core/handler';
+import { HandlerContext, createHandler } from '@/modules/core/handler';
 import { isValidUserId } from '@/utils/typeGuards';
 
 // Export the action key for consistency and debugging
@@ -25,12 +25,12 @@ async function handleStartGame(context: HandlerContext): Promise<void> {
     
     // Create game selection buttons
     const buttons = [
-      { text: ctx.t('🎴 Poker'), callbackData: { action: pokerStartKey } },
+      { text: ctx.t('bot.games.poker'), callbackData: { action: pokerStartKey } },
     ];
     
-    const keyboard = createOptimizedKeyboard(buttons, true);
+    const keyboard = createOptimizedKeyboard(buttons);
     
-    const message = ctx.t('🎮 <b>GameHub - Poker Focus</b>\n\n🃏 Challenge your friends in competitive poker games!\n\nJoin rooms, play Texas Hold\'em, and compete for coins.');
+    const message = ctx.t('bot.games.intro.pokerFocus');
     
     // Use replySmart to handle message editing/sending
     await ctx.replySmart(message, { 
@@ -39,11 +39,11 @@ async function handleStartGame(context: HandlerContext): Promise<void> {
     });
     
   } catch (error) {
-    console.error('StartGame action error:', error);
+    ctx.log?.error?.('StartGame action error', { error: error instanceof Error ? error.message : String(error) });
     
     // Fallback message
-    await ctx.replySmart(ctx.t('🎮 Game selection is currently available for Poker only.'));
+    await ctx.replySmart(ctx.t('bot.games.onlyPoker'));
   }
 }
 
-export default handleStartGame; 
+export default createHandler(handleStartGame); 

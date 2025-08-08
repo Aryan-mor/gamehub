@@ -9,7 +9,7 @@ export class UtilsPlugin implements GameHubPlugin {
   name = 'utils';
   version = '1.0.0';
 
-  buildContext: ContextBuilder = (_ctx: Context): Partial<GameHubContext> => {
+  buildContext: ContextBuilder = (_: Context): Partial<GameHubContext> => {
     return {
       utils: {
         formatCoins: (amount: number): string => {
@@ -27,7 +27,7 @@ export class UtilsPlugin implements GameHubPlugin {
     };
   };
 
-  middleware = async (_ctx: GameHubContext, next: () => Promise<void>): Promise<void> => {
+  middleware = async (_: GameHubContext, next: () => Promise<void>): Promise<void> => {
     await next();
   };
 }

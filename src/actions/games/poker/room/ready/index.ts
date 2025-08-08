@@ -1,5 +1,5 @@
-import { HandlerContext } from '@/modules/core/handler';
-import { Context } from 'grammy';
+import { HandlerContext, createHandler } from '@/modules/core/handler';
+import { GameHubContext } from '@/plugins';
 import { 
   validateRoomIdWithError,
   validatePlayerIdWithError,
@@ -8,14 +8,12 @@ import {
 import { updatePlayerReadyStatus, } from '../../services/pokerService';
 import { } from '../../_utils/typeGuards';
 import { } from '../../_engine/activeUser';
-import { register } from '@/modules/core/compact-router';
-import { POKER_ACTIONS } from '../../compact-codes';
 
 // Export the action key for consistency and debugging
 export const key = 'games.poker.room.ready';
 
 // Register with compact router
-register(POKER_ACTIONS.READY_TOGGLE, handleReady);
+// Registration is handled by smart-router auto-discovery
 
 /**
  * Handle player ready status in a poker room
@@ -60,19 +58,19 @@ async function handleReady(context: HandlerContext, query: Record<string, string
     const otherPlayers = updatedRoom.players.filter(p => p.id !== validatedPlayerId);
     for (const otherPlayer of otherPlayers) {
       if (!otherPlayer.chatId) {
-        console.log(`⚠️ No chatId stored for player ${otherPlayer.id}, skipping update`);
+        ctx.log.warn('No chatId stored for player, skipping update', { playerId: otherPlayer.id });
         continue;
       }
       
       try {
-        console.log(`📢 Updating message for player ${otherPlayer.id} (chatId: ${otherPlayer.chatId})`);
+        ctx.log.info('Updating message for player', { playerId: otherPlayer.id, chatId: otherPlayer.chatId });
         
         // Create a mock context for other player using stored chatId
-        const otherPlayerContext = {
-          ...ctx,
-          chat: { id: otherPlayer.chatId },
-          from: { id: parseInt(otherPlayer.id) }
-        } as unknown as Context;
+          const otherPlayerContext: GameHubContext = {
+            ...ctx,
+            chat: { id: otherPlayer.chatId } as unknown as GameHubContext['chat'],
+            from: { id: Number(otherPlayer.id) } as unknown as GameHubContext['from'],
+          } as GameHubContext;
         
         const playerState = {
           gameType: 'poker' as const,
@@ -83,18 +81,18 @@ async function handleReady(context: HandlerContext, query: Record<string, string
         
         // Send updated room state to other players
         await handlePokerActiveUser(otherPlayerContext, playerState, updatedRoom);
-        console.log(`✅ Updated message for player ${otherPlayer.id}`);
+        ctx.log.info('Updated message for player', { playerId: otherPlayer.id });
       } catch (error) {
-        console.error(`❌ Failed to update message for player ${otherPlayer.id}:`, error);
+        ctx.log.error('Failed to update message for player', { playerId: otherPlayer.id, error: error instanceof Error ? error.message : String(error) });
       }
     }
     
   } catch (error) {
-    console.error('Ready action error:', error);
+    ctx.log.error('Ready action error', { error: error instanceof Error ? error.message : String(error) });
     
     const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-    await ctx.replySmart(`❌ Failed to set ready status: ${errorMessage}`);
+    await ctx.replySmart(ctx.t('poker.error.ready', { error: errorMessage }));
   }
 }
 
-export default handleReady; 
+export default createHandler(handleReady); 

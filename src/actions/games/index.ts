@@ -21,10 +21,11 @@ export async function handleGamesMessage(messageKey: string, context: HandlerCon
     // For games.poker.*, games.dice.*, etc.
     // No need to handle specific actions here as auto-discovery will take care of it
   } catch (error) {
-    console.error('Games message handling error:', error);
-    
-    if (context.ctx && context.ctx.reply) {
-      await context.ctx.reply('Sorry, there was an error processing your game request.');
+    if (context.ctx && context.ctx.log) {
+      context.ctx.log.error('handleGamesMessage', { error: error instanceof Error ? error.message : String(error) });
+    }
+    if (context.ctx && context.ctx.replySmart) {
+      await context.ctx.replySmart(context.ctx.t('bot.error.generic'));
     }
   }
 } 

@@ -1,4 +1,4 @@
-import { HandlerContext } from '@/modules/core/handler';
+import { HandlerContext, createHandler } from '@/modules/core/handler';
 // Use ctx.poker.generateMainMenuKeyboard() instead
 import { createPokerRoom } from '../../services/pokerService';
 import { validatePlayerId } from '../../_utils/typeGuards';
@@ -69,11 +69,11 @@ async function handleNewGame(context: HandlerContext): Promise<void> {
     });
     
   } catch (error) {
-    console.error('New game action error:', error);
+    ctx.log.error('New game action error', { error: error instanceof Error ? error.message : String(error) });
     
     const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-    await ctx.replySmart(`❌ Failed to create new room: ${errorMessage}`);
+    await ctx.replySmart(ctx.t('poker.error.newgame', { error: errorMessage }));
   }
 }
 
-export default handleNewGame; 
+export default createHandler(handleNewGame); 

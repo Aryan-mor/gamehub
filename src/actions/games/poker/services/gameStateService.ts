@@ -77,7 +77,10 @@ export const startPokerGame = async (roomId: RoomId): Promise<PokerRoom> => {
       updatedAt: Date.now()
     };
     
-    console.log(`🔍 Initial game state:`, {
+    logFunctionStart('startPokerGame.initialState', {
+      step: 'initial',
+    });
+    logFunctionEnd('startPokerGame.initialState', {
       players: updatedRoom.players.length,
       cards: updatedRoom.players.map(p => p.cards?.length || 0),
       smallBlindIndex: updatedRoom.smallBlindIndex,
@@ -94,7 +97,7 @@ export const startPokerGame = async (roomId: RoomId): Promise<PokerRoom> => {
       currentPlayerIndex: (roomWithBlinds.bigBlindIndex + 1) % roomWithBlinds.players.length
     };
     
-    console.log(`🔍 Final game state:`, {
+    logFunctionEnd('startPokerGame.finalState', {
       currentPlayerIndex: finalRoom.currentPlayerIndex,
       currentPlayerId: finalRoom.players[finalRoom.currentPlayerIndex].id,
       pot: finalRoom.pot,
@@ -118,8 +121,8 @@ export const startPokerGame = async (roomId: RoomId): Promise<PokerRoom> => {
  * Post small and big blinds
  */
 async function postBlinds(room: PokerRoom): Promise<PokerRoom> {
-  console.log(`🔍 Posting blinds for room ${room.id}`);
-  console.log(`🔍 Room players before blinds:`, room.players.map(p => ({ id: p.id, name: p.name, cards: p.cards?.length || 0, chips: p.chips })));
+  logFunctionStart('postBlinds', { roomId: room.id });
+  logFunctionEnd('postBlinds.before', room.players.map(p => ({ id: p.id, name: p.name, cards: p.cards?.length || 0, chips: p.chips })), { roomId: room.id });
   
   const updatedPlayers = [...room.players];
   
@@ -154,8 +157,7 @@ async function postBlinds(room: PokerRoom): Promise<PokerRoom> {
     currentPlayerIndex: room.currentPlayerIndex // Preserve currentPlayerIndex
   };
   
-  console.log(`🔍 Room players after blinds:`, updatedRoom.players.map(p => ({ id: p.id, name: p.name, cards: p.cards?.length || 0, chips: p.chips, betAmount: p.betAmount })));
-  console.log(`🔍 Final pot: ${updatedRoom.pot}, current bet: ${updatedRoom.currentBet}`);
+  logFunctionEnd('postBlinds.after', updatedRoom.players.map(p => ({ id: p.id, name: p.name, cards: p.cards?.length || 0, chips: p.chips, betAmount: p.betAmount })), { roomId: room.id, pot: updatedRoom.pot, currentBet: updatedRoom.currentBet });
   
   return await updatePokerRoom(room.id, updatedRoom);
 }
@@ -186,13 +188,8 @@ export const processBettingAction = async (
       throw new Error('Player not in room');
     }
     
-    // Debug logs
-    console.log(`🔍 TURN DEBUG:`);
-    console.log(`  - playerId: "${playerId}"`);
-    console.log(`  - playerIndex: ${playerIndex}`);
-    console.log(`  - currentPlayerIndex: ${room.currentPlayerIndex}`);
-    console.log(`  - currentPlayer.id: "${room.players[room.currentPlayerIndex]?.id}"`);
-    console.log(`  - isCurrentTurn: ${playerIndex === room.currentPlayerIndex}`);
+    // Debug logs via core logger
+    logFunctionStart('processBettingAction.turnDebug', { playerId, playerIndex, currentPlayerIndex: room.currentPlayerIndex, currentPlayerId: room.players[room.currentPlayerIndex]?.id, isCurrentTurn: playerIndex === room.currentPlayerIndex });
     
     if (playerIndex !== room.currentPlayerIndex) {
       throw new Error('Not your turn');
@@ -220,7 +217,7 @@ export const processBettingAction = async (
         // OR if this is the first action after Big Blind (Small Blind can check)
         if (player.betAmount < room.currentBet && room.bettingRound === 'preflop' && room.currentPlayerIndex === room.smallBlindIndex) {
           // Small Blind can check if they are the first to act after Big Blind
-          console.log(`✅ Allowing Small Blind check for player ${playerId}`);
+          logFunctionEnd('processBettingAction.smallBlindCheckAllowed', {}, { playerId });
         } else if (player.betAmount < room.currentBet) {
           throw new Error('Cannot check when there is a bet to call');
         }
@@ -471,152 +468,18 @@ async function endGame(room: PokerRoom): Promise<PokerRoom> {
  * Get game state display for a player
  */
 export function getGameStateDisplay(room: PokerRoom, playerId: PlayerId): string {
-  const player = room.players.find(p => p.id === playerId);
-  if (!player) {
-    throw new Error('Player not found');
-  }
-  
-  let display = `🎰 <b>Poker Game - ${room.name}</b>\n\n`;
-  
-  // Check if game is finished
-  if (room.status === 'finished') {
-    display += `🏆 <b>Game Complete!</b>\n\n`;
-    display += `💰 <b>Final Pot:</b> ${room.pot} coins\n`;
-    display += `⏱️ <b>Duration:</b> ${getGameDuration(room)} minutes\n\n`;
-    
-    // Show community cards
-    if (room.communityCards.length > 0) {
-      display += `🃏 <b>Community Cards:</b>\n`;
-      display += `${room.communityCards.map(card => getCardDisplay(card)).join(' ')}\n\n`;
-    }
-    
-    // Show player's final result
-    const activePlayers = room.players.filter(p => !p.isFolded);
-    const playerHands = activePlayers.map(p => {
-      const bestHand = findBestHand(p.cards, room.communityCards);
-      return { player: p, hand: bestHand };
-    });
-    
-    const sortedHands = playerHands.sort((a, b) => b.hand.value - a.hand.value);
-    const winningHandValue = sortedHands[0].hand.value;
-    const winners = sortedHands.filter(ph => ph.hand.value === winningHandValue);
-    const isWinner = winners.some(w => w.player.id === playerId);
-    
-    display += `🎴 <b>Your Cards:</b>\n`;
-    display += `${player.cards.map(card => getCardDisplay(card)).join(' ')}\n\n`;
-    
-    if (player.isFolded) {
-      display += `❌ <b>You folded</b>\n`;
-    } else {
-      const playerHand = playerHands.find(ph => ph.player.id === playerId);
-      if (playerHand) {
-        display += `${isWinner ? '🥇' : '🥈'} <b>Your Hand:</b> ${getHandTypeDisplay(playerHand.hand.type)}\n`;
-        display += `   ${playerHand.hand.cards.map(card => getCardDisplay(card)).join(' ')}\n\n`;
-      }
-    }
-    
-    display += `💎 <b>Final Chips:</b> ${player.chips} (${player.chips > 1000 ? '+' : ''}${player.chips - 1000})\n\n`;
-    
-    // Show winner announcement
-    if (winners.length === 1) {
-      const winner = winners[0];
-      display += `🏆 <b>Winner: ${winner.player.name}</b>\n`;
-      display += `   ${getHandTypeDisplay(winner.hand.type)} - ${winner.hand.cards.map(card => getCardDisplay(card)).join(' ')}\n`;
-    } else {
-      display += `🏆 <b>Winners (Split Pot):</b>\n`;
-      winners.forEach(winner => {
-        display += `   ${winner.player.name} - ${getHandTypeDisplay(winner.hand.type)}\n`;
-      });
-    }
-    
-    return display;
-  }
-  
-  // Game in progress
-  display += `💰 <b>Pot:</b> ${room.pot} coins\n`;
-  display += `🎯 <b>Current Bet:</b> ${room.currentBet} coins\n`;
-  display += `🔄 <b>Round:</b> ${room.bettingRound}\n`;
-  display += `🎰 <b>Small Blind:</b> ${room.smallBlind} coins\n`;
-  display += `🎰 <b>Big Blind:</b> ${room.bigBlind} coins\n\n`;
-  
-  // Community cards
-  if (room.communityCards.length > 0) {
-    display += `🃏 <b>Community Cards:</b>\n`;
-    display += `${room.communityCards.map(card => getCardDisplay(card)).join(' ')}\n\n`;
-  }
-  
-  // Player's cards - Hide in Pre-flop
-  if (room.bettingRound === 'preflop') {
-    // In Pre-flop, don't show cards at all
-    display += `🎴 <b>Your Cards:</b>\n`;
-    display += `(کارت‌ها در مرحله Pre-flop نمایش داده نمی‌شوند)\n\n`;
-  } else {
-    // In other rounds, show cards normally
-    display += `🎴 <b>Your Cards:</b>\n`;
-    if (player.cards && Array.isArray(player.cards) && player.cards.length > 0) {
-      const cardDisplays = player.cards.map(card => getCardDisplay(card));
-      display += `${cardDisplays.join(' ')}\n\n`;
-    } else {
-      display += `(کارت‌ها هنوز تقسیم نشده‌اند)\n\n`;
-    }
-  }
-  
-  // Player's chips and bet
-  display += `💎 <b>Your Chips:</b> ${player.chips}\n`;
-  display += `💸 <b>Your Bet:</b> ${player.betAmount}\n\n`;
-  
-  // Turn status
-  const currentPlayer = room.players[room.currentPlayerIndex];
-  const isCurrentPlayer = currentPlayer.id === playerId;
-  
-  if (isCurrentPlayer) {
-    display += `🎯 <b>نوبت شماست!</b>\n\n`;
-    display += `انتخاب کنید:\n`;
-    display += `• 🃏 Call (برابری)\n`;
-    display += `• ❌ Fold (تخلیه)\n`;
-    display += `• 💰 Raise (افزایش)\n\n`;
-  } else {
-    // Use display name (first_name + last_name) instead of username for privacy
-    const displayName = currentPlayer.name || currentPlayer.username || 'Unknown Player';
-    display += `⏳ <b>منتظر ${displayName}...</b>\n\n`;
-    display += `بازیکن فعلی در حال تصمیم‌گیری است.\n\n`;
-  }
-  
-  // All players (including current player)
-  display += `👥 <b>Players:</b>\n`;
-  room.players.forEach(p => {
-    const isCurrent = p.id === room.players[room.currentPlayerIndex].id;
-    const isThisPlayer = p.id === playerId;
-    
-    let status = '';
-    if (p.isFolded) {
-      status = '❌ Folded';
-    } else if (p.isAllIn) {
-      status = '🔥 All-In';
-    } else if (p.betAmount > 0) {
-      status = `💰 Bet: ${p.betAmount}`;
-    } else {
-      status = '⏳ Waiting';
-    }
-    
-    if (isCurrent) {
-      status += ' 🎯 (Current Turn)';
-    }
-    
-    if (isThisPlayer) {
-      status += ' 👤 (You)';
-    }
-    
-    display += `• ${p.name}: ${p.chips} chips ${status}\n`;
-  });
-  
-  return display;
+  // Deprecated in favor of i18n-aware getGameStateForUser in roomInfoHelper
+  // Keeping for backward compatibility; delegate
+  // Use dynamic import signature compatible with TS
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const roomInfoHelper = require('../_utils/roomInfoHelper') as { getRoomInfoForUser: (room: PokerRoom, playerId: PlayerId) => string };
+  return roomInfoHelper.getRoomInfoForUser(room, playerId);
 }
 
 /**
  * Get game duration in minutes
  */
-function getGameDuration(room: PokerRoom): number {
+function _getGameDuration(room: PokerRoom): number {
   if (!room.startedAt || !room.endedAt) {
     return 0;
   }
@@ -628,7 +491,7 @@ function getGameDuration(room: PokerRoom): number {
 /**
  * Get hand type display helper
  */
-function getHandTypeDisplay(type: HandType): string {
+function _getHandTypeDisplay(type: HandType): string {
   const displayNames: Record<string, string> = {
     'high-card': 'High Card',
     'pair': 'Pair',
@@ -648,7 +511,7 @@ function getHandTypeDisplay(type: HandType): string {
 /**
  * Get card display helper
  */
-function getCardDisplay(card: Card): string {
+function _getCardDisplay(card: Card): string {
   const suitSymbols: Record<string, string> = {
     'hearts': '♥️',
     'diamonds': '♦️',

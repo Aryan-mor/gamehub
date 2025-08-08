@@ -30,7 +30,7 @@ export async function isNotJoinedMiddleware(ctx: HandlerContext, query: Record<s
     const roomId = getRoomIdFromQuery(query) as RoomId;
     
     if (!roomId) {
-      await ctx.ctx.reply('❌ Room ID is required');
+      await ctx.ctx.replySmart(ctx.ctx.t('poker.middleware.error.roomIdRequired'));
       return false;
     }
     
@@ -39,7 +39,7 @@ export async function isNotJoinedMiddleware(ctx: HandlerContext, query: Record<s
     // Get room information
     const room = await getPokerRoom(roomId);
     if (!room) {
-      await ctx.ctx.reply('❌ Room not found');
+      await ctx.ctx.replySmart(ctx.ctx.t('poker.room.error.notFound'));
       logFunctionEnd('isNotJoinedMiddleware', { isNotJoined: false, reason: 'room_not_found' }, { userId, roomId });
       return false;
     }
@@ -47,7 +47,7 @@ export async function isNotJoinedMiddleware(ctx: HandlerContext, query: Record<s
     // Check if user is already in the room
     const existingPlayer = room.players.find(player => player.id === userId);
     if (existingPlayer) {
-      await ctx.ctx.reply('❌ You are already a member of this room');
+      await ctx.ctx.replySmart(ctx.ctx.t('poker.middleware.error.alreadyMember'));
       logFunctionEnd('isNotJoinedMiddleware', { isNotJoined: false, reason: 'already_member' }, { userId, roomId });
       return false;
     }
@@ -57,7 +57,7 @@ export async function isNotJoinedMiddleware(ctx: HandlerContext, query: Record<s
     
   } catch (error) {
     logError('isNotJoinedMiddleware', error as Error, {});
-    await ctx.ctx.reply('❌ Error checking room membership');
+    await ctx.ctx.replySmart(ctx.ctx.t('poker.middleware.error.checkMembership'));
     return false;
   }
 } 

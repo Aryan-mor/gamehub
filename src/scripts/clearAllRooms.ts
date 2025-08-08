@@ -1,44 +1,45 @@
 import { api } from '@/lib/api';
+import { logger } from '@/modules/core/logger';
 
 async function clearAllRooms(): Promise<void> {
   try {
-    console.log('🗑️ Clearing all poker rooms...');
+    logger.info('🗑️ Clearing all poker rooms...');
     
     const rooms = await api.rooms.getByGameType('poker');
     
     if (!rooms || rooms.length === 0) {
-      console.log('✅ No rooms found');
+      logger.info('✅ No rooms found');
       return;
     }
     
-    console.log(`📊 Found ${rooms.length} rooms to delete:`);
+    logger.info(`📊 Found ${rooms.length} rooms to delete:`);
     
     for (const room of rooms) {
-      console.log(`🗑️ Deleting room: ${room.room_id}`);
-      console.log(`   - Name: ${room.name}`);
-      console.log(`   - Status: ${room.status}`);
-      console.log(`   - Max Players: ${room.max_players}`);
+      logger.info(`🗑️ Deleting room: ${room.room_id}`);
+      logger.info(`   - Name: ${room.name}`);
+      logger.info(`   - Status: ${room.status}`);
+      logger.info(`   - Max Players: ${room.max_players}`);
       
       try {
         await api.rooms.delete(room.room_id as string);
-        console.log(`✅ Deleted: ${room.room_id}`);
+        logger.info(`✅ Deleted: ${room.room_id}`);
       } catch (deleteError) {
-        console.error(`❌ Error deleting room ${room.room_id}:`, deleteError);
+        logger.error({ err: deleteError }, `❌ Error deleting room ${room.room_id}:`);
       }
     }
     
-    console.log(`🎉 Successfully deleted ${rooms.length} rooms`);
+    logger.info(`🎉 Successfully deleted ${rooms.length} rooms`);
     
   } catch (error) {
-    console.error('❌ Error clearing rooms:', error);
+    logger.error({ err: error }, '❌ Error clearing rooms:');
   }
 }
 
 // Run the script
 clearAllRooms().then(() => {
-  console.log('🎉 Script completed');
+  logger.info('🎉 Script completed');
   process.exit(0);
 }).catch((error) => {
-  console.error('❌ Script failed:', error);
+  logger.error({ err: error }, '❌ Script failed:');
   process.exit(1);
-}); 
+});

@@ -1,10 +1,10 @@
-import fetch from "node-fetch";
+import { logger } from '@/modules/core/logger';
 import { readFileSync } from "fs";
 
 const [, , targetToken] = process.argv;
 
 if (!targetToken) {
-  console.error("Usage: pnpm run set:bot-commands <TELEGRAM_BOT_TOKEN>");
+  logger.error("Usage: pnpm run set:bot-commands <TELEGRAM_BOT_TOKEN>");
   process.exit(1);
 }
 
@@ -12,7 +12,7 @@ const config = JSON.parse(readFileSync("bot-config.json", "utf-8"));
 const commands = config.getCommands?.result;
 
 if (!commands || !Array.isArray(commands)) {
-  console.error("No commands found in bot-config.json");
+  logger.error("No commands found in bot-config.json");
   process.exit(1);
 }
 
@@ -27,9 +27,9 @@ async function setBotCommands(): Promise<void> {
       body: JSON.stringify({ commands }),
     });
     const data = await res.json();
-    console.log("setMyCommands response:", data);
+    logger.info({ data }, "setMyCommands response");
   } catch (err) {
-    console.error("Failed to set bot commands:", err);
+    logger.error({ err }, "Failed to set bot commands:");
     process.exit(1);
   }
 }

@@ -16,7 +16,7 @@ export interface InterfaceState {
 export const userStates = new Map<string, InterfaceState>();
 
 // Helper function to create optimized keyboard layout
-export const createOptimizedKeyboard = (buttons: Array<{ text: string; callbackData: unknown }>, showBack = false): { inline_keyboard: Array<Array<{ text: string; callback_data: string }>> } => {
+export const createOptimizedKeyboard = (buttons: Array<{ text: string; callbackData: unknown }>): { inline_keyboard: Array<Array<{ text: string; callback_data: string }>> } => {
   const rows: Array<Array<{ text: string; callback_data: string }>> = [];
   let currentRow: Array<{ text: string; callback_data: string }> = [];
   
@@ -45,13 +45,7 @@ export const createOptimizedKeyboard = (buttons: Array<{ text: string; callbackD
     }]);
   }
   
-  // Add back button if needed
-  if (showBack) {
-    rows.push([{
-      text: '⬅️ Back', // This is a system button, not user-facing
-      callback_data: JSON.stringify({ action: 'back' })
-    }]);
-  }
+  // Back button intentionally not added here to enforce ctx.t() usage at call sites
   
   return { inline_keyboard: rows };
 };
@@ -148,28 +142,4 @@ export const getGameState = (userId: string): InterfaceState['gameState'] => {
 };
 
 // Helper function to clear game state and return to main menu
-export const returnToMainMenu = async (bot: Bot, userInfo: { userId: string; chatId: number }): Promise<void> => {
-  // Import keys from actions for consistency
-  const { key: gamesStartKey } = await import('../../actions/games/start');
-  const { key: freecoinKey } = await import('../../actions/financial/freecoin');
-  const { key: balanceKey } = await import('../../actions/balance');
-  const { key: helpKey } = await import('../../actions/help');
-  
-  const welcome = `🧠 <b>Welcome to GameHub - Trivia Edition!</b>\n\n🎯 Challenge your friends in competitive 2-player trivia games!\n\n💰 Earn and claim daily Coins with /freecoin!\n\n🎯 Choose an action below:`;
-  
-  const buttons = [
-    { text: '🧠 Start Trivia', callbackData: { action: gamesStartKey } }, // System button
-    { text: '🪙 Free Coin', callbackData: { action: freecoinKey } }, // System button
-    { text: '💰 Balance', callbackData: { action: balanceKey } }, // System button
-    { text: '❓ Help', callbackData: { action: helpKey } }, // System button
-  ];
-  
-  const keyboard = createOptimizedKeyboard(buttons);
-  
-  const state = userStates.get(userInfo.userId) || { currentView: 'main_menu' };
-  state.currentView = 'main_menu';
-  delete state.gameState;
-  userStates.set(userInfo.userId, state);
-  
-  await updateOrSendMessage(bot, userInfo.chatId, welcome, keyboard, userInfo.userId, 'main_menu');
-}; 
+// returnToMainMenu removed to avoid hardcoded button texts and to keep i18n at call sites.

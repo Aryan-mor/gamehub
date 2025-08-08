@@ -1,4 +1,5 @@
-import { Bot, Context } from 'grammy';
+import { Bot } from 'grammy';
+import { GameHubContext } from '@/plugins';
 import { logFunctionStart, logFunctionEnd, logError } from '@/modules/core/logger';
 import { PokerRoom, PlayerId } from '../types';
 import { handlePokerActiveUser } from '../_engine/activeUser';
@@ -25,22 +26,15 @@ export async function notifyPlayer(
     };
     
     // Create a mock context for the player
-    const mockCtx = {
-      chat: { id: chatId },
-      reply: async (text: string, options: Record<string, unknown>): Promise<unknown> => {
-        return await bot.api.sendMessage(chatId, text, options);
-      },
-      editMessageText: async (text: string, options: Record<string, unknown>): Promise<unknown> => {
-        // Try to edit existing message, fallback to new message
-        try {
-          return await bot.api.editMessageText(chatId, 0, text, options);
-        } catch {
-          return await bot.api.sendMessage(chatId, text, options);
-        }
-      }
+    const mockCtx = ({} as GameHubContext);
+    (mockCtx as unknown as { chat: GameHubContext['chat'] }).chat = { id: chatId } as unknown as GameHubContext['chat'];
+    (mockCtx as unknown as { replySmart: GameHubContext['replySmart'] }).replySmart = async (text: string, options?: Parameters<GameHubContext['replySmart']>[1]): Promise<void> => {
+      await bot.api.sendMessage(chatId, text, options);
     };
+    (mockCtx as unknown as { api: typeof bot.api }).api = bot.api;
+    (mockCtx as unknown as { log: GameHubContext['log'] }).log = { info: () => {}, error: () => {}, debug: () => {}, warn: () => {} } as GameHubContext['log'];
     
-    await handlePokerActiveUser(mockCtx as unknown as Context, playerState, room);
+    await handlePokerActiveUser(mockCtx, playerState, room);
     logFunctionEnd('notifyPlayer', {}, { success: true });
   } catch (error) {
     logError('notifyPlayer', error as Error);
@@ -70,7 +64,7 @@ export async function updateAllPlayersInRoom(
         
         await notifyPlayer(bot, player.id, defaultChatId, room);
       } catch (error) {
-        console.error(`Failed to update message for player ${player.id}:`, error);
+        logError('updateAllPlayersInRoom.playerUpdate', error as Error, { playerId: player.id });
       }
     }
     

@@ -30,7 +30,7 @@ export async function isJoinedMiddleware(ctx: HandlerContext, query: Record<stri
     const roomId = getRoomIdFromQuery(query) as RoomId;
     
     if (!roomId) {
-      await ctx.ctx.reply('❌ Room ID is required');
+      await ctx.ctx.replySmart(ctx.ctx.t('poker.middleware.error.roomIdRequired'));
       return false;
     }
     
@@ -39,7 +39,7 @@ export async function isJoinedMiddleware(ctx: HandlerContext, query: Record<stri
     // Get room information
     const room = await getPokerRoom(roomId);
     if (!room) {
-      await ctx.ctx.reply('❌ Room not found');
+      await ctx.ctx.replySmart(ctx.ctx.t('poker.room.error.notFound'));
       logFunctionEnd('isJoinedMiddleware', { isJoined: false, reason: 'room_not_found' }, { userId, roomId });
       return false;
     }
@@ -47,7 +47,7 @@ export async function isJoinedMiddleware(ctx: HandlerContext, query: Record<stri
     // Check if user is in the room
     const player = room.players.find(p => p.id === userId);
     if (!player) {
-      await ctx.ctx.reply('❌ You are not a member of this room');
+      await ctx.ctx.replySmart(ctx.ctx.t('poker.middleware.error.notMember'));
       logFunctionEnd('isJoinedMiddleware', { isJoined: false, reason: 'not_member' }, { userId, roomId });
       return false;
     }
@@ -57,7 +57,7 @@ export async function isJoinedMiddleware(ctx: HandlerContext, query: Record<stri
     
   } catch (error) {
     logError('isJoinedMiddleware', error as Error, {});
-    await ctx.ctx.reply('❌ Error checking room membership');
+    await ctx.ctx.replySmart(ctx.ctx.t('poker.middleware.error.checkMembership'));
     return false;
   }
 } 

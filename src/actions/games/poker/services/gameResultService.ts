@@ -108,7 +108,7 @@ export async function trackGameStatistics(
   
   try {
     // TODO: Implement statistics tracking with Supabase
-    console.log('Statistics tracking not implemented yet');
+    // No-op
     
     logFunctionEnd('trackGameStatistics', {}, { roomId: room.id, playerId });
   } catch (error) {

@@ -351,7 +351,7 @@ export const joinPokerRoom = async (request: JoinRoomRequest): Promise<PokerRoom
       await notifyPlayerJoined(updatedRoom.id, newPlayer.id, newPlayer.name);
       await sendNewRoomInfoToAllPlayers(updatedRoom, 'player_joined');
     } catch (error) {
-      console.error('Failed to send room update notification:', error);
+      logError('joinPokerRoom.notify', error as Error, { roomId: updatedRoom.id, playerId: newPlayer.id });
     }
     
     logFunctionEnd('joinPokerRoom', updatedRoom, { request });
@@ -368,24 +368,16 @@ export const joinPokerRoom = async (request: JoinRoomRequest): Promise<PokerRoom
 export const leavePokerRoom = async (roomId: RoomId, playerId: PlayerId): Promise<PokerRoom> => {
   logFunctionStart('leavePokerRoom', { roomId, playerId });
   
-  console.log(`🚪 LEAVE POKER ROOM SERVICE CALLED:`);
-  console.log(`  Room ID: ${roomId}`);
-  console.log(`  Player ID: ${playerId}`);
+  logFunctionStart('leavePokerRoom.serviceCalled', { roomId, playerId });
   
   try {
     const room = await getPokerRoom(roomId);
     if (!room) {
-      console.error(`❌ ROOM NOT FOUND: ${roomId}`);
+      logError('leavePokerRoom.roomNotFound', new Error('Room not found'), { roomId });
       throw new Error('Room not found');
     }
     
-    console.log(`✅ ROOM FOUND:`, {
-      id: room.id,
-      name: room.name,
-      status: room.status,
-      createdBy: room.createdBy,
-      playerCount: room.players.length
-    });
+    logFunctionEnd('leavePokerRoom.roomFound', { id: room.id, name: room.name, status: room.status, createdBy: room.createdBy, playerCount: room.players.length }, { roomId });
     
     const updatedPlayers = room.players.filter(p => p.id !== playerId);
     const isCreator = room.createdBy === playerId;
@@ -397,7 +389,7 @@ export const leavePokerRoom = async (roomId: RoomId, playerId: PlayerId): Promis
       .eq('telegram_id', playerId)
       .single();
     
-    console.log(`🔍 USER LOOKUP: playerId=${playerId}, userData=`, userData, `userError=`, userError);
+    logFunctionEnd('leavePokerRoom.userLookup', { hasUser: !!userData }, { playerId });
     
     if (userError && userError.code !== 'PGRST116') {
       throw userError;
@@ -411,10 +403,10 @@ export const leavePokerRoom = async (roomId: RoomId, playerId: PlayerId): Promis
         .eq('room_id', roomId)
         .single();
       
-      console.log(`🔍 ROOM LOOKUP: roomId=${roomId}, roomData=`, roomData);
+      logFunctionEnd('leavePokerRoom.roomLookup', { hasRoom: !!roomData }, { roomId });
       
       if (roomData) {
-        console.log(`🔍 Removing player ${playerId} (UUID: ${userData.id}) from room ${roomId} (UUID: ${roomData.id})`);
+        logFunctionStart('leavePokerRoom.removePlayer', { playerId, userUuid: userData.id, roomId, roomUuid: roomData.id });
         const { error: playerError } = await supabase
           .from('room_players')
           .delete()
@@ -422,16 +414,10 @@ export const leavePokerRoom = async (roomId: RoomId, playerId: PlayerId): Promis
           .eq('user_id', userData.id);
         
         if (playerError) {
-          console.error(`❌ Error removing player from room_players:`, playerError);
+          logError('leavePokerRoom.removePlayer', playerError as Error, { roomId, playerId });
           throw playerError;
-        } else {
-          console.log(`✅ Successfully removed player ${playerId} from room_players table`);
         }
-      } else {
-        console.log(`⚠️ Room ${roomId} not found in database`);
       }
-    } else {
-      console.log(`⚠️ User ${playerId} not found in database`);
     }
     
     // Prepare updates
@@ -443,7 +429,7 @@ export const leavePokerRoom = async (roomId: RoomId, playerId: PlayerId): Promis
     if (isCreator && updatedPlayers.length > 0) {
       const newCreator = updatedPlayers[0]; // First remaining player becomes creator
       updates.createdBy = newCreator.id;
-      console.log(`🔄 Ownership transferred from ${playerId} to ${newCreator.id}`);
+      logFunctionEnd('leavePokerRoom.transferOwnership', { from: playerId, to: newCreator.id }, { roomId });
     }
     
     const updatedRoom = await updatePokerRoom(roomId, updates);
@@ -458,7 +444,7 @@ export const leavePokerRoom = async (roomId: RoomId, playerId: PlayerId): Promis
       // Send new room info to all remaining players
       await sendNewRoomInfoToAllPlayers(updatedRoom, 'player_left');
     } catch (error) {
-      console.error('Failed to send room update notification:', error);
+      logError('leavePokerRoom.notify', error as Error, { roomId: updatedRoom.id });
     }
     
     logFunctionEnd('leavePokerRoom', updatedRoom, { roomId, playerId });

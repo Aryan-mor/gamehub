@@ -1,6 +1,7 @@
 #!/usr/bin/env tsx
 
 import { exec } from "child_process";
+import { logger } from '@/modules/core/logger';
 import { promisify } from "util";
 
 const execAsync = promisify(exec);
@@ -20,24 +21,24 @@ async function findBotProcesses(): Promise<string[]> {
 }
 
 async function killBotProcesses(): Promise<void> {
-  console.log("🔍 Looking for bot processes...");
+  logger.info("🔍 Looking for bot processes...");
 
   const processes = await findBotProcesses();
 
   if (processes.length === 0) {
-    console.log("✅ No bot processes found");
+    logger.info("✅ No bot processes found");
     return;
   }
 
-  console.log(`📋 Found ${processes.length} bot process(es):`);
+  logger.info(`📋 Found ${processes.length} bot process(es):`);
   processes.forEach((process, index) => {
-    console.log(`  ${index + 1}. ${process}`);
+    logger.info(`  ${index + 1}. ${process}`);
   });
 
   try {
     // Kill pnpm bot processes
     await execAsync("pkill -f 'pnpm bot'");
-    console.log("✅ Killed pnpm bot processes");
+    logger.info("✅ Killed pnpm bot processes");
   } catch {
     // Ignore if no processes found
   }
@@ -45,7 +46,7 @@ async function killBotProcesses(): Promise<void> {
   try {
     // Kill tsx bot processes
     await execAsync("pkill -f 'tsx src/bot/index.ts'");
-    console.log("✅ Killed tsx bot processes");
+    logger.info("✅ Killed tsx bot processes");
   } catch {
     // Ignore if no processes found
   }
@@ -56,32 +57,32 @@ async function killBotProcesses(): Promise<void> {
   // Check if any processes are still running
   const remainingProcesses = await findBotProcesses();
   if (remainingProcesses.length > 0) {
-    console.log("⚠️  Some processes may still be running. Force killing...");
+    logger.warn("⚠️  Some processes may still be running. Force killing...");
     try {
       await execAsync("pkill -9 -f 'pnpm bot'");
       await execAsync("pkill -9 -f 'tsx src/bot/index.ts'");
-      console.log("✅ Force killed remaining processes");
+      logger.info("✅ Force killed remaining processes");
     } catch {
-      console.log("ℹ️  No remaining processes to force kill");
+      logger.info("ℹ️  No remaining processes to force kill");
     }
   } else {
-    console.log("✅ All bot processes stopped successfully");
+    logger.info("✅ All bot processes stopped successfully");
   }
 }
 
 async function startBot(): Promise<void> {
-  console.log("🚀 Starting bot...");
+  logger.info("🚀 Starting bot...");
   try {
     await execAsync("pnpm run bot");
   } catch (error) {
-    console.error("❌ Failed to start bot:", error);
+    logger.error({ err: error }, "❌ Failed to start bot");
   }
 }
 
 async function restartBot(): Promise<void> {
-  console.log("🔄 Restarting bot...");
+  logger.info("🔄 Restarting bot...");
   await killBotProcesses();
-  console.log("⏳ Waiting 2 seconds before starting...");
+  logger.info("⏳ Waiting 2 seconds before starting...");
   await new Promise((resolve) => setTimeout(resolve, 2000));
   await startBot();
 }
@@ -102,25 +103,25 @@ async function main(): Promise<void> {
     case "status":
       const processes = await findBotProcesses();
       if (processes.length > 0) {
-        console.log("🟢 Bot is running:");
+        logger.info("🟢 Bot is running:");
         processes.forEach((process, index) => {
-          console.log(`  ${index + 1}. ${process}`);
+          logger.info(`  ${index + 1}. ${process}`);
         });
       } else {
-        console.log("🔴 Bot is not running");
+        logger.info("🔴 Bot is not running");
       }
       break;
     default:
-      console.log("Usage: pnpm run bot:manage <command>");
-      console.log("Commands:");
-      console.log("  stop     - Stop all bot processes");
-      console.log("  start    - Start the bot");
-      console.log("  restart  - Restart the bot");
-      console.log("  status   - Check bot status");
+      logger.info("Usage: pnpm run bot:manage <command>");
+      logger.info("Commands:");
+      logger.info("  stop     - Stop all bot processes");
+      logger.info("  start    - Start the bot");
+      logger.info("  restart  - Restart the bot");
+      logger.info("  status   - Check bot status");
       break;
   }
 }
 
 if (require.main === module) {
-  main().catch(console.error);
+  main().catch((err) => logger.error({ err }, 'botManager main error'));
 }

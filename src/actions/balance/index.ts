@@ -1,4 +1,4 @@
-import { HandlerContext } from '@/modules/core/handler';
+import { HandlerContext, createHandler } from '@/modules/core/handler';
 import { isValidUserId } from '@/utils/typeGuards';
 
 // Export the action key for consistency and debugging
@@ -34,24 +34,24 @@ async function handleBalance(context: HandlerContext): Promise<void> {
       displayName = user.username;
     }
     
-    const balanceMessage = `${ctx.t('💰 <b>Your Coin Balance</b>')}\n\n` +
-      `${ctx.t('👤 <b>User</b>')}: ${displayName}\n` +
-      `${ctx.t('🪙 <b>Coins</b>')}: ${userData.coins} ${ctx.t('coins')}\n\n` +
-      `${ctx.t('💡 <b>Tips</b>')}:\n` +
-      `• ${ctx.t('Use /freecoin to claim daily coins')}\n` +
-      `• ${ctx.t('Win more coins by playing poker')}\n` +
-      `• ${ctx.t('Stake coins to increase your winnings')}`;
+    const balanceMessage = `${ctx.t('bot.balance.title')}\n\n` +
+      `${ctx.t('bot.balance.user')}: ${displayName}\n` +
+      `${ctx.t('bot.balance.coins')}: ${userData.coins} ${ctx.t('coins')}\n\n` +
+      `${ctx.t('bot.balance.tips.title')}:\n` +
+      `• ${ctx.t('bot.balance.tips.freecoin')}\n` +
+      `• ${ctx.t('bot.balance.tips.playPoker')}\n` +
+      `• ${ctx.t('bot.balance.tips.stake')}`;
     
     await ctx.replySmart(balanceMessage, { 
       parse_mode: 'HTML'
     });
     
   } catch (error) {
-    console.error('Balance action error:', error);
+    ctx.log.error('Balance action error', { error: error instanceof Error ? error.message : String(error) });
     
     // Fallback message
-    await ctx.replySmart(ctx.t('❌ Failed to fetch balance. Please try again later.'));
+    await ctx.replySmart(ctx.t('bot.balance.error'));
   }
 }
 
-export default handleBalance; 
+export default createHandler(handleBalance); 

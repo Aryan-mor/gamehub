@@ -1,4 +1,4 @@
-import { HandlerContext } from '@/modules/core/handler';
+import { HandlerContext, createHandler } from '@/modules/core/handler';
 // Use ctx.poker.generateMainMenuKeyboard() instead
 import { deductCoins, getUser } from '@/modules/core/userService';
 import { validateUser } from '../_utils/validateUser';
@@ -64,8 +64,8 @@ async function handleStake(context: HandlerContext, query: Record<string, string
     
     const errorMessage = error instanceof Error ? error.message : 'خطا در تنظیم شرط. لطفاً دوباره تلاش کنید.';
     
-    await ctx.replySmart(`❌ ${errorMessage}`);
+    await ctx.replySmart(ctx.t('poker.error.stake', { error: errorMessage }));
   }
 }
 
-export default handleStake; 
+export default createHandler(handleStake); 

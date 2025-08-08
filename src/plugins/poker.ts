@@ -28,112 +28,183 @@ export class PokerPlugin implements GameHubPlugin {
           return {
             // Navigation buttons
             back: {
-              text: gameHubCtx.t('🔙 Back'),
-              callback_data: 'back'
+              text: gameHubCtx.t('poker.room.buttons.back'),
+              callback_data: gameHubCtx.keyboard.buildCallbackData('games.poker.back')
             },
             backToMenu: {
-              text: gameHubCtx.t('🔙 Back to Menu'),
-              callback_data: 'backToMenu'
+              text: gameHubCtx.t('poker.room.buttons.backToMenu'),
+              callback_data: gameHubCtx.keyboard.buildCallbackData('games.poker.back')
             },
 
             // Room management buttons
             createRoom: {
-              text: gameHubCtx.t('🏠 Create Room'),
-              callback_data: 'createRoom'
+              text: gameHubCtx.t('poker.room.buttons.createRoom'),
+              callback_data: gameHubCtx.keyboard.buildCallbackData('games.poker.room.create')
             },
             joinRoom: {
-              text: gameHubCtx.t('🚪 Join Room'),
-              callback_data: 'joinRoom'
+              text: gameHubCtx.t('poker.room.buttons.joinRoom'),
+              callback_data: gameHubCtx.keyboard.buildCallbackData('games.poker.room.join')
             },
             leaveRoom: {
-              text: gameHubCtx.t('🚪 Leave Room'),
-              callback_data: 'leaveRoom'
+              text: gameHubCtx.t('poker.room.buttons.leave'),
+              callback_data: gameHubCtx.keyboard.buildCallbackData('games.poker.room.leave')
             },
             startGame: {
-              text: gameHubCtx.t('▶️ Start Game'),
-              callback_data: 'startGame'
+              text: gameHubCtx.t('poker.room.buttons.startGame'),
+              callback_data: gameHubCtx.keyboard.buildCallbackData('games.poker.room.start')
             },
             ready: {
-              text: gameHubCtx.t('✅ Ready'),
-              callback_data: 'ready'
+              text: gameHubCtx.t('poker.room.buttons.ready'),
+              callback_data: gameHubCtx.keyboard.buildCallbackData('games.poker.room.ready')
             },
             notReady: {
-              text: gameHubCtx.t('❌ Not Ready'),
-              callback_data: 'notReady'
+              text: gameHubCtx.t('poker.room.buttons.notReady'),
+              callback_data: gameHubCtx.keyboard.buildCallbackData('games.poker.room.notready')
             },
 
             // Game action buttons
             call: {
-              text: gameHubCtx.t('📞 Call'),
-              callback_data: 'call'
+              text: gameHubCtx.t('poker.actions.call'),
+              callback_data: gameHubCtx.keyboard.buildCallbackData('games.poker.room.call')
             },
             fold: {
-              text: gameHubCtx.t('⬇️ Fold'),
-              callback_data: 'fold'
+              text: gameHubCtx.t('poker.actions.fold'),
+              callback_data: gameHubCtx.keyboard.buildCallbackData('games.poker.room.fold')
             },
             raise: {
-              text: gameHubCtx.t('⬆️ Raise'),
-              callback_data: 'raise'
+              text: gameHubCtx.t('poker.actions.raise'),
+              callback_data: gameHubCtx.keyboard.buildCallbackData('games.poker.room.raise')
             },
             check: {
-              text: gameHubCtx.t('✅ Check'),
-              callback_data: 'check'
+              text: gameHubCtx.t('poker.actions.check'),
+              callback_data: gameHubCtx.keyboard.buildCallbackData('games.poker.room.check')
             },
             allIn: {
-              text: gameHubCtx.t('💥 All In'),
-              callback_data: 'allIn'
+              text: gameHubCtx.t('poker.actions.allIn'),
+              callback_data: gameHubCtx.keyboard.buildCallbackData('games.poker.room.allin')
             },
 
             // Stake buttons
             stake5: {
-              text: gameHubCtx.t('🪙 Stake 5'),
-              callback_data: 'stake5'
+              text: gameHubCtx.t('poker.room.buttons.stake5'),
+              callback_data: gameHubCtx.keyboard.buildCallbackData('games.poker.stake', { amount: '5' })
             },
             stake10: {
-              text: gameHubCtx.t('🪙 Stake 10'),
-              callback_data: 'stake10'
+              text: gameHubCtx.t('poker.room.buttons.stake10'),
+              callback_data: gameHubCtx.keyboard.buildCallbackData('games.poker.stake', { amount: '10' })
             },
             stake25: {
-              text: gameHubCtx.t('🪙 Stake 25'),
-              callback_data: 'stake25'
+              text: gameHubCtx.t('poker.room.buttons.stake25'),
+              callback_data: gameHubCtx.keyboard.buildCallbackData('games.poker.stake', { amount: '25' })
             },
             stake50: {
-              text: gameHubCtx.t('🪙 Stake 50'),
-              callback_data: 'stake50'
+              text: gameHubCtx.t('poker.room.buttons.stake50'),
+              callback_data: gameHubCtx.keyboard.buildCallbackData('games.poker.stake', { amount: '50' })
             },
 
             // Raise buttons
             raise10: {
-              text: gameHubCtx.t('💰 Raise 10'),
-              callback_data: 'raise10'
+              text: gameHubCtx.t('poker.room.buttons.raise10'),
+              callback_data: gameHubCtx.keyboard.buildCallbackData('games.poker.room.raise', { amount: '10' })
             },
             raise25: {
-              text: gameHubCtx.t('💰 Raise 25'),
-              callback_data: 'raise25'
+              text: gameHubCtx.t('poker.room.buttons.raise25'),
+              callback_data: gameHubCtx.keyboard.buildCallbackData('games.poker.room.raise', { amount: '25' })
             },
             raise50: {
-              text: gameHubCtx.t('💰 Raise 50'),
-              callback_data: 'raise50'
+              text: gameHubCtx.t('poker.room.buttons.raise50'),
+              callback_data: gameHubCtx.keyboard.buildCallbackData('games.poker.room.raise', { amount: '50' })
             },
             raise100: {
-              text: gameHubCtx.t('💰 Raise 100'),
-              callback_data: 'raise100'
+              text: gameHubCtx.t('poker.room.buttons.raise100'),
+              callback_data: gameHubCtx.keyboard.buildCallbackData('games.poker.room.raise', { amount: '100' })
             },
 
             // Utility buttons
             refresh: {
-              text: gameHubCtx.t('🔄 Refresh'),
-              callback_data: 'refresh'
+              text: gameHubCtx.t('poker.room.buttons.refresh'),
+              callback_data: gameHubCtx.keyboard.buildCallbackData('games.poker.room.refresh')
             },
             help: {
-              text: gameHubCtx.t('❓ Help'),
-              callback_data: 'help'
+              text: gameHubCtx.t('poker.room.buttons.help'),
+              callback_data: gameHubCtx.keyboard.buildCallbackData('games.poker.help')
+            }
+            ,
+            // Form buttons (room create flow)
+            // Privacy
+            private: {
+              text: gameHubCtx.t('poker.form.option.private'),
+              callback_data: gameHubCtx.keyboard.buildCallbackData('games.poker.room.create', { s: 'privacy', v: 'true' })
+            },
+            public: {
+              text: gameHubCtx.t('poker.form.option.public'),
+              callback_data: gameHubCtx.keyboard.buildCallbackData('games.poker.room.create', { s: 'privacy', v: 'false' })
+            },
+            // Max players
+            maxPlayers2: {
+              text: gameHubCtx.t('poker.form.option.players2'),
+              callback_data: gameHubCtx.keyboard.buildCallbackData('games.poker.room.create', { s: 'maxPlayers', v: '2' })
+            },
+            maxPlayers4: {
+              text: gameHubCtx.t('poker.form.option.players4'),
+              callback_data: gameHubCtx.keyboard.buildCallbackData('games.poker.room.create', { s: 'maxPlayers', v: '4' })
+            },
+            maxPlayers6: {
+              text: gameHubCtx.t('poker.form.option.players6'),
+              callback_data: gameHubCtx.keyboard.buildCallbackData('games.poker.room.create', { s: 'maxPlayers', v: '6' })
+            },
+            maxPlayers8: {
+              text: gameHubCtx.t('poker.form.option.players8'),
+              callback_data: gameHubCtx.keyboard.buildCallbackData('games.poker.room.create', { s: 'maxPlayers', v: '8' })
+            },
+            // Small blind
+            smallBlind50: {
+              text: gameHubCtx.t('poker.form.option.sb50'),
+              callback_data: gameHubCtx.keyboard.buildCallbackData('games.poker.room.create', { s: 'smallBlind', v: '50' })
+            },
+            smallBlind100: {
+              text: gameHubCtx.t('poker.form.option.sb100'),
+              callback_data: gameHubCtx.keyboard.buildCallbackData('games.poker.room.create', { s: 'smallBlind', v: '100' })
+            },
+            smallBlind200: {
+              text: gameHubCtx.t('poker.form.option.sb200'),
+              callback_data: gameHubCtx.keyboard.buildCallbackData('games.poker.room.create', { s: 'smallBlind', v: '200' })
+            },
+            smallBlind500: {
+              text: gameHubCtx.t('poker.form.option.sb500'),
+              callback_data: gameHubCtx.keyboard.buildCallbackData('games.poker.room.create', { s: 'smallBlind', v: '500' })
+            },
+            // Timeout
+            timeout60: {
+              text: gameHubCtx.t('poker.form.option.t60'),
+              callback_data: gameHubCtx.keyboard.buildCallbackData('games.poker.room.create', { s: 'timeout', v: '60' })
+            },
+            timeout120: {
+              text: gameHubCtx.t('poker.form.option.t120'),
+              callback_data: gameHubCtx.keyboard.buildCallbackData('games.poker.room.create', { s: 'timeout', v: '120' })
+            },
+            timeout300: {
+              text: gameHubCtx.t('poker.form.option.t300'),
+              callback_data: gameHubCtx.keyboard.buildCallbackData('games.poker.room.create', { s: 'timeout', v: '300' })
+            },
+            timeout600: {
+              text: gameHubCtx.t('poker.form.option.t600'),
+              callback_data: gameHubCtx.keyboard.buildCallbackData('games.poker.room.create', { s: 'timeout', v: '600' })
+            },
+            // Confirmation
+            confirmCreate: {
+              text: gameHubCtx.t('poker.form.action.confirm'),
+              callback_data: gameHubCtx.keyboard.buildCallbackData('games.poker.room.create', { s: 'confirmation', v: 'create' })
+            },
+            editForm: {
+              text: gameHubCtx.t('poker.form.action.edit'),
+              callback_data: gameHubCtx.keyboard.buildCallbackData('games.poker.room.create', { s: 'name', v: 'edit' })
             }
           };
         },
 
         // Generate poker-specific keyboards
-        generateMainMenuKeyboard: () => {
+        generateMainMenuKeyboard: (): { inline_keyboard: Array<Array<{ text: string; callback_data: string }>> } => {
           const gameHubCtx = ctx as GameHubContext;
           const templates = gameHubCtx.poker.createButtonTemplates();
           const layout = [
@@ -143,7 +214,7 @@ export class PokerPlugin implements GameHubPlugin {
           return gameHubCtx.keyboard.createCustomKeyboard(layout, templates);
         },
 
-        generateRoomManagementKeyboard: (roomId: string) => {
+        generateRoomManagementKeyboard: (roomId: string): { inline_keyboard: Array<Array<{ text: string; callback_data: string }>> } => {
           const gameHubCtx = ctx as GameHubContext;
           const templates = gameHubCtx.poker.createButtonTemplates();
           const layout = [
@@ -153,7 +224,7 @@ export class PokerPlugin implements GameHubPlugin {
           return gameHubCtx.keyboard.createCustomKeyboard(layout, templates, { roomId });
         },
 
-        generateGameActionKeyboard: (roomId: string, includeAllIn = false) => {
+        generateGameActionKeyboard: (roomId: string, includeAllIn = false): { inline_keyboard: Array<Array<{ text: string; callback_data: string }>> } => {
           const gameHubCtx = ctx as GameHubContext;
           const templates = gameHubCtx.poker.createButtonTemplates();
           const layout = includeAllIn 
@@ -162,7 +233,7 @@ export class PokerPlugin implements GameHubPlugin {
           return gameHubCtx.keyboard.createCustomKeyboard(layout, templates, { roomId });
         },
 
-        generateStakeSelectionKeyboard: () => {
+        generateStakeSelectionKeyboard: (): { inline_keyboard: Array<Array<{ text: string; callback_data: string }>> } => {
           const gameHubCtx = ctx as GameHubContext;
           const templates = gameHubCtx.poker.createButtonTemplates();
           const layout = [
@@ -173,7 +244,7 @@ export class PokerPlugin implements GameHubPlugin {
           return gameHubCtx.keyboard.createCustomKeyboard(layout, templates);
         },
 
-        generateRaiseAmountKeyboard: (roomId: string) => {
+        generateRaiseAmountKeyboard: (roomId: string): { inline_keyboard: Array<Array<{ text: string; callback_data: string }>> } => {
           const gameHubCtx = ctx as GameHubContext;
           const templates = gameHubCtx.poker.createButtonTemplates();
           const layout = [

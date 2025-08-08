@@ -1,11 +1,13 @@
-import { Context } from 'grammy';
-import { HandlerContext } from '@/modules/core/handler';
-import { PlayerId, RoomId } from '../../types';
+import { GameHubContext } from '@/plugins';
+import { HandlerContext, createHandler } from '@/modules/core/handler';
+import { RoomId } from '../../types';
 import { PokerRoom as RoomData } from '../../types';
-import { UserId } from '@/utils/types';
+// import { UserId } from '@/utils/types';
 import { joinPokerRoom, getPokerRoom } from '../../services/pokerService';
-import { validateRoomId, validatePlayerId } from '../../_utils/typeGuards';
+import { validateRoomId } from '../../_utils/typeGuards';
 import { validateRoomJoin } from '../../_utils/roomJoinValidation';
+import { JoinQuerySchema } from '../../_utils/schemas';
+import { validatePlayerIdWithError } from '../../_utils/pokerUtils';
 // import { generateJoinRoomKeyboard } from '../../_utils/joinRoomKeyboardGenerator';
 // import { getRoomInfoForUser, generateRoomInfoKeyboard } from '../../_utils/roomInfoHelper';
 import { logFunctionStart, logFunctionEnd, logError } from '@/modules/core/logger';
@@ -18,31 +20,28 @@ export const key = 'games.poker.room.join';
  */
 async function handleJoin(context: HandlerContext, query: Record<string, string> = {}): Promise<void> {
   const { user, ctx } = context;
-  const { roomId, r } = query;
-  const roomIdParam = roomId || r;
+  const { roomId: roomIdParam } = JoinQuerySchema.parse(query);
   
-  if (!roomIdParam) {
-    throw new Error('Room ID is required');
-  }
+  // roomIdParam validated by Zod
   
   try {
     logFunctionStart('handleJoin', { roomId: roomIdParam, userId: user.id });
     
     // Validate IDs
     const validatedRoomId = validateRoomId(roomIdParam);
-    const validatedPlayerId = validatePlayerId(user.id.toString());
+    const validatedPlayerId = validatePlayerIdWithError(user.id.toString());
     
     // Get room information
     const room = await getPokerRoom(validatedRoomId);
     if (!room) {
-      await ctx.reply('❌ Room not found');
+      await ctx.replySmart(ctx.t('poker.room.error.notFound'));
       return;
     }
     
     // Validate join request
-    const validation = await validateRoomJoin(room, validatedPlayerId);
+    const validation = await validateRoomJoin(ctx, room, validatedPlayerId);
     
-    console.log(`🔍 JOIN VALIDATION RESULT:`, {
+    ctx.log.debug('JOIN VALIDATION RESULT', {
       isValid: validation.isValid,
       error: validation.error,
       activeRoom: validation.activeRoom?.id,
@@ -56,8 +55,7 @@ async function handleJoin(context: HandlerContext, query: Record<string, string>
         await handleRoomJoinConflict(ctx, validation.activeRoom, validatedRoomId);
         return;
       } else {
-        // Send new message instead of editing for better UX
-        await ctx.reply(`❌ ${validation.error}`);
+        await ctx.replySmart(ctx.t('poker.room.error.joinFailed', { error: validation.error || '' }));
             return;
   }
   
@@ -76,7 +74,7 @@ async function handleJoin(context: HandlerContext, query: Record<string, string>
     
     // The room info has already been sent by joinPokerRoom service
     // No need to send another message here
-    console.log('✅ Successfully called handleJoin for room', updatedRoom.id);
+    ctx.log.info('Successfully called handleJoin for room', { roomId: updatedRoom.id });
     
     logFunctionEnd('handleJoin', { success: true }, { roomId: roomIdParam, userId: user.id });
     
@@ -84,7 +82,7 @@ async function handleJoin(context: HandlerContext, query: Record<string, string>
     logError('handleJoin', error as Error, { roomId: roomIdParam, userId: user.id });
     
     const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-    await ctx.reply(`❌ Failed to join room: ${errorMessage}`);
+    await ctx.replySmart(ctx.t('poker.room.error.joinFailed', { error: errorMessage }));
   }
 }
 
@@ -92,32 +90,32 @@ async function handleJoin(context: HandlerContext, query: Record<string, string>
  * Handle room join conflict - user is already in another room
  */
 async function handleRoomJoinConflict(
-  ctx: Context,
+  ctx: GameHubContext,
   currentRoom: RoomData,
   targetRoomId: RoomId
 ): Promise<void> {
   const keyboard = {
     inline_keyboard: [
-      [{ text: '🔙 بازگشت به روم فعلی', callback_data: `gpj_b:${currentRoom.id}` }],
-      [{ text: '🔄 خروج و پیوستن', callback_data: `gpj_lj:${currentRoom.id}:${targetRoomId}` }],
-      [{ text: '🚪 خروج از بازی', callback_data: `gpj_l:${currentRoom.id}` }]
+      [{ text: ctx.t('poker.room.buttons.backToRoomInfo'), callback_data: ctx.keyboard.buildCallbackData('games.poker.room.info', { roomId: currentRoom.id }) }],
+      [
+        { text: ctx.t('poker.room.buttons.leave'), callback_data: ctx.keyboard.buildCallbackData('games.poker.room.leave', { roomId: currentRoom.id }) },
+        targetRoomId ? { text: ctx.t('poker.room.buttons.joinTarget'), callback_data: ctx.keyboard.buildCallbackData('games.poker.room.join', { roomId: targetRoomId }) } : { text: ctx.t('poker.room.buttons.joinTarget'), callback_data: ctx.keyboard.buildCallbackData('games.poker.start', {}) }
+      ]
     ]
   };
   
   logFunctionStart('handleRoomJoinConflict', {
     currentRoomId: currentRoom.id,
-    targetRoomId: targetRoomId,
-    callbackData: `gpj_lj:${currentRoom.id}:${targetRoomId}`,
-    length: `gpj_lj:${currentRoom.id}:${targetRoomId}`.length
+    targetRoomId: targetRoomId
   });
-  const message = `❌ شما در روم "${currentRoom.name}" هستید. ابتدا باید از آن روم خارج شوید.`;
+  const message = ctx.t('poker.room.join.conflict', { roomName: currentRoom.name });
   try {
-    await ctx.editMessageText(message, {
+    await ctx.replySmart(message, {
       parse_mode: 'HTML',
       reply_markup: keyboard
     });
   } catch {
-    await ctx.reply(message, {
+    await ctx.replySmart(message, {
       parse_mode: 'HTML',
       reply_markup: keyboard
     });
@@ -126,94 +124,5 @@ async function handleRoomJoinConflict(
   logFunctionEnd('handleRoomJoinConflict', {}, { success: true });
 }
 
-/**
- * Handle room join conflict callback
- */
-async function handleRoomJoinConflictCallback(
-  ctx: Context,
-  action: string,
-  currentRoomId: RoomId,
-  targetRoomId: RoomId | undefined,
-  playerId: PlayerId
-): Promise<void> {
-  logFunctionStart('handleRoomJoinConflictCallback', {
-    action,
-    currentRoomId,
-    targetRoomId,
-    playerId
-  });
-  if (action === 'back') {
-    // Show current room info
-    const { getPokerRoom } = await import('../../services/pokerService');
-    const { getRoomInfoForUser, generateRoomInfoKeyboard } = await import('../../_utils/roomInfoHelper');
-    const room = await getPokerRoom(currentRoomId);
-    if (room) {
-      const info = getRoomInfoForUser(room, playerId);
-      const keyboard = generateRoomInfoKeyboard(room, playerId);
-      try {
-        await ctx.editMessageText(info, { parse_mode: 'HTML', reply_markup: keyboard as any });
-      } catch {
-        await ctx.reply(info, { parse_mode: 'HTML', reply_markup: keyboard as any });
-      }
-    }
-    return;
-  }
-  if (action === 'leave_join' && targetRoomId) {
-    try {
-      const { leavePokerRoom, joinPokerRoom, getPokerRoom } = await import('../../services/pokerService');
-      await leavePokerRoom(currentRoomId, playerId);
-      await joinPokerRoom({ roomId: targetRoomId, playerId, playerName: 'Unknown Player', chips: 1000 });
-      const newRoom = await getPokerRoom(targetRoomId);
-      if (newRoom) {
-        const { getRoomInfoForUser, generateRoomInfoKeyboard } = await import('../../_utils/roomInfoHelper');
-        const info = getRoomInfoForUser(newRoom, playerId);
-        const keyboard = generateRoomInfoKeyboard(newRoom, playerId);
-        try {
-          await ctx.editMessageText(info, { parse_mode: 'HTML', reply_markup: keyboard as any });
-        } catch {
-          await ctx.reply(info, { parse_mode: 'HTML', reply_markup: keyboard as any });
-        }
-      }
-    } catch {
-      await ctx.editMessageText('❌ خطا در پیوستن به روم جدید. لطفاً دوباره تلاش کنید.', { parse_mode: 'HTML' });
-    }
-    return;
-  }
-  if (action === 'leave') {
-    try {
-      const { leavePokerRoom } = await import('../../services/pokerService');
-      await leavePokerRoom(currentRoomId, playerId);
-      
-      // Use the main start game handler to show the main menu
-      const { default: handleStartGame } = await import('../../../start');
-      const context = {
-        ctx,
-        user: {
-          id: playerId as unknown as UserId,
-          username: 'Unknown'
-        }
-      };
-      
-      try {
-        await handleStartGame(context);
-      } catch {
-        // Fallback to simple message if start game handler fails
-        await ctx.editMessageText('✅ شما از روم خارج شدید و به صفحه اصلی بازگشتید.', { parse_mode: 'HTML' });
-      }
-    } catch {
-      await ctx.editMessageText('❌ خطا در خروج از روم. لطفاً دوباره تلاش کنید.', { parse_mode: 'HTML' });
-    }
-    return;
-  }
-  
-  logFunctionEnd('handleRoomJoinConflictCallback', {}, { success: true });
-}
-
-// Self-register with compact router
-import { register } from '@/modules/core/compact-router';
-import { POKER_ACTIONS } from '../../compact-codes';
-
-register(POKER_ACTIONS.JOIN_ROOM, handleJoin, 'Join Poker Room');
-
-export { handleRoomJoinConflict, handleRoomJoinConflictCallback };
-export default handleJoin; 
+export { handleRoomJoinConflict };
+export default createHandler(handleJoin); 

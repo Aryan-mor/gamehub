@@ -1,39 +1,40 @@
 import { api } from '@/lib/api';
+import { logger } from '@/modules/core/logger';
 
 async function clearOldRooms(): Promise<void> {
   try {
-    console.log('🔍 Searching for old rooms with maxPlayers: 8...');
+    logger.info('🔍 Searching for old rooms with maxPlayers: 8...');
     
     const rooms = await api.rooms.getByGameTypeAndMaxPlayers('poker', 8);
     
     if (!rooms || rooms.length === 0) {
-      console.log('✅ No rooms found');
+      logger.info('✅ No rooms found');
       return;
     }
     
     let deletedCount = 0;
     
     for (const room of rooms) {
-      console.log(`🗑️ Deleting old room: ${room.room_id} (maxPlayers: ${room.max_players})`);
+      logger.info(`🗑️ Deleting old room: ${room.room_id} (maxPlayers: ${room.max_players})`);
       try {
         await api.rooms.delete(room.room_id as string);
         deletedCount++;
       } catch (deleteError) {
-        console.error(`❌ Error deleting room ${room.room_id}:`, deleteError);
+        logger.error({ err: deleteError }, `❌ Error deleting room ${room.room_id}:`);
       }
     }
     
-    console.log(`✅ Deleted ${deletedCount} old rooms`);
+    logger.info(`✅ Deleted ${deletedCount} old rooms`);
   } catch (error) {
-    console.error('❌ Error clearing old rooms:', error);
+    logger.error({ err: error }, '❌ Error clearing old rooms:');
   }
 }
 
 // Run the script
 clearOldRooms().then(() => {
-  console.log('🎉 Script completed');
+  logger.info('🎉 Script completed');
   process.exit(0);
 }).catch((error) => {
-  console.error('❌ Script failed:', error);
+  logger.error({ err: error }, '❌ Script failed:');
   process.exit(1);
-}); 
+});

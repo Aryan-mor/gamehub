@@ -1,33 +1,25 @@
 import { HandlerContext } from '@/modules/core/handler';
 import { FormState, defaultFormState } from '../../_utils/formStateManager';
 
-// Global form state storage (shared with textHandler)
-declare global {
-  var formStates: Map<string, FormState>;
-}
-
-if (!global.formStates) {
-  global.formStates = new Map<string, FormState>();
-}
-
 /**
  * Handle initial room creation form start
  */
 async function handleCreate(context: HandlerContext): Promise<void> {
   const { user, ctx } = context;
   
-  console.log(`Starting room creation form for user ${user.id}`);
+  ctx.log.info('Starting room creation form', { userId: user.id });
   
   try {
     // Initialize form state
-    const formState = { ...defaultFormState };
-    global.formStates.set(user.id.toString(), formState);
+    const formState = { ...defaultFormState } as FormState;
+    const namespace = 'poker.room.create';
+    context.ctx.formState.set<FormState>(namespace, user.id.toString(), formState);
     
     // Show first step (name input)
     await showFormStep(context, formState);
     
   } catch (error) {
-    console.error('Room creation form start error:', error);
+    ctx.log.error('Room creation form start error', { error: error instanceof Error ? error.message : String(error) });
     
     const message = ctx.t('❌ <b>Game Start Error</b>\n\nSorry, there was a problem starting the game.\nPlease try again.', {
       fallback: '❌ <b>خطا در شروع فرم</b>\n\nمتأسفانه مشکلی در شروع فرم ساخت روم پیش آمده.\nلطفاً دوباره تلاش کنید.'
@@ -37,7 +29,7 @@ async function handleCreate(context: HandlerContext): Promise<void> {
       parse_mode: 'HTML',
       reply_markup: {
         inline_keyboard: [[
-          { text: ctx.t('🔙 Back to Menu'), callback_data: 'games.poker.backToMenu' }
+          { text: ctx.t('poker.room.buttons.backToMenu'), callback_data: ctx.keyboard.buildCallbackData('games.poker.back', {}) }
         ]]
       }
     });
@@ -268,7 +260,7 @@ async function showFormStep(context: HandlerContext, formState: FormState): Prom
       
       keyboard = {
         inline_keyboard: [[
-          { text: ctx.t('🔙 Back to Menu'), callback_data: 'games.poker.backToMenu' }
+          { text: ctx.t('poker.room.buttons.backToMenu'), callback_data: ctx.keyboard.buildCallbackData('games.poker.back', {}) }
         ]]
       };
       break;
@@ -324,7 +316,7 @@ async function showFormStep(context: HandlerContext, formState: FormState): Prom
       });
       keyboard = {
         inline_keyboard: [[
-          { text: ctx.t('🔙 Back to Menu'), callback_data: 'games.poker.backToMenu' }
+          { text: ctx.t('poker.room.buttons.backToMenu'), callback_data: ctx.keyboard.buildCallbackData('games.poker.back', {}) }
         ]]
       };
   }
@@ -336,9 +328,6 @@ async function showFormStep(context: HandlerContext, formState: FormState): Prom
 }
   
   // Self-register with compact router
-import { register } from '@/modules/core/compact-router';
-import { POKER_ACTIONS } from '../../compact-codes';
-
-register(POKER_ACTIONS.CREATE_ROOM, handleCreate, 'Create Poker Room');
+// Registration is handled by smart-router auto-discovery
 
 export default handleCreate;

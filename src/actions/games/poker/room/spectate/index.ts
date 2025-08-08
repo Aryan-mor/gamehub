@@ -1,4 +1,4 @@
-import { HandlerContext } from '@/modules/core/handler';
+import { HandlerContext, createHandler } from '@/modules/core/handler';
 // Use ctx.poker.generateSpectatorKeyboard() instead
 import { getPokerRoom } from '../../services/pokerService';
 import { validateRoomIdWithError, validatePlayerIdWithError } from '../../_utils/pokerUtils';
@@ -47,10 +47,10 @@ async function handleSpectate(context: HandlerContext, query: Record<string, str
     });
     
   } catch (error) {
-    console.error('Spectate action error:', error);
+    ctx.log.error('Spectate action error', { error: error instanceof Error ? error.message : String(error) });
     
     const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-    await ctx.replySmart(`❌ Failed to spectate: ${errorMessage}`, {
+    await ctx.replySmart(ctx.t('poker.error.spectate', { error: errorMessage }), {
       parse_mode: 'HTML'
     });
   }
@@ -162,4 +162,4 @@ function getCardDisplay(card: Card): string {
   return `${card.rank}${suitSymbols[card.suit]}`;
 }
 
-export default handleSpectate; 
+export default createHandler(handleSpectate); 

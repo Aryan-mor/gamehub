@@ -1,5 +1,6 @@
 import { UserId } from '@/utils/types';
 import { GameHubContext } from '@/plugins';
+import { logFunctionStart, logFunctionEnd, logError } from './logger';
 
 export interface HandlerContext {
   ctx: GameHubContext; // Use GameHubContext for all plugin features
@@ -7,6 +8,7 @@ export interface HandlerContext {
     id: UserId;
     username: string;
   };
+  requestId?: string;
 }
 
 export type BaseHandler = (context: HandlerContext, query: Record<string, string>) => Promise<void> | void;
@@ -16,14 +18,18 @@ export type BaseHandler = (context: HandlerContext, query: Record<string, string
  */
 export function createHandler(handler: BaseHandler): BaseHandler {
   return async (context: HandlerContext, query: Record<string, string>) => {
+    const fn = 'createHandlerWrapper';
+    const requestId = context.requestId || `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    logFunctionStart(fn, { userId: context.user.id, query, requestId });
     try {
       await handler(context, query);
+      logFunctionEnd(fn, { success: true }, { userId: context.user.id, requestId });
     } catch (error) {
-      console.error(`Handler error:`, error);
+      logError(fn, error as Error, { userId: context.user.id, requestId });
       
       // Send error message to user if possible
-      if (context.ctx && context.ctx.reply) {
-        await context.ctx.reply('An error occurred while processing your request.');
+      if (context.ctx && context.ctx.replySmart) {
+        await context.ctx.replySmart(context.ctx.t('bot.error.generic'));
       }
     }
   };

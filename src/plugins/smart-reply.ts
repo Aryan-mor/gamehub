@@ -1,6 +1,8 @@
 import { Context } from 'grammy';
 import { SmartReplyOptions } from '../types';
+import { InlineKeyboardMarkup, ReplyKeyboardMarkup, ReplyKeyboardRemove, ForceReply } from 'grammy/types';
 import { GameHubContext, GameHubPlugin, ContextBuilder } from './context';
+import { logError } from '@/modules/core/logger';
 
 /**
  * Smart Reply Plugin
@@ -26,25 +28,25 @@ export class SmartReplyPlugin implements GameHubPlugin {
         try {
           if (messageId) {
             await ctx.api.editMessageText(chatId, messageId, text, {
-              reply_markup: options.reply_markup,
+              reply_markup: options.reply_markup as InlineKeyboardMarkup,
               parse_mode: options.parse_mode,
             });
             return;
           }
         } catch (err) {
-          // اگر نشد، حذف می‌کنیم
-          console.log('Failed to edit message, falling back to reply:', err);
+          // Fallback: delete and send new
+          logError('smart-reply.editMessage', err as Error, { chatId, messageId });
           try {
             if (messageId) {
               await ctx.api.deleteMessage(chatId, messageId);
             }
-          } catch {
-            // حذف هم نشد؟ مشکلی نیست، ادامه می‌دیم
+          } catch (deleteErr) {
+            logError('smart-reply.deleteMessage', deleteErr as Error, { chatId, messageId });
           }
         }
 
-        await ctx.reply(text, {
-          reply_markup: options.reply_markup,
+        await ctx.api.sendMessage(chatId, text, {
+          reply_markup: options.reply_markup as InlineKeyboardMarkup | ReplyKeyboardMarkup | ReplyKeyboardRemove | ForceReply,
           parse_mode: options.parse_mode,
         });
       }

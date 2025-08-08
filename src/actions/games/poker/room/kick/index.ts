@@ -1,8 +1,6 @@
-import { HandlerContext } from '@/modules/core/handler';
+import { HandlerContext, createHandler } from '@/modules/core/handler';
 import { kickPlayerFromRoom, getPokerRoom } from '../../services/pokerService';
 import { validateRoomId, validatePlayerId } from '../../_utils/typeGuards';
-import { register } from '@/modules/core/compact-router';
-import { POKER_ACTIONS } from '../../compact-codes';
 import { generateKickPlayerKeyboard, generateRoomInfoKeyboard } from '../../_utils/roomInfoHelper';
 
 // Export the action key for consistency and debugging
@@ -16,17 +14,16 @@ async function handleKick(context: HandlerContext, query: Record<string, string>
   const { roomId, r, targetPlayerId } = query;
   const roomIdParam = roomId || r;
   
-  console.log(`Processing kick player request for user ${user.id}, roomId: ${roomIdParam}, targetPlayerId: ${targetPlayerId}`);
+  ctx.log.info('Processing kick player request', { userId: user.id, roomId: roomIdParam, targetPlayerId });
   
   if (!roomIdParam) {
-    const message = `❌ <b>خطا در اخراج بازیکن</b>\n\n` +
-      `شناسه روم مورد نیاز است.`;
+    const message = ctx.t('poker.room.info.error.missingRoomId');
     
     await ctx.replySmart(message, {
       parse_mode: 'HTML',
       reply_markup: {
         inline_keyboard: [[
-          { text: '🔙 بازگشت به منو', callback_data: 'games.poker.backToMenu' }
+          { text: ctx.t('poker.room.buttons.backToMenu'), callback_data: ctx.keyboard.buildCallbackData('games.poker.back', {}) }
         ]]
       }
     });
@@ -62,9 +59,7 @@ async function handleKick(context: HandlerContext, query: Record<string, string>
         throw new Error('No players available to kick');
       }
       
-      const message = `👢 <b>اخراج بازیکن</b>\n\n` +
-        `بازیکن مورد نظر برای اخراج را انتخاب کنید:\n\n` +
-        `⚠️ <b>توجه:</b> این عمل قابل بازگشت نیست.`;
+    const message = ctx.t('poker.room.kick.select');
       
       const keyboard = generateKickPlayerKeyboard(room, kickablePlayers);
       
@@ -110,24 +105,24 @@ async function handleKick(context: HandlerContext, query: Record<string, string>
     
     await ctx.replySmart(message, {
       parse_mode: 'HTML',
-      reply_markup: keyboard as any
+      reply_markup: keyboard
     });
     
   } catch (error) {
-    console.error('Kick player error:', error);
+    ctx.log.error('Kick player error', { error: error instanceof Error ? error.message : String(error) });
     
     const errorMessage = error instanceof Error ? error.message : 'خطای نامشخص رخ داده است';
-    const message = `❌ <b>خطا در اخراج بازیکن</b>\n\n${errorMessage}`;
+    const message = ctx.t('poker.room.kick.error', { error: errorMessage });
     
     await ctx.replySmart(message, {
       parse_mode: 'HTML',
       reply_markup: {
         inline_keyboard: [
           [
-            { text: '🔙 بازگشت به اطلاعات روم', callback_data: `games.poker.room.info?roomId=${roomIdParam}` }
+            { text: ctx.t('poker.room.buttons.backToRoomInfo'), callback_data: ctx.keyboard.buildCallbackData('games.poker.room.info', { roomId: roomIdParam }) }
           ],
           [
-            { text: '🔙 بازگشت به منو', callback_data: 'games.poker.backToMenu' }
+            { text: ctx.t('poker.room.buttons.backToMenu'), callback_data: ctx.keyboard.buildCallbackData('games.poker.back', {}) }
           ]
         ]
       }
@@ -136,6 +131,6 @@ async function handleKick(context: HandlerContext, query: Record<string, string>
 }
 
 // Self-register with compact router
-register(POKER_ACTIONS.KICK_PLAYER, handleKick, 'Kick Player from Room');
+// Registration is handled by smart-router auto-discovery
 
-export default handleKick; 
+export default createHandler(handleKick); 

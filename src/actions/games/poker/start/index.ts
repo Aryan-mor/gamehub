@@ -1,8 +1,6 @@
-import { HandlerContext } from '@/modules/core/handler';
+import { HandlerContext, createHandler } from '@/modules/core/handler';
 import { isValidUserId } from '@/utils/typeGuards';
 // Use ctx.poker.generateMainMenuKeyboard() instead
-import { register } from '@/modules/core/compact-router';
-import { POKER_ACTIONS } from '../compact-codes';
 
 // Export the action key for consistency and debugging
 export const key = 'games.poker.start';
@@ -20,17 +18,7 @@ async function handlePokerStart(context: HandlerContext): Promise<void> {
   }
   
   try {
-    const message = `🎰 <b>Poker Game Hub</b>\n\n` +
-      `Welcome to Texas Hold'em Poker!\n\n` +
-      `🃏 <b>Available Actions:</b>\n` +
-      `• Create a new poker room\n` +
-      `• Join existing rooms\n` +
-      `• View active games\n\n` +
-      `💰 <b>How to Play:</b>\n` +
-      `• Each player gets 2 cards\n` +
-      `• 5 community cards are dealt\n` +
-      `• Best 5-card hand wins\n\n` +
-      `🎯 Choose an action below:`;
+    const message = ctx.t('poker.start.welcome');
     
     // Generate dynamic keyboard using the new button system
     const keyboard = ctx.poker.generateMainMenuKeyboard();
@@ -42,14 +30,11 @@ async function handlePokerStart(context: HandlerContext): Promise<void> {
     });
     
   } catch (error) {
-    console.error('Poker start action error:', error);
+    ctx.log.error('Poker start action error', { error: error instanceof Error ? error.message : String(error) });
     
     // Fallback message
-    await ctx.replySmart('❌ Failed to start poker game. Please try again later.');
+    await ctx.replySmart(ctx.t('poker.start.error.generic'));
   }
 }
 
-// Self-register with compact router
-register(POKER_ACTIONS.START, handlePokerStart, 'Start Poker Game');
-
-export default handlePokerStart; 
+export default createHandler(handlePokerStart); 

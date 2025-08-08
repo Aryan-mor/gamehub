@@ -1,14 +1,12 @@
-import { HandlerContext } from '@/modules/core/handler';
+import { HandlerContext, createHandler } from '@/modules/core/handler';
 import { 
   validateRoomIdWithError,
   validatePlayerIdWithError,
   getPokerRoom,
-  getGameStateDisplay,
-  generateGameActionKeyboard,
-  createUserFriendlyError,
-  register,
-  POKER_ACTIONS
+  createUserFriendlyError
 } from '../../_utils/pokerUtils';
+import { getGameStateForUser } from '../../_utils/roomInfoHelper';
+import PokerKeyboardService from '../../services/pokerKeyboardService';
 
 // Export the action key for consistency and debugging
 export const key = 'games.poker.room.refresh';
@@ -40,8 +38,8 @@ async function handleRefresh(context: HandlerContext, query: Record<string, stri
     const isCurrentPlayer = room.players[room.currentPlayerIndex].id === validatedPlayerId;
     
     // Generate updated game state display
-    const gameStateDisplay = getGameStateDisplay(room, validatedPlayerId);
-    const keyboard = generateGameActionKeyboard(room, validatedPlayerId, isCurrentPlayer);
+    const gameStateDisplay = getGameStateForUser(room, validatedPlayerId, ctx);
+    const keyboard = PokerKeyboardService.gameAction(room, validatedPlayerId, isCurrentPlayer, ctx);
     
     // Update the message
     await ctx.replySmart(gameStateDisplay, {
@@ -50,14 +48,11 @@ async function handleRefresh(context: HandlerContext, query: Record<string, stri
     });
     
   } catch (error) {
-    console.error('Refresh action error:', error);
+    ctx.log.error('Refresh action error', { error: error instanceof Error ? error.message : String(error) });
     
     const errorMessage = createUserFriendlyError(error as Error);
-    await ctx.replySmart(`❌ Failed to refresh: ${errorMessage}`);
+    await ctx.replySmart(ctx.t('poker.error.refresh', { error: errorMessage }));
   }
 }
 
-// Self-register with compact router
-register(POKER_ACTIONS.REFRESH_GAME, handleRefresh, 'Refresh Game');
-
-export default handleRefresh; 
+export default createHandler(handleRefresh);

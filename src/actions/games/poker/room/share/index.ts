@@ -1,4 +1,4 @@
-import { HandlerContext } from '@/modules/core/handler';
+import { HandlerContext, createHandler } from '@/modules/core/handler';
 import { PlayerId, RoomId } from '../../types';
 import {
   validateRoomIdWithError,
@@ -17,7 +17,7 @@ async function handleShare(context: HandlerContext, query: Record<string, string
   const { roomId, r } = query;
   const roomIdParam = roomId || r;
   
-  console.log(`Processing room share for room ${roomIdParam} by user ${user.id}`);
+  ctx.log.info('Processing room share', { roomId: roomIdParam, userId: user.id });
   
   try {
     // If no roomId in query, try to get from user's active room
@@ -30,7 +30,7 @@ async function handleShare(context: HandlerContext, query: Record<string, string
       
       if (activeRoom) {
         validRoomId = activeRoom.id;
-        console.log(`Found active room for user: ${validRoomId}`);
+        ctx.log.debug('Found active room for user', { roomId: validRoomId, userId: user.id });
       } else {
         throw new Error('No active room found for user');
       }
@@ -42,14 +42,12 @@ async function handleShare(context: HandlerContext, query: Record<string, string
     // Get room information
     const room = await getPokerRoom(validRoomId as RoomId);
     if (!room) {
-      const message = `❌ <b>خطا در اشتراک‌گذاری</b>\n\n` +
-        `روم مورد نظر یافت نشد.`;
-      
+      const message = ctx.t('poker.room.share.error.notFound');
       await ctx.replySmart(message, {
         parse_mode: 'HTML',
         reply_markup: {
           inline_keyboard: [[
-            { text: '🔙 بازگشت به منو', callback_data: 'games.poker.backToMenu' }
+            { text: ctx.t('poker.room.buttons.backToMenu'), callback_data: ctx.keyboard.buildCallbackData('games.poker.back', {}) }
           ]]
         }
       });
@@ -58,45 +56,38 @@ async function handleShare(context: HandlerContext, query: Record<string, string
     
     // Generate invite message with direct link
     const inviteLink = `https://t.me/${process.env.TELEGRAM_BOT_USERNAME}?start=gprs_${room.id}`;
-    const inviteMessage = `🎮 <b>دعوت به بازی پوکر</b>\n\n` +
-      `🏠 <b>${room.name}</b>\n\n` +
-      `📊 <b>مشخصات روم:</b>\n` +
-      `• نوع: ${room.isPrivate ? '🔒 خصوصی' : '🌐 عمومی'}\n` +
-      `• بازیکنان: ${room.players.length}/${room.maxPlayers}\n` +
-      `• Small Blind: ${room.smallBlind} سکه\n` +
-      `• تایم‌اوت: ${room.turnTimeoutSec} ثانیه\n\n` +
-      `🔗 <b>لینک دعوت:</b>\n` +
-      `<code>${inviteLink}</code>\n\n` +
-      `📋 <b>راهنمای استفاده:</b>\n` +
-      `• روی لینک بالا کلیک کنید تا کپی شود\n` +
-      `• یا از دکمه "اشتراک‌گذاری" استفاده کنید\n\n` +
-      `🎯 <b>بیا این میز پوکر رو شروع کنیم ♠️</b>`;
+    const inviteMessage = ctx.t('poker.room.share.invite', {
+      name: room.name,
+      isPrivate: room.isPrivate ? ctx.t('poker.room.info.type.private') : ctx.t('poker.room.info.type.public'),
+      playersCount: room.players.length,
+      maxPlayers: room.maxPlayers,
+      smallBlind: room.smallBlind,
+      timeout: room.turnTimeoutSec,
+      link: inviteLink
+    });
     
     // Generate share keyboard with contacts list
     const keyboard = {
       inline_keyboard: [
         [
-          {
-            text: '📤 اشتراک‌گذاری با مخاطبین',
-            switch_inline_query: `🎮 دعوت به بازی پوکر: ${room.name}\n\n${inviteLink}`
-          } as { text: string; switch_inline_query: string }
+          { text: ctx.t('poker.room.share.shareWithContacts'), switch_inline_query: ctx.t('poker.room.share.inlineQuery', { name: room.name, link: inviteLink }) } as { text: string; switch_inline_query: string }
         ],
         [
           {
-            text: '📋 کپی لینک',
-            callback_data: `copy_link?roomId=${room.id}`
+            text: ctx.t('poker.room.share.copyLink'),
+            callback_data: ctx.keyboard.buildCallbackData('games.poker.room.share', { roomId: room.id })
           }
         ],
         [
           {
-            text: '🔙 بازگشت به اطلاعات روم',
-            callback_data: `games.poker.room.info?roomId=${room.id}`
+            text: ctx.t('poker.room.buttons.backToRoomInfo'),
+            callback_data: ctx.keyboard.buildCallbackData('games.poker.room.info', { roomId: room.id })
           }
         ],
         [
           {
-            text: '🔙 بازگشت به منو',
-            callback_data: 'games.poker.backToMenu'
+            text: ctx.t('poker.room.buttons.backToMenu'),
+            callback_data: ctx.keyboard.buildCallbackData('games.poker.back', {})
           }
         ]
       ]
@@ -104,21 +95,19 @@ async function handleShare(context: HandlerContext, query: Record<string, string
     
     await ctx.replySmart(inviteMessage, {
       parse_mode: 'HTML',
-      reply_markup: keyboard as any
+      reply_markup: keyboard
     });
     
   } catch (error) {
-    console.error('Room share error:', error);
+    ctx.log.error('Room share error', { error: error instanceof Error ? error.message : String(error) });
     
-    const message = `❌ <b>خطا در اشتراک‌گذاری</b>\n\n` +
-      `متأسفانه مشکلی در اشتراک‌گذاری روم پیش آمده.\n` +
-      `لطفاً دوباره تلاش کنید.`;
+    const message = ctx.t('poker.room.share.error.generic');
     
     await ctx.replySmart(message, {
       parse_mode: 'HTML',
       reply_markup: {
         inline_keyboard: [[
-          { text: '🔙 بازگشت به منو', callback_data: 'games.poker.backToMenu' }
+          { text: ctx.t('poker.room.buttons.backToMenu'), callback_data: ctx.keyboard.buildCallbackData('games.poker.back', {}) }
         ]]
       }
     });
@@ -126,9 +115,6 @@ async function handleShare(context: HandlerContext, query: Record<string, string
 }
 
 // Self-register with compact router
-import { register } from '@/modules/core/compact-router';
-import { POKER_ACTIONS } from '../../compact-codes';
+// Registration is handled by smart-router auto-discovery
 
-register(POKER_ACTIONS.SHARE, handleShare, 'Share Poker Room');
-
-export default handleShare; 
+export default createHandler(handleShare); 

@@ -4,6 +4,8 @@
   "private": true,
   "main": "dist/bot.js",
   "scripts": {
+    "verify": "pnpm run type-check && pnpm run lint && pnpm run test:run",
+    "type-check:ci": "tsc --noEmit -p tsconfig.ci.json",
     "dev": "./scripts/dev.sh",
     "build": "tsc",
     "start": "node dist/bot.js",
@@ -13,6 +15,7 @@
     "test:run": "vitest run",
     "test:coverage": "vitest run --coverage",
     "test:ci": "vitest run --reporter=verbose",
+    "build:and:test-autodiscovery": "pnpm build && node -e \"require('./dist/modules/core/smart-router.js'); require('./dist/main-router.js'); (async()=>{const { dispatch } = require('./dist/modules/core/smart-router.js'); const { initializeRoutes } = require('./dist/main-router.js'); const logger = require('./dist/modules/core/logger.js').default; initializeRoutes(); const ctx={ t:(k)=>k, replySmart: async()=>{}, keyboard:{ buildCallbackData: ()=> 'noop' }, log: logger}; const context={ ctx, user:{ id:'123', username:'test'} }; await dispatch('games.poker.room.list', context); console.log('OK') })().catch((e)=>{ console.error(e); process.exit(1); })\"",
     "pre-push:full": "./scripts/pre-push.sh",
     "pre-push:coverage": "./scripts/pre-push.sh --coverage",
     "bot": "tsx src/bot.ts",
@@ -31,7 +34,9 @@
     "i18n:flatten": "tsx scripts/flatten-translations.ts flatten",
     "i18n:validate": "tsx scripts/flatten-translations.ts validate",
     "i18n:convert": "tsx scripts/flatten-translations.ts all",
-    "i18n:test": "tsx scripts/test-flat-translations.ts"
+    "i18n:test": "tsx scripts/test-flat-translations.ts",
+    "db:clean": "tsx src/scripts/cleanSupabase.ts --yes",
+    "db:clean:skip-auth": "tsx src/scripts/cleanSupabase.ts --yes --skip-auth"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.39.0",
@@ -40,16 +45,14 @@
     "i18next": "^25.3.2",
     "i18next-fs-backend": "^2.6.0",
     "nanoid": "^5.1.5",
-    "node-fetch": "2",
     "pino": "^9.7.0",
-    "pino-pretty": "^13.0.0"
+    "pino-pretty": "^13.0.0",
+    "zod": "^4.0.15"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
     "@testing-library/jest-dom": "^6.6.3",
-    "@types/nanoid": "^3.0.0",
     "@types/node": "^20",
-    "@types/node-fetch": "^2.6.12",
     "@typescript-eslint/eslint-plugin": "^8.39.0",
     "@typescript-eslint/parser": "^8.39.0",
     "@vitest/coverage-v8": "^3.2.4",
@@ -66,5 +69,9 @@
     "tough-cookie": "^4.1.3",
     "request": "^2.88.2",
     "form-data": "^4.0.4"
+  },
+  "engines": {
+    "node": ">=18 <24",
+    "pnpm": ">=9"
   }
 }

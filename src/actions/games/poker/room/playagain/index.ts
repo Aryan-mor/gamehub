@@ -1,10 +1,10 @@
-import { HandlerContext } from '@/modules/core/handler';
+import { HandlerContext, createHandler } from '@/modules/core/handler';
 import { 
   validateRoomIdWithError,
   validatePlayerIdWithError,
-  getPokerRoom,
-  getGameStateDisplay
+  getPokerRoom
 } from '../../_utils/pokerUtils';
+import { getGameStateForUser } from '../../_utils/roomInfoHelper';
 // No imports needed - using plugin system
 import { startPokerGame, } from '../../services/gameStateService';
 import { } from '../../services/pokerService';
@@ -52,7 +52,7 @@ async function handlePlayAgain(context: HandlerContext, query: Record<string, st
     const newGame = await startPokerGame(validatedRoomId);
     
     // Get game state display for the current player
-    const gameStateMessage = getGameStateDisplay(newGame, validatedPlayerId);
+    const gameStateMessage = getGameStateForUser(newGame, validatedPlayerId, ctx);
     
     // Add new game confirmation
     const actionMessage = `\n🔄 <b>New Game Started!</b>\n\n`;
@@ -79,11 +79,11 @@ async function handlePlayAgain(context: HandlerContext, query: Record<string, st
     });
     
   } catch (error) {
-    console.error('Play again action error:', error);
+    ctx.log.error('Play again action error', { error: error instanceof Error ? error.message : String(error) });
     
     const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-    await ctx.replySmart(`❌ Failed to start new round: ${errorMessage}`);
+    await ctx.replySmart(ctx.t('poker.error.playagain', { error: errorMessage }));
   }
 }
 
-export default handlePlayAgain; 
+export default createHandler(handlePlayAgain); 

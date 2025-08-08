@@ -1,4 +1,4 @@
-import { HandlerContext } from '@/modules/core/handler';
+import { HandlerContext, createHandler } from '@/modules/core/handler';
 import { isValidUserId } from '@/utils/typeGuards';
 
 // Export the action key for consistency and debugging
@@ -40,11 +40,11 @@ async function handleHelp(context: HandlerContext): Promise<void> {
     });
     
   } catch (error) {
-    console.error('Help command error:', error);
+    ctx.log.error('Help command error', { error: error instanceof Error ? error.message : String(error) });
     
     // Fallback message
     await ctx.replySmart(ctx.t('❌ An error occurred. Please try again.'));
   }
 }
 
-export default handleHelp; 
+export default createHandler(handleHelp); 

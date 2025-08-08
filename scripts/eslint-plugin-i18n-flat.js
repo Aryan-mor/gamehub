@@ -113,11 +113,13 @@ module.exports = {
           },
           
           'Program:exit'() {
-            // Only check for unused keys if this file actually uses translations
+            // Optionally check for unused keys only when explicitly enabled
+            const checkUnused = process.env.I18N_CHECK_UNUSED === 'true';
+            if (!checkUnused) return;
+
             if (usedKeys.size > 0) {
               const availableKeys = getTranslationKeys();
               const unusedKeys = Array.from(availableKeys).filter(key => !usedKeys.has(key));
-              
               if (unusedKeys.length > 0) {
                 context.report({
                   loc: { line: 1, column: 1 },

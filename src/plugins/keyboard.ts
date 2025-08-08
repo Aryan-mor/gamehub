@@ -36,11 +36,15 @@ export class KeyboardPlugin implements GameHubPlugin {
             throw new Error(`Button template not found for action: ${action}`);
           }
 
-          const callbackData = this.buildCallbackData(action, params);
-          return {
-            text: template.text,
-            callback_data: callbackData
-          };
+          // Use template's callback_data as the base (already namespaced), then merge params
+          let base: Record<string, string>;
+          try {
+            base = JSON.parse(template.callback_data) as Record<string, string>;
+          } catch {
+            base = { action: template.callback_data };
+          }
+          const callbackData = JSON.stringify({ ...base, ...params });
+          return { text: template.text, callback_data: callbackData };
         },
 
         // Generate multiple buttons
@@ -49,7 +53,11 @@ export class KeyboardPlugin implements GameHubPlugin {
           params: Record<string, string> = {},
           templates: Record<string, ButtonDefinition> = {}
         ): ButtonDefinition[] => {
-          return actions.map(action => this.buildContext(ctx).keyboard!.generateButton(action, params, templates));
+          const built = this.buildContext(ctx).keyboard;
+          if (!built) {
+            throw new Error('Keyboard plugin not initialized');
+          }
+          return actions.map(action => built.generateButton(action, params, templates));
         },
 
         // Create inline keyboard from button definitions
@@ -65,12 +73,16 @@ export class KeyboardPlugin implements GameHubPlugin {
           templates: Record<string, ButtonDefinition>,
           params: Record<string, string> = {}
         ): { inline_keyboard: ButtonDefinition[][] } => {
+          const built = this.buildContext(ctx).keyboard;
+          if (!built) {
+            throw new Error('Keyboard plugin not initialized');
+          }
           const keyboard: ButtonDefinition[][] = [];
 
           for (const row of layout) {
             const keyboardRow: ButtonDefinition[] = [];
             for (const action of row) {
-              const button = this.buildContext(ctx).keyboard!.generateButton(action, params, templates);
+              const button = built.generateButton(action, params, templates);
               keyboardRow.push(button);
             }
             keyboard.push(keyboardRow);

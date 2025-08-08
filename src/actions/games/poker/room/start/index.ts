@@ -1,11 +1,13 @@
-import { HandlerContext } from '@/modules/core/handler';
-import { validateRoomIdWithError, validatePlayerIdWithError, getPokerRoom } from '../../_utils/pokerUtils';
+import { HandlerContext, createHandler } from '@/modules/core/handler';
+import { GameHubContext } from '@/plugins';
+import { getPokerRoom, validateRoomIdWithError, validatePlayerIdWithError } from '../../_utils/pokerUtils';
 import { startPokerGame } from '../../services/gameStateService';
 import { logFunctionStart, logFunctionEnd, logError } from '@/modules/core/logger';
-import { generateGameActionKeyboard } from '../../_utils/gameActionKeyboardGenerator';
-import { RoomId, PlayerId } from '../../types';
+import PokerKeyboardService from '../../services/pokerKeyboardService';
+import { RoomId, PlayerId, PokerRoom } from '../../types';
 import { bot } from '@/bot';
 import { getCardDisplay } from '../../_utils/cardUtils';
+import { StartQuerySchema } from '../../_utils/schemas';
 
 // Export the action key for consistency and debugging
 export const key = 'games.poker.room.start';
@@ -18,75 +20,59 @@ async function handleStart(context: HandlerContext, query: Record<string, string
   logFunctionStart('handleStart', { query });
   
   const { user, ctx } = context;
-  const { roomId, r } = query;
-  const roomIdParam = roomId || r;
+  const { roomId } = StartQuerySchema.parse(query);
   
-  console.log(`Processing game start request for user ${user.id}, roomId: ${roomIdParam}`);
+  ctx.log.info('Processing game start request', { userId: user.id, roomId });
   
-  if (!roomIdParam) {
-    const message = `❌ <b>خطا در شروع بازی</b>\n\n` +
-      `شناسه روم مورد نیاز است.`;
-    
-    await ctx.replySmart(message, {
-      parse_mode: 'HTML',
-      reply_markup: {
-        inline_keyboard: [[
-          { text: '🔙 بازگشت به منو', callback_data: 'games.poker.backToMenu' }
-        ]]
-      }
-    });
-    return;
-  }
+  // roomId already validated by Zod
   
   try {
-    // Validate IDs
-    const validatedRoomId = validateRoomIdWithError(roomIdParam) as RoomId;
-    const validatedPlayerId = validatePlayerIdWithError(user.id.toString()) as PlayerId;
+    // Validate IDs via domain validators (no casts in handlers)
+    const validatedRoomId: RoomId = validateRoomIdWithError(roomId);
+    const validatedPlayerId: PlayerId = validatePlayerIdWithError(user.id.toString());
     
     // Get room information
     const room = await getPokerRoom(validatedRoomId);
     if (!room) {
-      throw new Error('روم یافت نشد');
+      throw new Error(ctx.t('poker.room.error.notFound'));
     }
     
     // Check if user is the room creator
     if (String(room.createdBy) !== String(validatedPlayerId)) {
-      throw new Error('فقط سازنده روم می‌تواند بازی را شروع کند');
+      throw new Error(ctx.t('poker.room.start.error.onlyCreator'));
     }
     
     // Check if game is already started
     if (room.status !== 'waiting') {
-      throw new Error('بازی قبلاً شروع شده است');
+      throw new Error(ctx.t('poker.room.start.error.alreadyStarted'));
     }
     
     // Check minimum players (at least 2 players)
     if (room.players.length < 2) {
-      throw new Error('حداقل ۲ بازیکن برای شروع بازی نیاز است');
+      throw new Error(ctx.t('poker.room.start.error.minPlayers'));
     }
     
     // Start the poker game using the engine
     const updatedRoom = await startPokerGame(validatedRoomId);
     
     // Send comprehensive game start message to all players
-    await sendComprehensiveGameStartMessage(updatedRoom);
+    await sendComprehensiveGameStartMessage(ctx, updatedRoom);
     
     // Show success message to the room creator
-    const successMessage = `🎮 <b>بازی با موفقیت شروع شد!</b>\n\n` +
-      `✅ پیام‌های مربوط به بازی برای تمام بازیکنان ارسال شد.\n\n` +
-      `📊 <b>مشخصات بازی:</b>\n` +
-      `• تعداد بازیکنان: ${updatedRoom.players.length}\n` +
-      `• Small Blind: ${updatedRoom.smallBlind} سکه\n` +
-      `• Big Blind: ${updatedRoom.bigBlind} سکه\n` +
-      `• پات اولیه: ${updatedRoom.pot} سکه\n\n` +
-      `🎯 <b>نوبت فعلی:</b> ${updatedRoom.players[updatedRoom.currentPlayerIndex].name}\n\n` +
-      `🃏 کارت‌ها تقسیم شدند و بازی آماده است!\n\n` +
-      `⏰ تایمر برای بازیکن اول شروع شد.`;
+    const successMessage = ctx.t('poker.start.success', {
+      players: updatedRoom.players.length,
+      smallBlind: updatedRoom.smallBlind,
+      bigBlind: updatedRoom.bigBlind,
+      pot: updatedRoom.pot,
+      currentPlayer: updatedRoom.players[updatedRoom.currentPlayerIndex].name
+    });
     
     // Generate keyboard for the room creator
-    const keyboard = generateGameActionKeyboard(
+    const keyboard = PokerKeyboardService.gameAction(
       updatedRoom,
       validatedPlayerId,
-      updatedRoom.players[updatedRoom.currentPlayerIndex].id === validatedPlayerId
+      updatedRoom.players[updatedRoom.currentPlayerIndex].id === validatedPlayerId,
+      ctx
     );
     
     await ctx.replySmart(successMessage, {
@@ -99,14 +85,14 @@ async function handleStart(context: HandlerContext, query: Record<string, string
   } catch (error) {
     logError('handleStart', error as Error, { query });
     
-    const errorMessage = error instanceof Error ? error.message : 'خطای نامشخص رخ داده است';
-    const message = `❌ <b>خطا در شروع بازی</b>\n\n${errorMessage}`;
+    const errorMessage = error instanceof Error ? error.message : ctx.t('bot.error.generic');
+    const message = ctx.t('poker.start.error.genericDetailed', { error: errorMessage });
     
     await ctx.replySmart(message, {
       parse_mode: 'HTML',
       reply_markup: {
         inline_keyboard: [[
-          { text: '🔙 بازگشت به منو', callback_data: 'games.poker.backToMenu' }
+          { text: ctx.t('poker.room.buttons.backToMenu'), callback_data: ctx.keyboard.buildCallbackData('games.poker.back', {}) }
         ]]
       }
     });
@@ -117,15 +103,15 @@ async function handleStart(context: HandlerContext, query: Record<string, string
  * Send comprehensive game start message to all players
  * This combines game info, private cards, and turn status in one message
  */
-async function sendComprehensiveGameStartMessage(room: any): Promise<void> {
+async function sendComprehensiveGameStartMessage(ctx: GameHubContext, room: PokerRoom): Promise<void> {
   try {
-    console.log(`🎮 Sending comprehensive game start message to ${room.players.length} players`);
+    // No ctx available here; keep minimal logging via logger functions if needed.
     
     for (const player of room.players) {
       const isCurrentPlayer = player.id === room.players[room.currentPlayerIndex].id;
       const currentPlayer = room.players[room.currentPlayerIndex];
       
-      console.log(`📤 Sending comprehensive message to player ${player.id} (${player.name})`);
+      
       
       // Clean up previous messages for this player
       try {
@@ -133,10 +119,10 @@ async function sendComprehensiveGameStartMessage(room: any): Promise<void> {
         const previousMessage = await getPlayerMessage(room.id, player.id);
         if (previousMessage && previousMessage.messageId) {
           await bot.api.deleteMessage(parseInt(player.id), previousMessage.messageId);
-          console.log(`🗑️ Deleted previous message ${previousMessage.messageId} for player ${player.id}`);
+          
         }
       } catch (error) {
-        console.log(`⚠️ Could not delete previous message for player ${player.id}:`, error);
+        logError('sendComprehensiveGameStartMessage.deletePreviousMessage', error as Error, { roomId: room.id, playerId: player.id });
       }
       
       // Build comprehensive message
@@ -156,7 +142,7 @@ async function sendComprehensiveGameStartMessage(room: any): Promise<void> {
         message += `(کارت‌ها در مرحله Pre-flop نمایش داده نمی‌شوند)\n\n`;
       } else {
         if (player.cards && player.cards.length > 0) {
-          const handDisplay = player.cards.map((card: any) => getCardDisplay(card)).join(' ');
+          const handDisplay = player.cards.map((card): string => getCardDisplay(card)).join(' ');
           message += `🃏 <b>کارت‌های شما:</b>\n`;
           message += `${handDisplay}\n\n`;
         } else {
@@ -184,8 +170,8 @@ async function sendComprehensiveGameStartMessage(room: any): Promise<void> {
       }
       
       // Generate keyboard for this player
-      const { generateGameActionKeyboard } = await import('../../_utils/gameActionKeyboardGenerator');
-      const keyboard = generateGameActionKeyboard(room, player.id, isCurrentPlayer);
+      const { default: PokerKeyboardService } = await import('../../services/pokerKeyboardService');
+      const keyboard = PokerKeyboardService.gameAction(room, player.id, isCurrentPlayer, ctx);
       
       // Send message to player
       const sentMessage = await bot.api.sendMessage(parseInt(player.id), message, {
@@ -197,15 +183,14 @@ async function sendComprehensiveGameStartMessage(room: any): Promise<void> {
       try {
         const { storePlayerMessage } = await import('../../services/roomMessageService');
         await storePlayerMessage(room.id, player.id, sentMessage.message_id, parseInt(player.id));
-        console.log(`💾 Stored message ID ${sentMessage.message_id} for player ${player.id}`);
       } catch (error) {
-        console.log(`⚠️ Could not store message ID for player ${player.id}:`, error);
+        logError('sendComprehensiveGameStartMessage.storePlayerMessage', error as Error, { roomId: room.id, playerId: player.id });
       }
       
-      console.log(`✅ Sent comprehensive game start message to player ${player.id}`);
+      
     }
   } catch (error) {
-    console.error('Error sending comprehensive game start message:', error);
+    logError('sendComprehensiveGameStartMessage', error as Error, { roomId: room?.id });
   }
 }
 
@@ -224,9 +209,7 @@ function getBettingRoundDisplay(round: string): string {
 }
 
 // Self-register with compact router
-import { register } from '@/modules/core/compact-router';
-import { POKER_ACTIONS } from '../../compact-codes';
 
-register(POKER_ACTIONS.START_GAME, handleStart, 'Start Poker Game');
+// Registration is handled by smart-router auto-discovery
 
-export default handleStart; 
+export default createHandler(handleStart); 

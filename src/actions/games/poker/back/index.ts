@@ -1,7 +1,4 @@
-import { HandlerContext } from '@/modules/core/handler';
-// Use ctx.poker.generateMainMenuKeyboard() instead
-import { register } from '@/modules/core/compact-router';
-import { POKER_ACTIONS } from './compact-codes';
+import { HandlerContext, createHandler } from '@/modules/core/handler';
 
 /**
  * Handle back navigation to main menu
@@ -27,15 +24,13 @@ async function handleBack(context: HandlerContext): Promise<void> {
     });
     
   } catch (error) {
-    console.error('Back navigation error:', error);
+    ctx.log.error('Back navigation error', { error: error instanceof Error ? error.message : String(error) });
     
     const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-    await ctx.replySmart(`❌ Navigation error: ${errorMessage}`);
+    await ctx.replySmart(ctx.t('poker.navigation.error', { error: errorMessage }));
   }
 }
 
-// Self-register with compact router
-register(POKER_ACTIONS.BACK, handleBack, 'Go Back');
-register(POKER_ACTIONS.BACK_TO_MENU, handleBack, 'Back to Menu');
+export default createHandler(handleBack);
 
-export default handleBack; 
+

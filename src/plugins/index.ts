@@ -11,6 +11,7 @@ export { UtilsPlugin, utilsPluginInstance } from './utils';
 export { TelegramPlugin, telegramPluginInstance } from './telegram';
 export { KeyboardPlugin, keyboardPluginInstance } from './keyboard';
 export { PokerPlugin, pokerPluginInstance } from './poker';
+export { FormStatePlugin, formStatePluginInstance } from './form-state';
 
 // Plugin instances for easy access
 import { smartReplyPluginInstance } from './smart-reply';
@@ -21,6 +22,7 @@ import { utilsPluginInstance } from './utils';
 import { telegramPluginInstance } from './telegram';
 import { keyboardPluginInstance } from './keyboard';
 import { pokerPluginInstance } from './poker';
+import { formStatePluginInstance } from './form-state';
 import { pluginRegistry } from './context';
 import { Context } from 'grammy';
 
@@ -38,6 +40,7 @@ export function initializeCorePlugins(): void {
   pluginRegistry.register(telegramPluginInstance);
   pluginRegistry.register(keyboardPluginInstance);
   pluginRegistry.register(pokerPluginInstance);
+  pluginRegistry.register(formStatePluginInstance);
 }
 
 /**
@@ -50,6 +53,6 @@ export function getPluginMiddlewareChain(): ReturnType<typeof pluginRegistry.cre
 /**
  * Build a complete GameHubContext from a grammY Context
  */
-export function buildGameHubContext(ctx: Context): any {
+export function buildGameHubContext(ctx: Context): ReturnType<typeof pluginRegistry.buildContext> {
   return pluginRegistry.buildContext(ctx);
-} 
+}

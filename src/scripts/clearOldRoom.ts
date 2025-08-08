@@ -3,17 +3,18 @@
 
 import { deletePokerRoom } from '../actions/games/poker/services/pokerService';
 import { RoomId } from '../actions/games/poker/types';
+import { logger } from '@/modules/core/logger';
 
 async function clearOldRoom(): Promise<void> {
   try {
     const oldRoomId = 'room_1754095606992_4xn';
-    console.log(`🗑️ Deleting old room: ${oldRoomId}`);
+    logger.info(`🗑️ Deleting old room: ${oldRoomId}`);
     
     await deletePokerRoom(oldRoomId as RoomId);
     
-    console.log('✅ Old room deleted successfully');
+    logger.info('✅ Old room deleted successfully');
   } catch (error) {
-    console.error('❌ Error deleting old room:', error);
+    logger.error({ err: error }, '❌ Error deleting old room:');
   }
 }
 

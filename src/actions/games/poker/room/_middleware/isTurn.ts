@@ -30,7 +30,7 @@ export async function isTurnMiddleware(ctx: HandlerContext, query: Record<string
     const roomId = getRoomIdFromQuery(query) as RoomId;
     
     if (!roomId) {
-      await ctx.ctx.reply('❌ Room ID is required');
+      await ctx.ctx.replySmart(ctx.ctx.t('poker.middleware.error.roomIdRequired'));
       return false;
     }
     
@@ -39,7 +39,7 @@ export async function isTurnMiddleware(ctx: HandlerContext, query: Record<string
     // Get room information
     const room = await getPokerRoom(roomId);
     if (!room) {
-      await ctx.ctx.reply('❌ Room not found');
+      await ctx.ctx.replySmart(ctx.ctx.t('poker.room.error.notFound'));
       logFunctionEnd('isTurnMiddleware', { isTurn: false, reason: 'room_not_found' }, { userId, roomId });
       return false;
     }
@@ -47,7 +47,7 @@ export async function isTurnMiddleware(ctx: HandlerContext, query: Record<string
     // Check if it's the user's turn
     const currentPlayer = room.players[room.currentPlayerIndex];
     if (!currentPlayer || currentPlayer.id !== userId) {
-      await ctx.ctx.reply('❌ It\'s not your turn');
+      await ctx.ctx.replySmart(ctx.ctx.t('poker.middleware.error.notYourTurn'));
       logFunctionEnd('isTurnMiddleware', { isTurn: false, reason: 'not_turn' }, { userId, roomId });
       return false;
     }
@@ -57,7 +57,7 @@ export async function isTurnMiddleware(ctx: HandlerContext, query: Record<string
     
   } catch (error) {
     logError('isTurnMiddleware', error as Error, {});
-    await ctx.ctx.reply('❌ Error checking turn');
+    await ctx.ctx.replySmart(ctx.ctx.t('poker.middleware.error.checkTurn'));
     return false;
   }
 } 

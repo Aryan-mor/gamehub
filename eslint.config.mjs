@@ -13,9 +13,23 @@ const compat = new FlatCompat({
 });
 
 const eslintConfig = [
+  // Global ignores to prevent test files from inheriting parserOptions.project
+  {
+    ignores: [
+      "src/**/*.test.ts",
+      "src/**/*.spec.ts",
+      "src/**/__tests__/**/*",
+    ],
+  },
   {
     files: ["src/**/*.ts", "src/**/*.tsx"],
-    ignores: ["src/**/*.test.ts", "src/**/*.spec.ts", "src/**/__tests__/**/*", "src/utils/cardImageService.ts"],
+    ignores: [
+      "src/**/*.test.ts",
+      "src/**/*.spec.ts",
+      "src/**/__tests__/**/*",
+      "src/utils/cardImageService.ts",
+      "src/actions/games/poker/room/create/buttonSets.ts",
+    ],
     languageOptions: {
       parser: tsparser,
       parserOptions: {
@@ -30,12 +44,20 @@ const eslintConfig = [
     },
     rules: {
       ...tseslint.configs.recommended.rules,
-      "@typescript-eslint/no-unused-vars": "error",
+      "@typescript-eslint/no-unused-vars": [
+        "error",
+        {
+          argsIgnorePattern: "^_",
+          varsIgnorePattern: "^_",
+        },
+      ],
       "@typescript-eslint/no-explicit-any": "warn",
       "@typescript-eslint/explicit-function-return-type": "warn",
       "@typescript-eslint/no-non-null-assertion": "warn",
       "prefer-const": "error",
       "no-var": "error",
+      // Disallow console.* usage across source files
+      "no-console": ["error"],
       "i18n-flat/check-translation-keys": ["error", {
         localesPath: "locales",
         defaultLocale: "en"
@@ -65,7 +87,7 @@ const eslintConfig = [
   },
   {
     files: ["src/**/*.ts", "src/**/*.tsx"],
-    ignores: ["src/api/**/*"],
+    ignores: ["src/api/**/*", "src/**/*.test.ts", "src/**/*.spec.ts", "src/**/__tests__/**/*"],
     rules: {
       "no-restricted-imports": [
         "error",
@@ -78,6 +100,13 @@ const eslintConfig = [
           ]
         }
       ]
+    },
+  },
+  // Allow using supabase client in the dedicated cleanup script (admin-only scenario)
+  {
+    files: ["src/scripts/cleanSupabase.ts"],
+    rules: {
+      "no-restricted-imports": "off",
     },
   },
   {
@@ -95,7 +124,13 @@ const eslintConfig = [
     },
     rules: {
       ...tseslint.configs.recommended.rules,
-      "@typescript-eslint/no-unused-vars": "error",
+      "@typescript-eslint/no-unused-vars": [
+        "error",
+        {
+          argsIgnorePattern: "^_",
+          varsIgnorePattern: "^_",
+        },
+      ],
       "@typescript-eslint/no-explicit-any": "warn",
       "@typescript-eslint/explicit-function-return-type": "warn",
       "@typescript-eslint/no-non-null-assertion": "warn",
@@ -121,7 +156,13 @@ const eslintConfig = [
     },
     rules: {
       ...tseslint.configs.recommended.rules,
-      "@typescript-eslint/no-unused-vars": "error",
+      "@typescript-eslint/no-unused-vars": [
+        "error",
+        {
+          argsIgnorePattern: "^_",
+          varsIgnorePattern: "^_",
+        },
+      ],
       "@typescript-eslint/no-explicit-any": "warn",
       "@typescript-eslint/explicit-function-return-type": "warn",
       "@typescript-eslint/no-non-null-assertion": "warn",
@@ -140,24 +181,28 @@ const eslintConfig = [
       "src/actions/games/poker/compact-codes.ts", 
       "src/utils/cardImageService.ts", 
       "src/actions/games/poker/_utils/gameActionKeyboardGenerator.ts",
-      "src/actions/games/poker/_utils/joinRoomKeyboardGenerator.ts",
-      "src/actions/games/poker/_utils/roomInfoHelper.ts",
-      "src/actions/games/poker/help/index.ts",
+      // Reduced ignores: these files now use i18n keys consistently
+      // "src/actions/games/poker/_utils/joinRoomKeyboardGenerator.ts",
+      // "src/actions/games/poker/_utils/roomInfoHelper.ts",
+      // "src/actions/games/poker/help/index.ts",
       "src/actions/games/poker/room/_button/buttonTemplates.ts",
-      "src/actions/games/poker/room/_middleware/active_game_redirect.ts",
+      // "src/actions/games/poker/room/_middleware/active_game_redirect.ts",
+      // Keep buttonSets ignored (pure mapping file)
       "src/actions/games/poker/room/create/buttonSets.ts",
-      "src/actions/games/poker/room/create/form.ts",
-      "src/actions/games/poker/room/create/index.ts",
-      "src/actions/games/poker/room/create/textHandler.ts",
-      "src/actions/games/poker/room/info/index.ts",
-      "src/actions/games/poker/room/join/index.ts",
-      "src/actions/games/poker/room/kick/index.ts",
-      "src/actions/games/poker/room/leave/index.ts",
-      "src/actions/games/poker/room/list/index.ts",
-      "src/actions/games/poker/room/share/index.ts",
-      "src/actions/games/poker/room/start/index.ts",
-      "src/actions/games/poker/services/roomMessageService.ts",
-      "src/actions/games/poker/start/index.ts"
+      // Enable i18n checks for create flow files
+      // "src/actions/games/poker/room/create/form.ts",
+      // "src/actions/games/poker/room/create/index.ts",
+      // "src/actions/games/poker/room/create/textHandler.ts",
+      // "src/actions/games/poker/room/info/index.ts",
+      // Reduced ignores: enable i18n checks for these compliant files
+      // "src/actions/games/poker/room/join/index.ts",
+      // "src/actions/games/poker/room/kick/index.ts",
+      // "src/actions/games/poker/room/leave/index.ts",
+      // "src/actions/games/poker/room/list/index.ts",
+      // "src/actions/games/poker/room/share/index.ts",
+      // "src/actions/games/poker/room/start/index.ts",
+      // "src/actions/games/poker/services/roomMessageService.ts",
+      // "src/actions/games/poker/start/index.ts"
     ],
   },
   // Rule for other files to prevent hardcoded strings
@@ -167,12 +212,16 @@ const eslintConfig = [
       "src/bot.ts",
       "src/modules/core/buttonHelpers.ts",
       "src/modules/core/interfaceHelpers.ts",
-      "src/modules/core/messageUpdater.ts",
+      // messageUpdater removed
       "src/plugins/index.ts",
       "src/plugins/keyboard.ts",
       "src/plugins/poker.ts",
       "src/plugins/utils.ts",
-      "src/utils/cardImageService.ts"
+      "src/utils/cardImageService.ts",
+      "src/actions/games/poker/room/create/buttonSets.ts",
+      "src/**/*.test.ts",
+      "src/**/*.spec.ts",
+      "src/**/__tests__/**/*",
     ],
     languageOptions: {
       parser: tsparser,

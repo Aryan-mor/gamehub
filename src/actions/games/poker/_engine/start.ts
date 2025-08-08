@@ -2,6 +2,7 @@ import { PokerRoom, RoomId, PlayerId } from '../types';
 import { getPokerRoom, updatePokerRoom } from '../services/pokerService';
 import { startPokerGame } from './gameStart';
 import { notifyAllPlayers, notifyPlayer } from './notify';
+import type { GameHubContext } from '@/plugins';
 import { logFunctionStart, logFunctionEnd, logError } from '@/modules/core/logger';
 
 /**
@@ -9,10 +10,11 @@ import { logFunctionStart, logFunctionEnd, logError } from '@/modules/core/logge
  * Called by /room/start.ts after status = "playing" is set
  */
 export async function startPokerGameEngine(
+  ctx: GameHubContext,
   roomId: RoomId,
   playerId: PlayerId
 ): Promise<PokerRoom> {
-  logFunctionStart('startPokerGameEngine', { roomId, playerId });
+  ctx.log.debug('startPokerGameEngine:start', { roomId, playerId });
   
   try {
     // Get room information
@@ -31,18 +33,18 @@ export async function startPokerGameEngine(
     const gameRoom = await startPokerGame(roomId);
     
     // Send notifications to all players
-    await notifyAllPlayers(gameRoom, '🎮 Game started!');
+    await notifyAllPlayers(ctx, gameRoom, '🎮 Game started!');
     
     // Send private notifications to each player
     for (const player of gameRoom.players) {
-      await notifyPlayer(player, `🎮 Game started! Your cards: ${player.cards.map(card => `${card.rank}${card.suit.charAt(0)}`).join(' ')}`);
+      await notifyPlayer(ctx, player, `🎮 Game started! Your cards: ${player.cards.map(card => `${card.rank}${card.suit.charAt(0)}`).join(' ')}`);
     }
     
-    logFunctionEnd('startPokerGameEngine', gameRoom, { roomId, playerId });
+    ctx.log.debug('startPokerGameEngine:end', { roomId, playerId });
     return gameRoom;
     
   } catch (error) {
-    logError('startPokerGameEngine', error as Error, { roomId, playerId });
+    ctx.log.error('startPokerGameEngine:error', { error: error instanceof Error ? error.message : String(error), roomId, playerId });
     throw error;
   }
 }

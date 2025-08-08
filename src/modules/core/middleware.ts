@@ -49,3 +49,20 @@ export function createValidationMiddleware(
     await next();
   };
 } 
+
+// Simple in-memory rate limiter per user (best-effort; replace with Redis in prod)
+const userLastActionAt: Map<string, number> = new Map();
+const WINDOW_MS = 1000; // 1 req/sec per user as baseline
+
+export const rateLimitMiddleware: Middleware = async (ctx, _query, next) => {
+  const userId = String(ctx.user.id);
+  const now = Date.now();
+  const last = userLastActionAt.get(userId) ?? 0;
+  if (now - last < WINDOW_MS) {
+    // Optionally log
+    ctx.ctx?.log?.warn?.('rateLimit:throttled', { userId });
+    return;
+  }
+  userLastActionAt.set(userId, now);
+  await next();
+};

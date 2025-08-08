@@ -1,17 +1,18 @@
 /**
  * Generate keyboard for joining rooms
  */
-export function generateJoinRoomKeyboard(): {
+export function generateJoinRoomKeyboard(ctx?: { t: (key: string) => string; keyboard?: { buildCallbackData: (action: string, params?: Record<string, unknown>) => string } }): {
   inline_keyboard: Array<Array<{ text: string; callback_data: string }>>
 } {
+  const t: (key: string) => string = (key: string) => (ctx?.t ? ctx.t(key) : key);
   return {
     inline_keyboard: [
       [
-        { text: '🔍 Find Rooms', callback_data: 'games.poker.room.list' },
-        { text: '🏠 Create Room', callback_data: 'games.poker.room.create' }
+        { text: t('poker.room.buttons.findRooms'), callback_data: ctx?.keyboard?.buildCallbackData?.('games.poker.room.list') ?? 'games.poker.room.list' },
+        { text: t('poker.room.buttons.createRoom'), callback_data: ctx?.keyboard?.buildCallbackData?.('games.poker.room.create') ?? 'games.poker.room.create' }
       ],
       [
-        { text: '🔙 Back', callback_data: 'games.poker.start' }
+        { text: t('poker.room.buttons.back'), callback_data: ctx?.keyboard?.buildCallbackData?.('games.poker.start') ?? 'games.poker.start' }
       ]
     ]
   };
@@ -20,13 +21,13 @@ export function generateJoinRoomKeyboard(): {
 /**
  * Generate error keyboard
  */
-export function generateErrorKeyboard(): {
+export function generateErrorKeyboard(ctx?: { t: (key: string) => string; keyboard?: { buildCallbackData: (action: string, params?: Record<string, unknown>) => string } }): {
   inline_keyboard: Array<Array<{ text: string; callback_data: string }>>
 } {
   return {
     inline_keyboard: [
       [
-        { text: '🔙 Back to Menu', callback_data: 'games.poker.start' }
+        { text: (ctx?.t ? ctx.t('poker.room.buttons.backToMenu') : 'poker.room.buttons.backToMenu'), callback_data: ctx?.keyboard?.buildCallbackData?.('games.poker.start') ?? 'games.poker.start' }
       ]
     ]
   };
@@ -35,14 +36,14 @@ export function generateErrorKeyboard(): {
 /**
  * Generate leave room keyboard
  */
-export function generateLeaveRoomKeyboard(): {
+export function generateLeaveRoomKeyboard(ctx?: { t: (key: string) => string; keyboard?: { buildCallbackData: (action: string, params?: Record<string, unknown>) => string } }): {
   inline_keyboard: Array<Array<{ text: string; callback_data: string }>>
 } {
   return {
     inline_keyboard: [
       [
-        { text: '🚪 Leave Room', callback_data: 'games.poker.room.leave' },
-        { text: '🔙 Back', callback_data: 'games.poker.room.info' }
+        { text: (ctx?.t ? ctx.t('poker.room.buttons.leave') : 'poker.room.buttons.leave'), callback_data: ctx?.keyboard?.buildCallbackData?.('games.poker.room.leave') ?? 'games.poker.room.leave' },
+        { text: (ctx?.t ? ctx.t('poker.room.buttons.backToRoomInfo') : 'poker.room.buttons.backToRoomInfo'), callback_data: ctx?.keyboard?.buildCallbackData?.('games.poker.room.info') ?? 'games.poker.room.info' }
       ]
     ]
   };

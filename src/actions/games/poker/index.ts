@@ -1,14 +1,27 @@
+import { HandlerContext } from '@/modules/core/handler';
+import { dispatch as smartDispatch, registerModule } from '@/modules/core/smart-router';
+import { logFunctionStart, logFunctionEnd, logError } from '@/modules/core/logger';
+
+// Register poker module so smart-router can delegate nested routes here if needed
+registerModule('games.poker', async (messageKey: string, context: HandlerContext) => {
+  try {
+    logFunctionStart('pokerModule', { messageKey, userId: context.user.id });
+    await smartDispatch(messageKey, context);
+    logFunctionEnd('pokerModule', {}, { messageKey });
+  } catch (error) {
+    logError('pokerModule', error as Error, { messageKey });
+    throw error;
+  }
+});
+
+export default {};
 
 
 /**
  * Poker game module handler
  * Routes poker-related messages to appropriate handlers
  */
-async function handlePokerMessage(messageKey: string): Promise<void> {
-  // This is now handled by the compact router
-  // The individual handlers register themselves
-  throw new Error(`Poker message routing is now handled by compact router: ${messageKey}`);
-}
+// No default handler; smart router dispatches to concrete actions.
 
 // Import all handlers for self-registration
 import './start';
@@ -35,6 +48,6 @@ import './room/share';
 import './stats';
 import './help';
 
-export default handlePokerMessage;
+// Removed duplicate default export
 
  

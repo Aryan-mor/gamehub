@@ -2,15 +2,7 @@ import { HandlerContext } from '@/modules/core/handler';
 import { generateFormStepKeyboard } from '../../_utils/formKeyboardGenerator';
 import { validateRoomName } from '../../_utils/roomValidation';
 import { FormState } from '../../_utils/formStateManager';
-
-// In-memory form state storage (shared with main handler)
-declare global {
-  var formStates: Map<string, FormState>;
-}
-
-if (!global.formStates) {
-  global.formStates = new Map<string, FormState>();
-}
+import { GameHubContext } from '@/plugins';
 
 /**
  * Handle text input for room creation form
@@ -18,11 +10,12 @@ if (!global.formStates) {
 export async function handleRoomNameInput(context: HandlerContext, text: string): Promise<boolean> {
   const { user, ctx } = context;
   
-  console.log(`Processing room name input: "${text}" for user ${user.id}`);
+  ctx.log.info('Processing room name input', { text, userId: user.id });
   
   try {
     const userId = user.id.toString();
-    const formState = global.formStates.get(userId);
+    const namespace = 'poker.room.create';
+    const formState = ctx.formState.get<FormState>(namespace, userId);
     
     // Check if user is in form state and on name step
     if (!formState || formState.step !== 'name') {
@@ -37,7 +30,7 @@ export async function handleRoomNameInput(context: HandlerContext, text: string)
       
       await ctx.replySmart(message, {
         parse_mode: 'HTML',
-        reply_markup: generateFormStepKeyboard('name')
+        reply_markup: generateFormStepKeyboard('name', ctx)
       });
       return true; // Handled
     }
@@ -45,7 +38,7 @@ export async function handleRoomNameInput(context: HandlerContext, text: string)
     // Update form state with room name
     formState.data.name = text.trim();
     formState.step = 'privacy';
-    global.formStates.set(userId, formState);
+    ctx.formState.set<FormState>(namespace, userId, formState);
     
     // Move to next step (privacy)
     const message = `🏠 <b>ساخت روم پوکر</b>\n\n` +
@@ -57,23 +50,21 @@ export async function handleRoomNameInput(context: HandlerContext, text: string)
     
     await ctx.replySmart(message, {
       parse_mode: 'HTML',
-      reply_markup: generateFormStepKeyboard('privacy')
+      reply_markup: generateFormStepKeyboard('privacy', ctx)
     });
     
     return true; // Handled
     
   } catch (error) {
-    console.error('Room name input handling error:', error);
+    ctx.log.error('Room name input handling error', { error: error instanceof Error ? error.message : String(error) });
     
-    const message = `❌ <b>خطا در پردازش نام روم</b>\n\n` +
-      `متأسفانه مشکلی در پردازش نام روم پیش آمده.\n` +
-      `لطفاً دوباره تلاش کنید.`;
+    const message = ctx.t('poker.form.error.processing');
     
     await ctx.replySmart(message, {
       parse_mode: 'HTML',
       reply_markup: {
         inline_keyboard: [[
-          { text: '🔙 بازگشت به منو', callback_data: 'games.poker.backToMenu' }
+          { text: ctx.t('poker.room.buttons.backToMenu'), callback_data: ctx.keyboard.buildCallbackData('games.poker.back', {}) }
         ]]
       }
     });
@@ -85,7 +76,9 @@ export async function handleRoomNameInput(context: HandlerContext, text: string)
 /**
  * Check if user is in room creation form
  */
-export function isUserInRoomCreationForm(userId: string): boolean {
-  const formState = global.formStates.get(userId);
+export function isUserInRoomCreationForm(ctx: GameHubContext, userId: string): boolean {
+  const namespace = 'poker.room.create';
+  const formState = ctx.formState.get<FormState>(namespace, userId);
+  // Only return true on the 'name' step because only that step expects free-text input
   return !!formState && formState.step === 'name';
-} 
+}

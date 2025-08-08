@@ -67,8 +67,7 @@ export {
 
 // Import game state functions
 export { 
-  processBettingAction,
-  getGameStateDisplay
+  processBettingAction
 } from '../services/gameStateService';
 
 // Import game result functions
@@ -82,10 +81,7 @@ export {
   generateRoomInfoKeyboard
 } from './roomInfoHelper';
 
-// Import keyboard generation functions
-export { 
-  generateGameActionKeyboard
-} from './gameActionKeyboardGenerator';
+// Keyboard generation moved to PokerKeyboardService
 
 // Import button helper functions - moved to plugin system
 // export { 
@@ -111,18 +107,13 @@ export {
   logError 
 } from '@/modules/core/logger';
 
-// Import message updater
-export { 
-  getMessageUpdater 
-} from '@/modules/core/messageUpdater';
+// Message updater removed; use ctx.replySmart from SmartReply plugin
 
 // Import active user handler
 export { 
   handlePokerActiveUser 
 } from '../_engine/activeUser';
 
-// Import compact router
-export { register } from '@/modules/core/compact-router';
+// smart-router is used for registration via auto-discovery
 
-// Import POKER_ACTIONS
-export { POKER_ACTIONS } from '../compact-codes'; 
+// compact codes removed

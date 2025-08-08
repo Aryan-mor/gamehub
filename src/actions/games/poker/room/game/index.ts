@@ -1,7 +1,7 @@
-import { HandlerContext } from '@/modules/core/handler';
+import { HandlerContext, createHandler } from '@/modules/core/handler';
 
 // Use plugin system for keyboard generation
-import { getGameStateDisplay } from '../../services/gameStateService';
+import { getGameStateForUser } from '../../_utils/roomInfoHelper';
 import { getPokerRoom } from '../../services/pokerService';
 import { validateRoomId, validatePlayerId } from '../../_utils/typeGuards';
 
@@ -12,7 +12,7 @@ async function handleGame(context: HandlerContext, query: Record<string, string>
   const { user, ctx } = context;
   const { roomId } = query;
   
-  console.log(`Showing game state for room ${roomId}`);
+  ctx.log.info('Showing game state', { roomId, userId: user.id });
   
   try {
     // Validate IDs
@@ -26,7 +26,7 @@ async function handleGame(context: HandlerContext, query: Record<string, string>
     }
     
     // Get game state display
-    const gameStateMessage = getGameStateDisplay(room, validatedPlayerId);
+    const gameStateMessage = getGameStateForUser(room, validatedPlayerId, ctx);
     
     // Check if it's the player's turn (only for active games)
     let turnMessage = '';
@@ -49,8 +49,8 @@ async function handleGame(context: HandlerContext, query: Record<string, string>
     // Generate appropriate keyboard based on game status
     let keyboard;
     if (room.status === 'finished') {
-      // Game is finished - show game end options
-      keyboard = ctx.poker.generateGameEndKeyboard(roomId);
+      // Game is finished - show basic navigation
+      keyboard = ctx.poker.generateGameActionKeyboard(roomId, false);
     } else if (room.status === 'playing' && isCurrentPlayerTurn) {
       // Player can act - show game actions
       const player = room.players.find(p => p.id === validatedPlayerId);
@@ -78,11 +78,11 @@ async function handleGame(context: HandlerContext, query: Record<string, string>
     });
     
   } catch (error) {
-    console.error('Game state error:', error);
+    ctx.log.error('Game state error', { error: error instanceof Error ? error.message : String(error) });
     
     const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-    await ctx.replySmart(`❌ Failed to show game state: ${errorMessage}`);
+    await ctx.replySmart(ctx.t('poker.error.gameState', { error: errorMessage }));
   }
 }
 
-export default handleGame; 
+export default createHandler(handleGame); 

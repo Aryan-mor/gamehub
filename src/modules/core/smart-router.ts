@@ -1,4 +1,5 @@
 import { HandlerContext } from './handler';
+import { logFunctionStart, logFunctionEnd, logError } from './logger';
 import { parseMessageKey } from './utils/parseMessageKey';
 
 type Handler = (context: HandlerContext, query: Record<string, string>, params?: Record<string, string>) => Promise<void> | void;
@@ -122,20 +123,27 @@ class SmartRouter {
         filePath += `/${part}`;
       }
       
-      filePath += '/index.ts';
+      // Try both TS (dev) and JS (built) entry files
+      const candidateFiles = ['index.ts', 'index.js'];
       
-      console.log(`🔍 Trying to auto-discover: ${pathString} -> ${filePath}`);
-      
-      // Dynamic import
-      const module = await import(`../../${filePath}`);
-      if (module && module.default) {
-        console.log(`✅ Auto-discovered handler: ${pathString}`);
-        return module.default;
-      } else {
-        console.log(`❌ No default export found for: ${pathString}`);
+      logFunctionStart('smartRouter.autoDiscover', { pathString });
+
+      for (const entry of candidateFiles) {
+        const fullImportPath = `../../${filePath}/${entry}`;
+        try {
+          const module = await import(fullImportPath);
+          if (module && module.default) {
+            logFunctionEnd('smartRouter.autoDiscover', { discovered: true, entry }, { pathString });
+            return module.default;
+          }
+        } catch {
+          // Try next candidate
+        }
       }
+
+      logFunctionEnd('smartRouter.autoDiscover', { discovered: false }, { pathString });
     } catch (error) {
-      console.log(`❌ Auto-discovery failed for ${pathString}:`, (error as Error).message);
+      logError('smartRouter.autoDiscover', error as Error, { pathString });
     }
     
     return null;
@@ -147,11 +155,14 @@ class SmartRouter {
   async dispatch(messageKey: string, context: HandlerContext): Promise<void> {
     const parsed = parseMessageKey(messageKey);
     const pathString = parsed.path.join('.');
+    // Merge router-parsed query with any query attached by upper layers (e.g., callback_query JSON)
+    const extraQuery = (context as unknown as { _query?: Record<string, string> })._query || {};
+    const mergedQuery: Record<string, string> = { ...parsed.query, ...extraQuery };
     
     // First try exact match
     const exactHandler = this.exactHandlers.get(pathString);
     if (exactHandler) {
-      await exactHandler(context, parsed.query);
+      await exactHandler(context, mergedQuery);
       return;
     }
     
@@ -160,7 +171,7 @@ class SmartRouter {
     if (discoveredHandler) {
       // Cache the discovered handler for future use
       this.exactHandlers.set(pathString, discoveredHandler);
-      await discoveredHandler(context, parsed.query);
+      await discoveredHandler(context, mergedQuery);
       return;
     }
     
@@ -174,7 +185,7 @@ class SmartRouter {
           params[routePattern.paramNames[i]] = match[i + 1];
         }
         
-        await routePattern.handler(context, parsed.query, params);
+        await routePattern.handler(context, mergedQuery, params);
         return;
       }
     }

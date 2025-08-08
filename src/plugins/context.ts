@@ -91,6 +91,15 @@ export interface GameHubContext extends Context {
     answerCallbackQuery: (callbackQueryId: string, text?: string) => Promise<void>;
   };
 
+  // Form State (namespaced, TTL-backed)
+  formState: {
+    get<T>(namespace: string, userId: string): T | undefined;
+    set<T>(namespace: string, userId: string, state: T, ttlMs?: number): void;
+    delete(namespace: string, userId: string): void;
+    has(namespace: string, userId: string): boolean;
+    clearNamespace(namespace: string): void;
+  };
+
   // Room Plugin (for poker games)
   room?: {
     id: string;
@@ -167,7 +176,7 @@ export class PluginRegistry {
         const pluginContext = plugin.buildContext(ctx);
         Object.assign(baseContext, pluginContext);
       } catch (error) {
-        console.error(`Error building context for plugin ${plugin.name}:`, error);
+        baseContext.log?.error?.('Error building context for plugin', { plugin: plugin.name, error: error instanceof Error ? error.message : String(error) });
       }
     }
 

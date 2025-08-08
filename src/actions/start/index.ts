@@ -1,4 +1,4 @@
-import { HandlerContext } from '@/modules/core/handler';
+import { HandlerContext, createHandler } from '@/modules/core/handler';
 import { isValidUserId } from '@/utils/typeGuards';
 
 // Export the action key for consistency and debugging
@@ -35,22 +35,22 @@ async function handleStart(context: HandlerContext): Promise<void> {
     const userData = await getUser(user.id);
     
     // Build welcome message
-    let welcome = `${ctx.t('🎮 <b>GameHub</b>\n\nWelcome to GameHub! Choose a game to start playing.')}\n\n` +
-      `💰 ${ctx.t('Earn and claim daily Coins with /freecoin!')}\n\n` +
-      `🎯 ${ctx.t('Choose an action below:')}`;
+    let welcome = `${ctx.t('bot.start.welcome')}\n\n` +
+      `💰 ${ctx.t('bot.start.tips.freecoin')}\n\n` +
+      `🎯 ${ctx.t('bot.start.chooseAction')}`;
     
     // Give 100 coins to new users
     if (userData.coins === 0 && !userData.lastFreeCoinAt) {
       await addCoins(user.id, 100, 'initial grant');
-      welcome = `${ctx.t('🎉 You received <b>100 Coins</b> for joining!')}\n\n` + welcome;
+      welcome = `${ctx.t('bot.start.joinBonus')}\n\n` + welcome;
     }
     
     // Create buttons with proper translation
-    const createRoomText = ctx.t('🏠 Create Room');
-    const joinRoomText = ctx.t('🚪 Join Room');
-    const freeCoinText = ctx.t('🪙 Free Coin');
-    const balanceText = ctx.t('💰 Balance');
-    const helpText = ctx.t('❓ Help');
+    const createRoomText = ctx.t('bot.buttons.createRoom');
+    const joinRoomText = ctx.t('bot.buttons.joinRoom');
+    const freeCoinText = ctx.t('bot.buttons.freeCoin');
+    const balanceText = ctx.t('bot.buttons.balance');
+    const helpText = ctx.t('bot.buttons.help');
     
     const buttons = [
       { text: createRoomText, callbackData: { action: pokerGameStartKey } },
@@ -69,11 +69,11 @@ async function handleStart(context: HandlerContext): Promise<void> {
     });
     
   } catch (error) {
-    console.error('Start command error:', error);
+    ctx.log?.error?.('Start command error', { error: error instanceof Error ? error.message : String(error) });
     
     // Fallback message
-    await ctx.replySmart(ctx.t('🎮 <b>GameHub</b>\n\nWelcome to GameHub! Choose a game to start playing.'));
+    await ctx.replySmart(ctx.t('bot.start.welcome'));
   }
 }
 
-export default handleStart; 
+export default createHandler(handleStart); 

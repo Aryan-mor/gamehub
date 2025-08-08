@@ -56,4 +56,50 @@ describe('Translation Structure Tests', () => {
     // Should have at least 50 translations
     expect(Object.keys(enTranslations).length).toBeGreaterThan(50);
   });
+
+  it('should have identical keys in en and fa, and only string values', () => {
+    const fs = require('fs');
+    const path = require('path');
+    const enPath = path.join(process.cwd(), 'locales', 'en', 'translation.json');
+    const faPath = path.join(process.cwd(), 'locales', 'fa', 'translation.json');
+    const en = JSON.parse(fs.readFileSync(enPath, 'utf-8')) as Record<string, string>;
+    const fa = JSON.parse(fs.readFileSync(faPath, 'utf-8')) as Record<string, string>;
+
+    const enKeys = Object.keys(en).sort();
+    const faKeys = Object.keys(fa).sort();
+    expect(enKeys).toEqual(faKeys);
+
+    for (const [k, v] of Object.entries(en)) {
+      expect(typeof v).toBe('string');
+      expect(k).not.toMatch(/^\s|\s$/);
+    }
+    for (const [k, v] of Object.entries(fa)) {
+      expect(typeof v).toBe('string');
+      expect(k).not.toMatch(/^\s|\s$/);
+    }
+  });
+
+  it('should use namespaced keys for poker actions/buttons', () => {
+    const fs = require('fs');
+    const path = require('path');
+    const enPath = path.join(process.cwd(), 'locales', 'en', 'translation.json');
+    const en = JSON.parse(fs.readFileSync(enPath, 'utf-8')) as Record<string, string>;
+    const requiredKeys = [
+      'poker.room.buttons.startGame',
+      'poker.room.buttons.share',
+      'poker.room.buttons.refresh',
+      'poker.room.buttons.leave',
+      'poker.room.buttons.backToMenu',
+      'poker.room.buttons.backToRoomInfo',
+      'poker.actions.callWithAmount',
+      'poker.actions.check',
+      'poker.actions.fold',
+      'poker.actions.allIn',
+      'poker.actions.raisePlus'
+    ];
+    for (const key of requiredKeys) {
+      expect(en[key]).toBeDefined();
+      expect(typeof en[key]).toBe('string');
+    }
+  });
 });

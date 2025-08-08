@@ -1,17 +1,17 @@
 import { Context } from 'grammy';
-import { 
-  PlayerId 
-} from '../../types';
+import { GameHubContext } from '@/plugins';
+import { PokerRoom, PlayerId } from '../../types';
 import { UserId } from '@/utils/types';
 import { 
   getPokerRoomsForPlayer 
 } from '../../services/pokerService';
+// duplicate import removed
 import { logFunctionStart, logFunctionEnd, logError } from '@/modules/core/logger';
 
 /**
  * Extract user info from context
  */
-function extractUserInfo(ctx: Context): { userId: string; chatId: number } {
+function extractUserInfo(ctx: GameHubContext): { userId: string; chatId: number } {
   return {
     userId: ctx.from?.id?.toString() || '0',
     chatId: ctx.chat?.id || 0
@@ -21,7 +21,7 @@ function extractUserInfo(ctx: Context): { userId: string; chatId: number } {
 /**
  * Middleware to redirect users to their active game if they have one
  */
-export async function activeGameRedirect(ctx: Context): Promise<boolean> {
+export async function activeGameRedirect(ctx: GameHubContext): Promise<boolean> {
   try {
     const userInfo = extractUserInfo(ctx);
     const userId = userInfo.userId as PlayerId;
@@ -30,7 +30,7 @@ export async function activeGameRedirect(ctx: Context): Promise<boolean> {
     
     // Skip redirect for callback queries (let them be handled by their specific handlers)
     if (ctx.callbackQuery) {
-      console.log(`🚫 SKIPPING ACTIVE GAME REDIRECT FOR CALLBACK QUERY: ${ctx.callbackQuery.data}`);
+      ctx.log.info('Skipping active game redirect for callback query', { data: ctx.callbackQuery.data });
       logFunctionEnd('activeGameRedirect', { skipped: true, reason: 'callbackQuery' }, { userId });
       return false; // Continue with normal flow
     }
@@ -38,7 +38,7 @@ export async function activeGameRedirect(ctx: Context): Promise<boolean> {
     // Skip redirect for room join requests
     const startPayload = ctx.message?.text?.split(' ')[1];
     if (startPayload && (startPayload.startsWith('gpj-') || startPayload.startsWith('gprs_'))) {
-      console.log(`🚫 SKIPPING ACTIVE GAME REDIRECT FOR ROOM JOIN REQUEST: ${startPayload}`);
+      ctx.log.info('Skipping active game redirect for room join request', { startPayload });
       logFunctionEnd('activeGameRedirect', { skipped: true, reason: 'roomJoinRequest' }, { userId });
       return false; // Continue with normal flow
     }
@@ -62,7 +62,7 @@ export async function activeGameRedirect(ctx: Context): Promise<boolean> {
         
         // Ensure we have proper context information
         if (!ctx.chat?.id) {
-          console.error('❌ Missing chat ID in context for active game redirect');
+          ctx.log.error('Missing chat ID in context for active game redirect');
           return false;
         }
         
@@ -77,9 +77,8 @@ export async function activeGameRedirect(ctx: Context): Promise<boolean> {
         try {
           await handleRoomInfo(context, { roomId: activeRoom.id });
         } catch (error) {
-          console.error('Error calling room info handler from active game redirect:', error);
-          // Fallback to simple message
-          await ctx.reply(`🏠 شما در روم "${activeRoom.name}" هستید.\n\nبرای مشاهده جزئیات روم، از دکمه‌های زیر استفاده کنید.`, {
+          ctx.log.error('Error calling room info handler from active game redirect', { error: error instanceof Error ? error.message : String(error) });
+          await ctx.replySmart(ctx.t('poker.active.redirect.roomInfo', { roomName: activeRoom.name }), {
             parse_mode: 'HTML'
           });
         }
@@ -96,7 +95,7 @@ export async function activeGameRedirect(ctx: Context): Promise<boolean> {
     
   } catch (error) {
     logError('activeGameRedirect', error as Error, {});
-    console.error('Error in active game redirect middleware:', error);
+    ctx.log.error('Error in active game redirect middleware', { error: error instanceof Error ? error.message : String(error) });
     return false; // Continue with normal flow on error
   }
 }
@@ -104,40 +103,39 @@ export async function activeGameRedirect(ctx: Context): Promise<boolean> {
 /**
  * Show current game state to the user
  */
-async function showCurrentGameState(ctx: Context, room: any, userId: PlayerId): Promise<void> {
+async function showCurrentGameState(ctx: GameHubContext, room: PokerRoom, userId: PlayerId): Promise<void> {
   try {
-    const player = room.players.find((p: any) => p.id === userId);
+    const player = room.players.find((p) => p.id === userId);
     if (!player) {
-      console.log(`❌ Player ${userId} not found in room ${room.id}`);
+      ctx.log.warn('Player not found in room', { userId, roomId: room.id });
       return;
     }
     
-    console.log(`🎮 Showing current game state for player ${userId} in room ${room.id}`);
+    ctx.log.info('Showing current game state', { userId, roomId: room.id });
     
-    // Get game state display
-    const { getGameStateDisplay } = await import('../../services/gameStateService');
-    const gameStateMessage = getGameStateDisplay(room, userId);
+    // Get game state display (i18n-aware)
+    const { getGameStateForUser } = await import('../../_utils/roomInfoHelper');
+    const gameStateMessage = getGameStateForUser(room, userId, ctx);
     
     // Generate keyboard for the current player
-    const { generateGameActionKeyboard } = await import('../../_utils/gameActionKeyboardGenerator');
+    const { default: PokerKeyboardService } = await import('../../services/pokerKeyboardService');
     const isCurrentPlayer = room.players[room.currentPlayerIndex].id === userId;
-    console.log(`🔍 Generating keyboard for player ${userId}, isCurrentPlayer: ${isCurrentPlayer}`);
-    const keyboard = generateGameActionKeyboard(room, userId, isCurrentPlayer);
-    console.log(`🔍 Generated keyboard:`, keyboard);
+    ctx.log.debug('Generating keyboard for player', { userId, isCurrentPlayer });
+    const keyboard = PokerKeyboardService.gameAction(room, userId, isCurrentPlayer, ctx);
+    ctx.log.debug('Generated keyboard', { keyboard });
     
     // Send the game state message with keyboard for all players
-    await ctx.reply(gameStateMessage, {
+    await ctx.replySmart(gameStateMessage, {
       parse_mode: 'HTML',
       reply_markup: keyboard
     });
     
-    console.log(`✅ Sent current game state to player ${userId}`);
+    ctx.log.info('Sent current game state', { userId });
     
   } catch (error) {
-    console.error(`❌ Error showing current game state to player ${userId}:`, error);
+    ctx.log.error('Error showing current game state', { userId, error: error instanceof Error ? error.message : String(error) });
     
-    // Fallback to simple message
-    await ctx.reply(`🎮 شما در حال حاضر در بازی "${room.name}" هستید.\n\nبرای مشاهده جزئیات بازی، از دکمه‌های زیر استفاده کنید.`, {
+    await ctx.replySmart(ctx.t('poker.active.redirect.gameState', { roomName: room.name }), {
       parse_mode: 'HTML'
     });
   }
@@ -146,7 +144,7 @@ async function showCurrentGameState(ctx: Context, room: any, userId: PlayerId): 
 /**
  * Check if user has active game and redirect if needed
  */
-export async function checkAndRedirectToActiveGame(ctx: Context): Promise<boolean> {
+export async function checkAndRedirectToActiveGame(ctx: GameHubContext): Promise<boolean> {
   try {
     const userInfo = extractUserInfo(ctx);
     const userId = userInfo.userId as PlayerId;
@@ -168,7 +166,7 @@ export async function checkAndRedirectToActiveGame(ctx: Context): Promise<boolea
         
         // Ensure we have proper context information
         if (!ctx.chat?.id) {
-          console.error('❌ Missing chat ID in context for active game redirect');
+          ctx.log.error('Missing chat ID in context for active game redirect');
           return false;
         }
         
@@ -183,9 +181,8 @@ export async function checkAndRedirectToActiveGame(ctx: Context): Promise<boolea
         try {
           await handleRoomInfo(context, { roomId: activeRoom.id });
         } catch (error) {
-          console.error('Error calling room info handler from checkAndRedirectToActiveGame:', error);
-          // Fallback to simple message
-          await ctx.reply(`🏠 شما در روم "${activeRoom.name}" هستید.\n\nبرای مشاهده جزئیات روم، از دکمه‌های زیر استفاده کنید.`, {
+          ctx.log.error('Error calling room info handler from checkAndRedirectToActiveGame', { error: error instanceof Error ? error.message : String(error) });
+          await ctx.replySmart(ctx.t('poker.active.redirect.roomInfo', { roomName: activeRoom.name }), {
             parse_mode: 'HTML'
           });
         }
@@ -201,7 +198,7 @@ export async function checkAndRedirectToActiveGame(ctx: Context): Promise<boolea
     
   } catch (error) {
     logError('checkAndRedirectToActiveGame', error as Error, {});
-    console.error('Error checking active game:', error);
+    ctx.log.error('Error checking active game', { error: error instanceof Error ? error.message : String(error) });
     return false; // Continue with normal flow on error
   }
 } 

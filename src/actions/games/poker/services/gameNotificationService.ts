@@ -1,6 +1,6 @@
 import { Bot } from 'grammy';
 import { PokerRoom, PlayerId } from '../types';
-import { sendMessage } from '@/modules/core/telegramHelpers';
+import { logError } from '@/modules/core/logger';
 
 /**
  * Send game start notification to all players
@@ -12,12 +12,10 @@ export async function sendGameStartNotification(
   try {
     // Send general game start message to all players
     for (const player of room.players) {
-      await sendMessage(bot, parseInt(player.id), '🎮 بازی شروع شد!', {
-        parseMode: 'HTML'
-      });
+      await bot.api.sendMessage(parseInt(player.id), '🎮 بازی شروع شد!', { parse_mode: 'HTML' });
     }
   } catch (error) {
-    console.error('Error sending game start notification:', error);
+    logError('sendGameStartNotification', error as Error, { roomId: room.id });
   }
 }
 
@@ -44,11 +42,9 @@ export async function sendPrivateHandMessage(
       `💰 <b>موجودی:</b> ${player.balance} سکه\n` +
       `🎯 <b>شرط فعلی:</b> ${player.betAmount} سکه`;
     
-    await sendMessage(bot, parseInt(playerId), _message, {
-      parseMode: 'HTML'
-    });
+      await bot.api.sendMessage(parseInt(playerId), _message, { parse_mode: 'HTML' });
   } catch (error) {
-    console.error('Error sending private hand message:', error);
+    logError('sendPrivateHandMessage', error as Error, { roomId: room.id, playerId });
   }
 }
 
@@ -71,21 +67,17 @@ export async function sendTurnNotification(
         `• ❌ Fold (تخلیه)\n` +
         `• 💰 Raise (افزایش)`;
       
-      await sendMessage(bot, parseInt(playerId), message, {
-        parseMode: 'HTML'
-      });
+      await bot.api.sendMessage(parseInt(playerId), message, { parse_mode: 'HTML' });
     } else {
       // Use display name (first_name + last_name) instead of username for privacy
       const displayName = currentPlayer.name || currentPlayer.username || 'Unknown Player';
       const message = `⏳ <b>منتظر ${displayName}...</b>\n\n` +
         `بازیکن فعلی در حال تصمیم‌گیری است.`;
       
-      await sendMessage(bot, parseInt(playerId), message, {
-        parseMode: 'HTML'
-      });
+      await bot.api.sendMessage(parseInt(playerId), message, { parse_mode: 'HTML' });
     }
   } catch (error) {
-    console.error('Error sending turn notification:', error);
+    logError('sendTurnNotification', error as Error, { roomId: room.id, playerId, isCurrentPlayer });
   }
 }
 
@@ -99,12 +91,10 @@ export async function sendGameStateUpdate(
 ): Promise<void> {
   try {
     for (const player of room.players) {
-      await sendMessage(bot, parseInt(player.id), updateMessage, {
-        parseMode: 'HTML'
-      });
+      await bot.api.sendMessage(parseInt(player.id), updateMessage, { parse_mode: 'HTML' });
     }
   } catch (error) {
-    console.error('Error sending game state update:', error);
+    logError('sendGameStateUpdate', error as Error, { roomId: room.id });
   }
 }
 

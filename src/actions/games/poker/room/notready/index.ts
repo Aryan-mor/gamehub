@@ -1,18 +1,16 @@
-import { HandlerContext } from '@/modules/core/handler';
+import { HandlerContext, createHandler } from '@/modules/core/handler';
 import {
   validateRoomIdWithError,
   validatePlayerIdWithError
 } from '../../_utils/pokerUtils';
 import { updatePlayerReadyStatus, } from '../../services/pokerService';
 import { } from '../../_utils/typeGuards';
-import { register } from '@/modules/core/compact-router';
-import { POKER_ACTIONS } from '../../compact-codes';
 
 // Export the action key for consistency and debugging
 export const key = 'games.poker.room.notready';
 
 // Register with compact router
-register(POKER_ACTIONS.NOT_READY, handleNotReady);
+// Registration is handled by smart-router auto-discovery
 
 /**
  * Handle player not ready status in a poker room
@@ -54,11 +52,11 @@ async function handleNotReady(context: HandlerContext, query: Record<string, str
     });
     
   } catch (error) {
-    console.error('Not ready action error:', error);
+    ctx.log.error('Not ready action error', { error: error instanceof Error ? error.message : String(error) });
     
     const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-    await ctx.replySmart(`❌ Failed to set not ready status: ${errorMessage}`);
+    await ctx.replySmart(ctx.t('poker.error.notready', { error: errorMessage }));
   }
 }
 
-export default handleNotReady; 
+export default createHandler(handleNotReady); 

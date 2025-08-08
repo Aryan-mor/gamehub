@@ -49,8 +49,8 @@ src/actions/games/poker/engine/
 ### Game Start Flow
 
 ```typescript
-// 1. Room start action calls engine
-const gameState = await startPokerGameEngine(roomId, playerId, bot);
+// 1. Room start action calls engine (pass ctx)
+const gameState = await startPokerGameEngine(ctx, roomId, playerId);
 
 // 2. Engine validates and sets status
 await updatePokerRoom(roomId, { status: 'playing' });
@@ -64,10 +64,10 @@ const { updatedPlayers, deck, communityCards } = performInitialDeal(players);
 // 5. Posts blinds
 const playersWithBlinds = postBlinds(updatedPlayers, positions, smallBlind, bigBlind);
 
-// 6. Sends notifications
-await sendGameStartNotification(bot, gameState);
-await sendPrivateHandMessage(bot, gameState, playerId);
-await sendTurnNotification(bot, gameState, playerId);
+// 6. Sends notifications (handled via engine notify helpers using ctx)
+await sendGameStartNotification(ctx, gameState);
+await sendPrivateHandMessage(ctx, gameState, playerId);
+await sendTurnNotification(ctx, gameState, playerId);
 ```
 
 ### Card Dealing Process

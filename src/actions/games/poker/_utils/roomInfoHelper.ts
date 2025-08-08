@@ -1,31 +1,33 @@
 import { PokerRoom, PlayerId, PokerPlayer } from '../types';
-import { createPokerActionCallback, createPokerActionCallbackWithParams } from './pokerActionHelper';
-import { POKER_ACTIONS } from '../compact-codes';
+import { GameHubContext } from '@/plugins';
+// Use smart-router JSON callbacks via keyboard plugin
+import { getCardDisplay } from './cardUtils';
 
 /**
  * Get personalized room information for a specific user
  */
-export function getRoomInfoForUser(room: PokerRoom, userId: PlayerId): string {
+export function getRoomInfoForUser(room: PokerRoom, userId: PlayerId, ctx?: GameHubContext): string {
   const isCreator = room.createdBy === userId;
   
-  let message = `🏠 <b>اطلاعات روم پوکر</b>\n\n`;
+  const t: (key: string, params?: Record<string, string>) => string = (key, params) => ctx?.t(key, params) ?? key;
+  let message = `${t('poker.room.info.title')}` + '\n\n';
   
   // Room basic info
-  message += `📋 <b>مشخصات روم:</b>\n`;
-  message += `• نام: ${room.name}\n`;
-  message += `• شناسه: <code>${room.id}</code>\n`;
-  message += `• وضعیت: ${getStatusDisplay(room.status)}\n`;
-  message += `• نوع: ${room.isPrivate ? '🔒 خصوصی' : '🌐 عمومی'}\n\n`;
+  message += `${t('poker.room.info.section.details')}\n`;
+  message += `${t('poker.room.info.field.name')}: ${room.name}\n`;
+  message += `${t('poker.room.info.field.id')}: <code>${room.id}</code>\n`;
+  message += `${t('poker.room.info.field.status')}: ${getStatusDisplay(room.status, ctx)}\n`;
+  message += `${t('poker.room.info.field.type')}: ${room.isPrivate ? t('poker.room.info.type.private') : t('poker.room.info.type.public')}\n\n`;
   
   // Game settings
-  message += `⚙️ <b>تنظیمات بازی:</b>\n`;
-  message += `• Small Blind: ${room.smallBlind} سکه\n`;
-  message += `• Big Blind: ${room.bigBlind} سکه\n`;
-  message += `• حداکثر بازیکن: ${room.maxPlayers} نفر\n`;
-  message += `• تایم‌اوت نوبت: ${room.turnTimeoutSec} ثانیه\n\n`;
+  message += `${t('poker.room.info.section.settings')}\n`;
+  message += `${t('poker.room.info.field.smallBlind')}: ${room.smallBlind} ${t('coins')}\n`;
+  message += `${t('poker.room.info.field.bigBlind')}: ${room.bigBlind} ${t('coins')}\n`;
+  message += `${t('poker.room.info.field.maxPlayers')}: ${room.maxPlayers}\n`;
+  message += `${t('poker.room.info.field.turnTimeout')}: ${room.turnTimeoutSec} ${t('seconds')}\n\n`;
   
   // Players list
-  message += `👥 <b>بازیکنان (${room.players.length}/${room.maxPlayers}):</b>\n`;
+  message += `${t('poker.room.info.section.players', { count: String(room.players.length), max: String(room.maxPlayers) })}\n`;
   
   room.players.forEach((player, index) => {
     const isPlayerCreator = player.id === room.createdBy;
@@ -36,18 +38,18 @@ export function getRoomInfoForUser(room: PokerRoom, userId: PlayerId): string {
     
     // Use display name (first_name + last_name) instead of username for privacy
     // The display name should be in player.name, but fallback to username if needed
-    const displayName = player.name || player.username || 'Unknown Player';
+    const displayName = player.name || player.username || t('poker.room.player.unknown');
     
     message += `${index + 1}. ${creatorIcon}${currentPlayerIcon} ${displayName}`;
     
     message += ` ${readyIcon}`;
     
     if (isPlayerCreator) {
-      message += ` <i>(سازنده)</i>`;
+      message += ` <i>(${t('poker.room.player.creator')})</i>`;
     }
     
     if (isCurrentPlayer) {
-      message += ` <i>(شما)</i>`;
+      message += ` <i>(${t('poker.room.player.you')})</i>`;
     }
     
     message += '\n';
@@ -57,39 +59,40 @@ export function getRoomInfoForUser(room: PokerRoom, userId: PlayerId): string {
   
   // Room status specific info
   if (room.status === 'waiting') {
-    message += `⏳ <b>وضعیت روم:</b>\n`;
-    message += `• بازیکنان: ${room.players.length}/${room.maxPlayers}\n`;
-    message += `• حداقل مورد نیاز: ${room.minPlayers} بازیکن\n\n`;
+    message += `${t('poker.room.info.section.status')}\n`;
+    message += `${t('poker.room.info.field.players')}: ${room.players.length}/${room.maxPlayers}\n`;
+    message += `${t('poker.room.info.field.minRequired')}: ${room.minPlayers} ${t('players')}\n\n`;
     
     if (isCreator && room.players.length >= room.minPlayers) {
-      message += `🎮 <b>شما می‌توانید بازی را شروع کنید!</b>\n`;
+      message += `${t('poker.room.info.hints.canStart')}\n`;
     } else if (isCreator) {
-      message += `⏳ <b>منتظر بازیکنان بیشتر...</b>\n`;
+      message += `${t('poker.room.info.hints.waitingMorePlayers')}\n`;
     } else {
-      message += `⏳ <b>منتظر شروع بازی توسط سازنده...</b>\n`;
+      message += `${t('poker.room.info.hints.waitingCreator')}\n`;
     }
   } else if (room.status === 'active' || room.status === 'playing') {
-    message += `🎮 <b>بازی در حال اجرا</b>\n`;
-    message += `• پات: ${room.pot} سکه\n`;
-    message += `• دور: ${room.round || room.bettingRound}\n`;
+    message += `${t('poker.room.info.section.activeGame')}\n`;
+    message += `${t('poker.room.info.field.pot')}: ${room.pot} ${t('coins')}\n`;
+    message += `${t('poker.room.info.field.round')}: ${room.round || room.bettingRound}\n`;
     if (room.currentPlayerIndex < room.players.length) {
       const currentPlayer = room.players[room.currentPlayerIndex];
-      const displayName = currentPlayer.name || currentPlayer.username || 'Unknown Player';
-      message += `• نوبت: ${displayName}\n`;
+      const displayName = currentPlayer.name || currentPlayer.username || t('poker.room.player.unknown');
+      message += `${t('poker.room.info.field.turn')}: ${displayName}\n`;
     }
   }
   
   // Add timestamp
   const now = new Date();
-  const timestamp = now.toLocaleDateString('fa-IR', { 
+  const locale = ctx?.from?.language_code && ['en','fa'].includes(ctx.from.language_code) ? ctx.from.language_code : 'en';
+  const timestamp = now.toLocaleDateString(locale, { 
     year: 'numeric', 
     month: '2-digit', 
     day: '2-digit' 
-  }) + ' ' + now.toLocaleTimeString('fa-IR', { 
+  }) + ' ' + now.toLocaleTimeString(locale, { 
     hour: '2-digit', 
     minute: '2-digit' 
   });
-  message += `\nآخرین بروزرسانی: ${timestamp}`;
+  message += `\n${t('poker.room.info.field.lastUpdate')}: ${timestamp}`;
   
   return message;
 }
@@ -97,81 +100,120 @@ export function getRoomInfoForUser(room: PokerRoom, userId: PlayerId): string {
 /**
  * Generate keyboard for room information based on user role
  */
-export function generateRoomInfoKeyboard(room: PokerRoom, userId: PlayerId): {
+export function generateRoomInfoKeyboard(room: PokerRoom, userId: PlayerId, ctx?: GameHubContext): {
   inline_keyboard: Array<Array<{ text: string; callback_data: string } | { text: string; switch_inline_query: string }>>
 } {
+  const t: (key: string) => string = (key) => ctx?.t(key) ?? key;
   const isCreator = String(room.createdBy) === String(userId);
   const canStartGame = isCreator && room.players.length >= room.minPlayers && room.status === 'waiting';
   
-  console.log(`🔍 START GAME BUTTON DEBUG:`);
-  console.log(`  - userId: "${userId}" (type: ${typeof userId})`);
-  console.log(`  - room.createdBy: "${room.createdBy}" (type: ${typeof room.createdBy})`);
-  console.log(`  - isCreator: ${isCreator}`);
-  console.log(`  - players.length: ${room.players.length}, minPlayers: ${room.minPlayers}`);
-  console.log(`  - room.status: ${room.status}`);
-  console.log(`  - canStartGame: ${canStartGame}`);
+  ctx?.log?.debug?.('START GAME BUTTON DEBUG', {
+    userId,
+    roomCreatedBy: room.createdBy,
+    isCreator,
+    players: room.players.length,
+    minPlayers: room.minPlayers,
+    status: room.status,
+    canStartGame
+  });
   
   const buttons: Array<Array<{ text: string; callback_data: string } | { text: string; switch_inline_query: string }>> = [];
   
   // Start Game button (only for creator when conditions are met)
   if (canStartGame) {
-    console.log(`✅ Adding Start Game button for room ${room.id}`);
+    ctx?.log?.debug?.('Adding Start Game button', { roomId: room.id });
     buttons.push([
-      {
-        text: '🎮 شروع بازی',
-        callback_data: `${POKER_ACTIONS.START_GAME}?r=${room.id}`
-      }
+      { text: t('poker.room.buttons.startGame'), callback_data: ctx?.keyboard.buildCallbackData('games.poker.room.start', { roomId: room.id }) as string }
     ]);
   } else {
-    console.log(`❌ NOT adding Start Game button - conditions not met`);
+    ctx?.log?.debug?.('NOT adding Start Game button - conditions not met', { roomId: room.id });
   }
   
   // Share button (only when room is not full) - using switch_inline_query to open contacts
   const isRoomFull = room.players.length >= room.maxPlayers;
-  console.log(`🔍 ROOM STATUS CHECK: ${room.name} - Players: ${room.players.length}/${room.maxPlayers} - Is Full: ${isRoomFull}`);
+  ctx?.log?.debug?.('ROOM STATUS CHECK', { roomName: room.name, players: room.players.length, maxPlayers: room.maxPlayers, isRoomFull });
   
   if (!isRoomFull) {
     const shareInlineQuery = `gpj-${room.id}`;
-    console.log(`🔍 SHARE BUTTON INLINE QUERY: ${shareInlineQuery}`);
+    ctx?.log?.debug?.('SHARE BUTTON INLINE QUERY', { shareInlineQuery });
     buttons.push([
       {
-        text: '📤 اشتراک‌گذاری',
+        text: t('poker.room.buttons.share'),
         switch_inline_query: shareInlineQuery
       } as { text: string; switch_inline_query: string }
     ]);
   } else {
-    console.log(`🔍 SHARE BUTTON HIDDEN: Room ${room.name} is full (${room.players.length}/${room.maxPlayers})`);
+    ctx?.log?.debug?.('SHARE BUTTON HIDDEN', { roomName: room.name, players: room.players.length, maxPlayers: room.maxPlayers });
   }
   
   // Refresh and Leave buttons (always available)
   buttons.push([
-    {
-      text: '🔁 بروزرسانی',
-      callback_data: `${POKER_ACTIONS.ROOM_INFO}?r=${room.id}`
-    },
-    {
-      text: '🚪 خروج از روم',
-      callback_data: `${POKER_ACTIONS.LEAVE_ROOM}?r=${room.id}`
-    }
+    { text: t('poker.room.buttons.refresh'), callback_data: ctx?.keyboard.buildCallbackData('games.poker.room.info', { roomId: room.id }) as string },
+    { text: t('poker.room.buttons.leave'), callback_data: ctx?.keyboard.buildCallbackData('games.poker.room.leave', { roomId: room.id }) as string }
   ]);
   
   // Back to menu button
   buttons.push([
-    {
-      text: '🔙 بازگشت به منو',
-      callback_data: `${POKER_ACTIONS.BACK_TO_MENU}`
-    }
+    { text: t('poker.room.buttons.backToMenu'), callback_data: ctx?.keyboard.buildCallbackData('games.poker.back', {}) as string }
   ]);
   
   return { inline_keyboard: buttons };
 }
 
 /**
+ * Build i18n-based game state message for a specific player
+ */
+export function getGameStateForUser(room: PokerRoom, playerId: PlayerId, ctx: GameHubContext): string {
+  const t: (key: string, params?: Record<string, string | number>) => string = (key, params) => ctx.t(key, params as Record<string, unknown>);
+  const player = room.players.find(p => p.id === playerId);
+  if (!player) {
+    return t('poker.room.player.unknown');
+  }
+
+  let message = t('poker.game.title', { roomName: room.name }) + '\n\n';
+  message += `${t('poker.game.field.pot')}: ${room.pot} ${t('coins')}\n`;
+  message += `${t('poker.game.field.currentBet')}: ${room.currentBet} ${t('coins')}\n\n`;
+
+  if (room.communityCards.length > 0) {
+    message += t('poker.game.section.communityCards') + '\n';
+    message += `${room.communityCards.map(card => getCardDisplay(card)).join(' ')}\n\n`;
+  }
+
+  if (player.cards && player.cards.length > 0) {
+    message += t('poker.game.section.yourCards') + '\n';
+    message += `${player.cards.map(card => getCardDisplay(card)).join(' ')}\n\n`;
+  }
+
+  const currentPlayer = room.players[room.currentPlayerIndex];
+  const isMyTurn = currentPlayer?.id === playerId;
+  if (isMyTurn) {
+    message += t('poker.game.turn.yours') + '\n';
+  } else if (currentPlayer) {
+    const name = currentPlayer.name || currentPlayer.username || t('poker.room.player.unknown');
+    message += t('poker.game.turn.waitingFor', { name }) + '\n';
+  }
+
+  message += `\n${t('poker.game.yourStatus.title')}\n`;
+  message += `• ${t('poker.game.yourStatus.chips')}: ${player.chips}\n`;
+  message += `• ${t('poker.game.yourStatus.currentBet')}: ${player.betAmount}\n`;
+  const statusText = player.isFolded
+    ? t('poker.game.status.folded')
+    : player.isAllIn
+      ? t('poker.game.status.allIn')
+      : t('poker.game.status.active');
+  message += `• ${t('poker.game.yourStatus.status')}: ${statusText}`;
+
+  return message;
+}
+
+/**
  * Generate keyboard for kick player selection
  */
-export function generateKickPlayerKeyboard(room: PokerRoom, kickablePlayers: PokerPlayer[]): {
-  inline_keyboard: Array<Array<{ text: string; callback_data: string }>>
-} {
+export function generateKickPlayerKeyboard(
+  room: PokerRoom,
+  kickablePlayers: PokerPlayer[],
+  ctx?: GameHubContext
+): { inline_keyboard: Array<Array<{ text: string; callback_data: string }>> } {
   const buttons: Array<Array<{ text: string; callback_data: string }>> = [];
   
   // Add kick buttons for each player (max 2 per row)
@@ -181,16 +223,16 @@ export function generateKickPlayerKeyboard(room: PokerRoom, kickablePlayers: Pok
     // First player in row
     const player1 = kickablePlayers[i];
     row.push({
-      text: `👢 ${player1.name}`,
-      callback_data: createPokerActionCallbackWithParams('KICK_PLAYER', { roomId: room.id, targetPlayerId: player1.id })
+      text: `${ctx?.t('poker.room.buttons.kick')} ${player1.name}`,
+      callback_data: ctx?.keyboard.buildCallbackData('games.poker.room.kick', { roomId: room.id, targetPlayerId: player1.id }) as string
     });
     
     // Second player in row (if exists)
     if (i + 1 < kickablePlayers.length) {
       const player2 = kickablePlayers[i + 1];
       row.push({
-        text: `👢 ${player2.name}`,
-        callback_data: createPokerActionCallbackWithParams('KICK_PLAYER', { roomId: room.id, targetPlayerId: player2.id })
+        text: `${ctx?.t('poker.room.buttons.kick')} ${player2.name}`,
+      callback_data: ctx?.keyboard.buildCallbackData('games.poker.room.kick', { roomId: room.id, targetPlayerId: player2.id }) as string
       });
     }
     
@@ -199,17 +241,11 @@ export function generateKickPlayerKeyboard(room: PokerRoom, kickablePlayers: Pok
   
   // Navigation buttons
   buttons.push([
-    {
-      text: '🔙 بازگشت به اطلاعات روم',
-      callback_data: createPokerActionCallback('ROOM_INFO', room.id)
-    }
+    { text: ctx?.t('poker.room.buttons.backToRoomInfo') ?? 'poker.room.buttons.backToRoomInfo', callback_data: ctx?.keyboard.buildCallbackData('games.poker.room.info', { roomId: room.id }) as string }
   ]);
   
   buttons.push([
-    {
-      text: '🔙 بازگشت به منو',
-      callback_data: createPokerActionCallback('BACK_TO_MENU', room.id)
-    }
+    { text: ctx?.t('poker.room.buttons.backToMenu') ?? 'poker.room.buttons.backToMenu', callback_data: ctx?.keyboard.buildCallbackData('games.poker.back', {}) as string }
   ]);
   
   return { inline_keyboard: buttons };
@@ -218,13 +254,14 @@ export function generateKickPlayerKeyboard(room: PokerRoom, kickablePlayers: Pok
 /**
  * Get display text for room status
  */
-function getStatusDisplay(status: string): string {
+function getStatusDisplay(status: string, ctx?: GameHubContext): string {
+  const t: (key: string) => string = (key) => ctx?.t(key) ?? key;
   const statusMap: Record<string, string> = {
-    'waiting': '⏳ منتظر بازیکنان',
-    'active': '🎮 فعال',
-    'playing': '🎮 در حال بازی',
-    'finished': '🏁 تمام شده',
-    'cancelled': '❌ لغو شده'
+    'waiting': t('poker.room.status.waiting'),
+    'active': t('poker.room.status.active'),
+    'playing': t('poker.room.status.playing'),
+    'finished': t('poker.room.status.finished'),
+    'cancelled': t('poker.room.status.cancelled')
   };
   
   return statusMap[status] || status;

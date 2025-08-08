@@ -1,5 +1,5 @@
 import { HandlerContext } from '@/modules/core/handler';
-import { Context } from 'grammy';
+import { GameHubContext } from '@/plugins';
 // Use ctx.poker.generateMainMenuKeyboard() instead
 import { 
   validateRoomIdWithError,
@@ -21,10 +21,8 @@ async function handleLeave(context: HandlerContext, query: Record<string, string
   const { roomId, r } = query;
   const roomIdParam = roomId || r;
   
-  console.log(`🚪 LEAVE HANDLER CALLED: Processing room leave for user ${user.id} from room ${roomIdParam}`);
-  console.log(`🚪 LEAVE HANDLER DEBUG: query =`, query);
-  console.log(`🚪 LEAVE HANDLER DEBUG: roomIdParam =`, roomIdParam);
-  console.log(`🚪 LEAVE HANDLER DEBUG: context =`, { userId: user.id, username: user.username, chatId: ctx.chat?.id });
+  ctx.log.info('LEAVE handler called', { userId: user.id, roomId: roomIdParam });
+  ctx.log.debug('LEAVE handler debug', { query, roomIdParam, context: { userId: user.id, username: user.username, chatId: ctx.chat?.id } });
 
   try {
     // Validate IDs
@@ -58,46 +56,24 @@ async function handleLeave(context: HandlerContext, query: Record<string, string
     if (isCreator) {
       if (updatedRoom.players.length === 0) {
         // Room was deleted
-        message = `🚪 <b>روم حذف شد!</b>\n\n` +
-          `✅ شما روم را ترک کردید و چون سازنده بودید، روم نیز حذف شد.\n\n` +
-          `📊 <b>مرحله بعد:</b>\n` +
-          `• می‌توانید روم جدید بسازید\n` +
-          `• به روم‌های دیگر بپیوندید\n` +
-          `• به منوی اصلی بازگردید`;
+        message = ctx.t('poker.room.leave.deleted');
       } else {
         // Creator left, ownership transferred
         completeRoom?.players.find(p => p.id === completeRoom.createdBy);
-        message = `🚪 <b>روم ترک شد!</b>\n\n` +
-          `✅ شما روم را ترک کردید.\n\n` +
-          `📊 <b>مرحله بعد:</b>\n` +
-          `• می‌توانید روم جدید بسازید\n` +
-          `• به روم‌های دیگر بپیوندید\n` +
-          `• به منوی اصلی بازگردید`;
+        message = ctx.t('poker.room.leave.creator');
       }
     } else {
       if (isGameInProgress) {
-        message = `🚪 <b>بازی ترک شد!</b>\n\n` +
-          `✅ شما بازی پوکر را ترک کردید.\n\n` +
-          `📊 <b>مرحله بعد:</b>\n` +
-          `• می‌توانید روم جدید بسازید\n` +
-          `• به روم‌های دیگر بپیوندید\n` +
-          `• به منوی اصلی بازگردید`;
+        message = ctx.t('poker.room.leave.gameLeft');
       } else {
-        message = `🚪 <b>روم ترک شد!</b>\n\n` +
-          `✅ شما روم پوکر را ترک کردید.\n\n` +
-          `📊 <b>مرحله بعد:</b>\n` +
-          `• می‌توانید روم جدید بسازید\n` +
-          `• به روم‌های دیگر بپیوندید\n` +
-          `• به منوی اصلی بازگردید`;
+        message = ctx.t('poker.room.leave.roomLeft');
       }
     }
 
     // Generate main menu keyboard
     const keyboard = ctx.poker.generateMainMenuKeyboard();
 
-    console.log(`🚪 SENDING LEAVE MESSAGE:`);
-    console.log(`  Message: ${message}`);
-    console.log(`  Keyboard:`, keyboard);
+    ctx.log.debug('Sending LEAVE message', { message, keyboard });
 
     // Use ctx.replySmart to update the existing message
     try {
@@ -105,15 +81,15 @@ async function handleLeave(context: HandlerContext, query: Record<string, string
         parse_mode: 'HTML',
         reply_markup: keyboard
       });
-      console.log(`✅ LEAVE MESSAGE SENT SUCCESSFULLY`);
+      ctx.log.info('LEAVE message sent successfully');
     } catch (error) {
-      console.error(`❌ FAILED TO SEND LEAVE MESSAGE:`, error);
+      ctx.log.error('Failed to send LEAVE message', { error: error instanceof Error ? error.message : String(error) });
       // Fallback: send new message
       await ctx.replySmart(message, {
         parse_mode: 'HTML',
         reply_markup: keyboard
       });
-      console.log(`✅ LEAVE MESSAGE SENT AS NEW MESSAGE`);
+      ctx.log.info('LEAVE message sent as new message');
     }
     
     // Remove player's message from room
@@ -130,10 +106,10 @@ async function handleLeave(context: HandlerContext, query: Record<string, string
             const playerMessage = await getPlayerMessage(completeRoom.id, player.id);
             if (playerMessage && playerMessage.messageId) {
               await handlePokerActiveUser({
-                chat: { id: player.chatId },
-                from: { id: parseInt(player.id) },
-                message: { message_id: playerMessage.messageId }
-              } as unknown as Context, {
+                ...(ctx as GameHubContext),
+                chat: { id: player.chatId } as unknown as GameHubContext['chat'],
+                from: { id: Number(player.id) } as unknown as GameHubContext['from'],
+              } as GameHubContext, {
                 gameType: 'poker',
                 roomId: completeRoom.id,
                 isActive: true,
@@ -141,23 +117,23 @@ async function handleLeave(context: HandlerContext, query: Record<string, string
               }, completeRoom);
             }
           } catch (error) {
-            console.error(`Failed to update message for player ${player.id}:`, error);
+            ctx.log.error('Failed to update message for player', { playerId: player.id, error: error instanceof Error ? error.message : String(error) });
           }
         }
       }
     }
     
   } catch (error) {
-    console.error('Room leave error:', error);
+    ctx.log.error('Room leave error', { error: error instanceof Error ? error.message : String(error) });
     
-    const errorMessage = error instanceof Error ? error.message : 'خطای نامشخص رخ داده است';
-    const message = `❌ <b>خطا در ترک روم</b>\n\n${errorMessage}`;
+    const errorMessage = error instanceof Error ? error.message : ctx.t('bot.error.generic');
+    const message = ctx.t('poker.room.leave.error.generic', { error: errorMessage });
     
     await ctx.replySmart(message, {
       parse_mode: 'HTML',
       reply_markup: {
         inline_keyboard: [[
-          { text: '🔙 بازگشت به منو', callback_data: 'games.poker.backToMenu' }
+          { text: ctx.t('poker.room.buttons.backToMenu'), callback_data: ctx.keyboard.buildCallbackData('games.poker.back', {}) }
         ]]
       }
     });
@@ -165,9 +141,7 @@ async function handleLeave(context: HandlerContext, query: Record<string, string
 }
 
 // Self-register with compact router
-import { register } from '@/modules/core/compact-router';
-import { POKER_ACTIONS } from '../../compact-codes';
 
-register(POKER_ACTIONS.LEAVE_ROOM, handleLeave, 'Leave Poker Room');
+// Registration is handled by smart-router auto-discovery
 
 export default handleLeave; 

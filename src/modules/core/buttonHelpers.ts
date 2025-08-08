@@ -132,20 +132,13 @@ export function createCustomKeyboard(
  * Create optimized keyboard with back button support
  */
 export function createOptimizedKeyboard(
-  buttons: ButtonDefinition[],
-  showBack = false
+  buttons: ButtonDefinition[]
 ): {
   inline_keyboard: Array<Array<{ text: string; callback_data: string }>>
 } {
   const keyboard = createInlineKeyboard(buttons);
   
-  // Add back button if needed
-  if (showBack) {
-    keyboard.inline_keyboard.push([{
-      text: '⬅️ Back', // System button
-      callback_data: JSON.stringify({ action: 'back' })
-    }]);
-  }
+  // Back button intentionally not added here to enforce i18n at call sites
   
   return keyboard;
 } 
