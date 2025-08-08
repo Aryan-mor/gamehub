@@ -113,11 +113,7 @@ export class KeyboardPlugin implements GameHubPlugin {
     await next();
   };
 
-  // Helper method for building callback data
-  private buildCallbackData(action: string, params: Record<string, string> = {}): string {
-    const data = { action, ...params };
-    return JSON.stringify(data);
-  }
+  // (removed unused private helper buildCallbackData to satisfy strict TS checks)
 }
 
 // Export plugin instance

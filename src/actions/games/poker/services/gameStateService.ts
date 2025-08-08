@@ -2,7 +2,6 @@ import {
   PokerRoom, 
   RoomId, 
   PlayerId, 
-  HandType, 
   Card, 
   RoomStatus 
   } from '../types';
@@ -475,49 +474,3 @@ export function getGameStateDisplay(room: PokerRoom, playerId: PlayerId): string
   const roomInfoHelper = require('../_utils/roomInfoHelper') as { getRoomInfoForUser: (room: PokerRoom, playerId: PlayerId) => string };
   return roomInfoHelper.getRoomInfoForUser(room, playerId);
 }
-
-/**
- * Get game duration in minutes
- */
-function _getGameDuration(room: PokerRoom): number {
-  if (!room.startedAt || !room.endedAt) {
-    return 0;
-  }
-  
-  const durationMs = room.endedAt - room.startedAt;
-  return Math.round(durationMs / (1000 * 60));
-}
-
-/**
- * Get hand type display helper
- */
-function _getHandTypeDisplay(type: HandType): string {
-  const displayNames: Record<string, string> = {
-    'high-card': 'High Card',
-    'pair': 'Pair',
-    'two-pair': 'Two Pair',
-    'three-of-a-kind': 'Three of a Kind',
-    'straight': 'Straight',
-    'flush': 'Flush',
-    'full-house': 'Full House',
-    'four-of-a-kind': 'Four of a Kind',
-    'straight-flush': 'Straight Flush',
-    'royal-flush': 'Royal Flush'
-  };
-  
-  return displayNames[type] || 'Unknown';
-}
-
-/**
- * Get card display helper
- */
-function _getCardDisplay(card: Card): string {
-  const suitSymbols: Record<string, string> = {
-    'hearts': '♥️',
-    'diamonds': '♦️',
-    'clubs': '♣️',
-    'spades': '♠️'
-  };
-  
-  return `${card.rank}${suitSymbols[card.suit]}`;
-} 
