@@ -4,7 +4,7 @@ import { FlatCompat } from "@eslint/eslintrc";
 import tseslint from "@typescript-eslint/eslint-plugin";
 import tsparser from "@typescript-eslint/parser";
 import i18nFlatPlugin from "./scripts/eslint-plugin-i18n-flat.js";
-import routesPlugin from "./scripts/eslint-plugin-routes.js";
+import routesPlugin from "./scripts/eslint-plugin-routes.mjs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
