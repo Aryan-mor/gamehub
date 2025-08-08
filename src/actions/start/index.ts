@@ -46,7 +46,7 @@ async function handleStart(context: HandlerContext): Promise<void> {
     const helpText = ctx.t('bot.buttons.help');
     
     // New minimal main menu focusing on Poker entry and Help; other actions will be re-added in new stories
-    const pokerText = ctx.t('poker.room.buttons.createRoom');
+    const pokerText = ctx.t('bot.games.poker');
     const buttons = [
       { text: pokerText, callbackData: { action: encodeAction(ROUTES.games.poker.start) } },
       // help archived in new stories; keep placeholder for future
