@@ -1,5 +1,7 @@
 import { Context } from 'grammy';
 import { GameHubContext, GameHubPlugin, ContextBuilder } from './context';
+import { encodeAction } from '@/modules/core/route-alias';
+import type { ActionRoute } from '@/modules/core/routes.generated';
 
 /**
  * Button definition interface
@@ -92,8 +94,9 @@ export class KeyboardPlugin implements GameHubPlugin {
         },
 
         // Build callback data string
-        buildCallbackData: (action: string, params: Record<string, string> = {}): string => {
-          const data = { action, ...params };
+        buildCallbackData: (action: ActionRoute | string, params: Record<string, string> = {}): string => {
+          // Encode hierarchical action route into compact alias for callback_data
+          const data = { action: encodeAction(action), ...params };
           return JSON.stringify(data);
         },
 

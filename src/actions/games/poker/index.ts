@@ -23,30 +23,8 @@ export default {};
  */
 // No default handler; smart router dispatches to concrete actions.
 
-// Import all handlers for self-registration
+// Import only the new story handlers we still use
 import './start';
-import './back';
-import './room/create';
-import './room/create/form';
-import './room/start';
-import './room/fold';
-import './room/ready';
-import './room/notready';
-import './room/leave';
-import './room/join';
-import './room/list';
-import './room/check';
-import './room/call';
-import './room/raise';
-import './room/allin';
-import './room/playagain';
-import './room/newgame';
-import './room/gameEnd';
-import './room/history';
-import './room/spectate';
-import './room/share';
-import './stats';
-import './help';
 
 // Removed duplicate default export
 

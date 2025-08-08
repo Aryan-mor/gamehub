@@ -4,6 +4,7 @@ import { FlatCompat } from "@eslint/eslintrc";
 import tseslint from "@typescript-eslint/eslint-plugin";
 import tsparser from "@typescript-eslint/parser";
 import i18nFlatPlugin from "./scripts/eslint-plugin-i18n-flat.js";
+import routesPlugin from "./scripts/eslint-plugin-routes.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -41,6 +42,7 @@ const eslintConfig = [
     plugins: {
       "@typescript-eslint": tseslint,
       "i18n-flat": i18nFlatPlugin,
+      "routes": routesPlugin,
     },
     rules: {
       ...tseslint.configs.recommended.rules,
@@ -58,6 +60,7 @@ const eslintConfig = [
       "no-var": "error",
       // Disallow console.* usage across source files
       "no-console": ["error"],
+      "routes/no-hardcoded-route-strings": "error",
       "i18n-flat/check-translation-keys": ["error", {
         localesPath: "locales",
         defaultLocale: "en"

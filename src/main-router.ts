@@ -1,13 +1,12 @@
 import { registerModule } from './modules/core/smart-router';
-import { handleGamesMessage } from './actions/games';
 
 /**
  * Initialize all route handlers
  * This should be called when the application starts
  */
 export function initializeRoutes(): void {
-  // Register the main games module handler
-  registerModule('games', handleGamesMessage);
+  // Register module prefix; poker submodule will self-register
+  registerModule('games', async () => { /* no-op for new stories */ });
   
   // Use application logger where available (omitted here)
 }

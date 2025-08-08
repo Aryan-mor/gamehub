@@ -20,13 +20,10 @@ async function handleStart(context: HandlerContext): Promise<void> {
     // Import required services
     const { setUserProfile, getUser, addCoins } = await import('@/modules/core/userService');
     const { createOptimizedKeyboard } = await import('@/modules/core/interfaceHelpers');
+    const { ROUTES } = await import('@/modules/core/routes.generated');
+    const { encodeAction } = await import('@/modules/core/route-alias');
     
-    // Import keys from other actions for consistency
-    const { key: gamesStartKey } = await import('@/actions/games/start');
-    const { key: pokerGameStartKey } = await import('@/actions/games/poker/start');
-    const { key: freecoinKey } = await import('@/actions/financial/freecoin');
-    const { key: balanceKey } = await import('@/actions/balance');
-    const { key: helpKey } = await import('@/actions/help');
+    // Legacy keys intentionally not used to keep minimal main menu
     
     // Save user profile
     await setUserProfile(user.id, user.username, user.username || 'Unknown');
@@ -46,26 +43,21 @@ async function handleStart(context: HandlerContext): Promise<void> {
     }
     
     // Create buttons with proper translation
-    const createRoomText = ctx.t('bot.buttons.createRoom');
-    const joinRoomText = ctx.t('bot.buttons.joinRoom');
-    const freeCoinText = ctx.t('bot.buttons.freeCoin');
-    const balanceText = ctx.t('bot.buttons.balance');
     const helpText = ctx.t('bot.buttons.help');
     
+    // New minimal main menu focusing on Poker entry and Help; other actions will be re-added in new stories
+    const pokerText = ctx.t('poker.room.buttons.createRoom');
     const buttons = [
-      { text: createRoomText, callbackData: { action: pokerGameStartKey } },
-      { text: joinRoomText, callbackData: { action: gamesStartKey } },
-      { text: freeCoinText, callbackData: { action: freecoinKey } },
-      { text: balanceText, callbackData: { action: balanceKey } },
-      { text: helpText, callbackData: { action: helpKey } },
+      { text: pokerText, callbackData: { action: encodeAction(ROUTES.games.poker.start) } },
+      // help archived in new stories; keep placeholder for future
+      { text: helpText, callbackData: { action: encodeAction('help') } },
     ];
-    
+
     const keyboard = createOptimizedKeyboard(buttons);
-    
-    // Send message with keyboard
-    await ctx.replySmart(welcome, { 
+
+    await ctx.replySmart(welcome, {
       parse_mode: 'HTML',
-      reply_markup: keyboard 
+      reply_markup: keyboard
     });
     
   } catch (error) {
