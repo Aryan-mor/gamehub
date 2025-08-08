@@ -1,6 +1,5 @@
 // GENERATED FILE – DO NOT EDIT
 // Generated from src/actions folder structure
-/* eslint-disable */
 
 export const ALL_ROUTES = ["games.poker","games.poker.room.create","games.poker.start","start"] as const;
 export type ActionRoute = typeof ALL_ROUTES[number];

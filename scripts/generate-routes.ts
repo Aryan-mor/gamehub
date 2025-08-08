@@ -77,8 +77,7 @@ async function generate(): Promise<void> {
   const tree = buildTree(routes);
 
   const header = `// GENERATED FILE – DO NOT EDIT\n` +
-    `// Generated from src/actions folder structure\n` +
-    `/* eslint-disable */\n`;
+    `// Generated from src/actions folder structure\n`;
 
   const body = `export const ALL_ROUTES = ${JSON.stringify(routes)} as const;\n` +
     `export type ActionRoute = typeof ALL_ROUTES[number];\n` +

@@ -8,7 +8,8 @@ function parseActionAndParams(raw: string): { action?: string; params: Record<st
   // Try JSON first
   try {
     const obj = JSON.parse(raw) as Record<string, unknown>;
-    if (obj && typeof obj === 'object' && typeof (obj as any).action === 'string') {
+    const actionValue = (obj as { action?: unknown })?.action;
+    if (obj && typeof obj === 'object' && typeof actionValue === 'string') {
       const { action, ...rest } = obj as Record<string, unknown> & { action: string };
       const params: Record<string, string> = {};
       for (const [k, v] of Object.entries(rest)) params[k] = String(v);
