@@ -19,7 +19,7 @@ async function handleStart(context: HandlerContext): Promise<void> {
   try {
     // Import required services
     const { setUserProfile, getUser, addCoins } = await import('@/modules/core/userService');
-    const { createOptimizedKeyboard } = await import('@/modules/core/interfaceHelpers');
+    const { keyboard } = ctx;
     const { ROUTES } = await import('@/modules/core/routes.generated');
     const { encodeAction } = await import('@/modules/core/route-alias');
     
@@ -53,11 +53,13 @@ async function handleStart(context: HandlerContext): Promise<void> {
       { text: helpText, callbackData: { action: encodeAction('help') } },
     ];
 
-    const keyboard = createOptimizedKeyboard(buttons);
+    const replyMarkup = keyboard.createInlineKeyboard(
+      buttons.map(b => ({ text: b.text, callback_data: JSON.stringify(b.callbackData) }))
+    );
 
     await ctx.replySmart(welcome, {
       parse_mode: 'HTML',
-      reply_markup: keyboard
+      reply_markup: replyMarkup
     });
     
   } catch (error) {

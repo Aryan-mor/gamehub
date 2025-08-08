@@ -32,6 +32,11 @@ describe('start inline buttons', () => {
       },
       replySmart: vi.fn(async (_text: string, opts: any) => { sent.push(opts?.reply_markup); }),
       log: { error: vi.fn(), info: vi.fn(), debug: vi.fn() },
+      // mimic keyboard.createInlineKeyboard used in handler after refactor
+      keyboard: {
+        buildCallbackData: (action: string) => JSON.stringify({ action: encodeAction(action) }),
+        createInlineKeyboard: (buttons: Array<{ text: string; callback_data: string }>) => ({ inline_keyboard: buttons.map(b => [b]) })
+      }
     };
 
     const context: any = {
