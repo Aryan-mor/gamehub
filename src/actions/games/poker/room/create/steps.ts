@@ -22,34 +22,36 @@ export async function handleCreateFlow(context: HandlerContext, query: Record<st
   if (s === 'privacy') {
     state.isPrivate = v === 'true';
     ctx.formState.set(NS, user.id, state);
+    const ROUTES = (await import('@/modules/core/routes.generated')).ROUTES;
     const templates = {
-      p2: { text: ctx.t('poker.form.option.players2'), callback_data: ctx.keyboard.buildCallbackData('games.poker.room.create', { s: 'maxPlayers', v: '2' }) },
-      p4: { text: ctx.t('poker.form.option.players4'), callback_data: ctx.keyboard.buildCallbackData('games.poker.room.create', { s: 'maxPlayers', v: '4' }) },
-      p6: { text: ctx.t('poker.form.option.players6'), callback_data: ctx.keyboard.buildCallbackData('games.poker.room.create', { s: 'maxPlayers', v: '6' }) },
-      p8: { text: ctx.t('poker.form.option.players8'), callback_data: ctx.keyboard.buildCallbackData('games.poker.room.create', { s: 'maxPlayers', v: '8' }) },
+      p2: { text: ctx.t('poker.form.option.players2'), callback_data: ctx.keyboard.buildCallbackData(ROUTES.games.poker.room.create, { s: 'maxPlayers', v: '2' }) },
+      p4: { text: ctx.t('poker.form.option.players4'), callback_data: ctx.keyboard.buildCallbackData(ROUTES.games.poker.room.create, { s: 'maxPlayers', v: '4' }) },
+      p6: { text: ctx.t('poker.form.option.players6'), callback_data: ctx.keyboard.buildCallbackData(ROUTES.games.poker.room.create, { s: 'maxPlayers', v: '6' }) },
+      p8: { text: ctx.t('poker.form.option.players8'), callback_data: ctx.keyboard.buildCallbackData(ROUTES.games.poker.room.create, { s: 'maxPlayers', v: '8' }) },
     } as const;
     const keyboard = ctx.keyboard.createCustomKeyboard([
       ['p2', 'p4'],
       ['p6', 'p8'],
     ], templates as Record<string, { text: string; callback_data: string }>);
-    await ctx.replySmart(ctx.t('🏠 <b>Create Poker Room</b>\n\n👥 <b>Step 2: Player Count</b>\n\nSelect maximum number of players:'), { parse_mode: 'HTML', reply_markup: keyboard });
+    await ctx.replySmart(ctx.t('poker.form.step2.playerCount'), { parse_mode: 'HTML', reply_markup: keyboard });
     return;
   }
 
   if (s === 'maxPlayers') {
     state.maxPlayers = Number(v);
     ctx.formState.set(NS, user.id, state);
+    const ROUTES2 = (await import('@/modules/core/routes.generated')).ROUTES;
     const templates = {
-      sb100: { text: ctx.t('poker.form.option.sb100'), callback_data: ctx.keyboard.buildCallbackData('games.poker.room.create', { s: 'smallBlind', v: '100' }) },
-      sb200: { text: ctx.t('poker.form.option.sb200'), callback_data: ctx.keyboard.buildCallbackData('games.poker.room.create', { s: 'smallBlind', v: '200' }) },
-      sb400: { text: '💰 SB 400', callback_data: ctx.keyboard.buildCallbackData('games.poker.room.create', { s: 'smallBlind', v: '400' }) },
-      sb800: { text: '💰 SB 800', callback_data: ctx.keyboard.buildCallbackData('games.poker.room.create', { s: 'smallBlind', v: '800' }) },
+      sb100: { text: ctx.t('poker.form.option.sb100'), callback_data: ctx.keyboard.buildCallbackData(ROUTES2.games.poker.room.create, { s: 'smallBlind', v: '100' }) },
+      sb200: { text: ctx.t('poker.form.option.sb200'), callback_data: ctx.keyboard.buildCallbackData(ROUTES2.games.poker.room.create, { s: 'smallBlind', v: '200' }) },
+      sb400: { text: ctx.t('poker.form.option.sb400'), callback_data: ctx.keyboard.buildCallbackData(ROUTES2.games.poker.room.create, { s: 'smallBlind', v: '400' }) },
+      sb800: { text: ctx.t('poker.form.option.sb800'), callback_data: ctx.keyboard.buildCallbackData(ROUTES2.games.poker.room.create, { s: 'smallBlind', v: '800' }) },
     } as const;
     const keyboard = ctx.keyboard.createCustomKeyboard([
       ['sb100', 'sb200'],
       ['sb400', 'sb800'],
     ], templates as Record<string, { text: string; callback_data: string }>);
-    await ctx.replySmart(ctx.t('🏠 <b>Create Poker Room</b>\n\n💰 <b>Step 3: Small Blind</b>\n\nSelect small blind amount:'), { parse_mode: 'HTML', reply_markup: keyboard });
+    await ctx.replySmart(ctx.t('poker.form.step3.smallBlind'), { parse_mode: 'HTML', reply_markup: keyboard });
     return;
   }
 
@@ -61,16 +63,17 @@ export async function handleCreateFlow(context: HandlerContext, query: Record<st
     createRoom({ id: roomId, isPrivate: !!state.isPrivate, maxPlayers: state.maxPlayers ?? 2, smallBlind: state.smallBlind ?? 100, createdBy: user.id });
     setActiveRoomId(user.id, roomId);
 
+    const ROUTES3 = (await import('@/modules/core/routes.generated')).ROUTES;
     const templates = {
-      share: { text: ctx.t('poker.room.buttons.share'), callback_data: ctx.keyboard.buildCallbackData('games.poker.findRoom', { s: 'share' }) },
-      back: { text: ctx.t('poker.room.buttons.backToMenu'), callback_data: ctx.keyboard.buildCallbackData('games.poker.start') },
+      share: { text: ctx.t('poker.room.buttons.share'), callback_data: ctx.keyboard.buildCallbackData(ROUTES3.games.poker.findRoom, { s: 'share' }) },
+      back: { text: ctx.t('poker.room.buttons.backToMenu'), callback_data: ctx.keyboard.buildCallbackData(ROUTES3.games.poker.start) },
     } as const;
     const keyboard = ctx.keyboard.createCustomKeyboard([
       ['share'],
       ['back'],
     ], templates as Record<string, { text: string; callback_data: string }>);
 
-    await ctx.replySmart(ctx.t('🏠 <b>Create Poker Room</b>\n\n✅ Room created! Invite friends to join.'), { parse_mode: 'HTML', reply_markup: keyboard });
+    await ctx.replySmart(ctx.t('poker.form.step4.created'), { parse_mode: 'HTML', reply_markup: keyboard });
     return;
   }
 }

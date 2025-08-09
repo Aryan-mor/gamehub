@@ -6,7 +6,7 @@ export const key = 'games.leave.active';
 async function handleLeaveActive(context: HandlerContext): Promise<void> {
   const { ctx, user } = context;
   clearActiveRoomId(user.id);
-  await ctx.replySmart(ctx.t('🎴 Poker'), { reply_markup: { inline_keyboard: [[{ text: ctx.t('Back'), callback_data: ctx.keyboard.buildCallbackData('games.poker.start') }]] } });
+  await ctx.replySmart(ctx.t('poker.leave.done'), { reply_markup: { inline_keyboard: [[{ text: ctx.t('poker.room.buttons.backToMenu'), callback_data: ctx.keyboard.buildCallbackData((await import('@/modules/core/routes.generated')).ROUTES.games.poker.start) }]] } });
 }
 
 export default createHandler(handleLeaveActive);

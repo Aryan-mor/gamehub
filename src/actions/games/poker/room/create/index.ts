@@ -11,10 +11,11 @@ async function handle(context: HandlerContext): Promise<void> {
     return;
   }
 
+  const ROUTES = (await import('@/modules/core/routes.generated')).ROUTES;
   const templates = {
-    public: { text: ctx.t('poker.form.option.public'), callback_data: ctx.keyboard.buildCallbackData('games.poker.room.create', { s: 'privacy', v: 'false' }) },
-    private: { text: ctx.t('poker.form.option.private'), callback_data: ctx.keyboard.buildCallbackData('games.poker.room.create', { s: 'privacy', v: 'true' }) },
-    back: { text: ctx.t('poker.room.buttons.back'), callback_data: ctx.keyboard.buildCallbackData('games.poker.start') },
+    public: { text: ctx.t('poker.form.option.public'), callback_data: ctx.keyboard.buildCallbackData(ROUTES.games.poker.room.create, { s: 'privacy', v: 'false' }) },
+    private: { text: ctx.t('poker.form.option.private'), callback_data: ctx.keyboard.buildCallbackData(ROUTES.games.poker.room.create, { s: 'privacy', v: 'true' }) },
+    back: { text: ctx.t('poker.room.buttons.back'), callback_data: ctx.keyboard.buildCallbackData(ROUTES.games.poker.start) },
   } as const;
 
   const keyboard = ctx.keyboard.createCustomKeyboard([
@@ -22,7 +23,7 @@ async function handle(context: HandlerContext): Promise<void> {
     ['back'],
   ], templates as Record<string, { text: string; callback_data: string }>);
 
-  await ctx.replySmart(ctx.t('🏠 <b>Create Poker Room</b>\n\n🔒 <b>Step 1: Room Type</b>\n\nChoose your room type:'), {
+  await ctx.replySmart(ctx.t('poker.form.step1.roomType'), {
     parse_mode: 'HTML',
     reply_markup: keyboard,
   });

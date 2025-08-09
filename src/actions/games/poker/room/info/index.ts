@@ -11,16 +11,17 @@ async function handleRoomInfo(context: HandlerContext): Promise<void> {
   if (room) {
     for (const uid of room.players) {
       const isReady = room.readyPlayers?.includes(uid) ? '1' : '0';
+      const ROUTES = (await import('@/modules/core/routes.generated')).ROUTES;
       rows.push([
         {
           text: ctx.t('poker.room.info.playerEntry'),
-          callback_data: ctx.keyboard.buildCallbackData('games.poker.room.info', { roomId, u: uid, ready: isReady }),
+          callback_data: ctx.keyboard.buildCallbackData(ROUTES.games.poker.room.info, { roomId, u: uid, ready: isReady }),
         },
       ]);
     }
   }
   // add refresh line
-  rows.push([{ text: ctx.t('poker.room.buttons.refresh'), callback_data: ctx.keyboard.buildCallbackData('games.poker.room.info', { roomId }) }]);
+  rows.push([{ text: ctx.t('poker.room.buttons.refresh'), callback_data: ctx.keyboard.buildCallbackData((await import('@/modules/core/routes.generated')).ROUTES.games.poker.room.info, { roomId }) }]);
 
   await ctx.replySmart(ctx.t('poker.room.info.details'), { reply_markup: { inline_keyboard: rows } });
 }
