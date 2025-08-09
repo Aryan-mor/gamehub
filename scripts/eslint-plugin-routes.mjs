@@ -57,6 +57,47 @@ export default {
         };
       },
     },
+
+    'expect-route-constant': {
+      meta: {
+        type: 'suggestion',
+        docs: {
+          description: "Require using ROUTES.* constant in expectActionsToContainRoute/NotToContainRoute calls",
+        },
+        schema: [],
+        messages: {
+          useRoutesConst: "Use ROUTES.* (from '@/modules/core/routes.generated') instead of a string literal here.",
+        },
+      },
+      create(context) {
+        function isTargetExpect(callee) {
+          if (!callee) return false;
+          if (callee.type === 'Identifier') {
+            return callee.name === 'expectActionsToContainRoute' || callee.name === 'expectActionsNotToContainRoute';
+          }
+          if (callee.type === 'MemberExpression' && callee.property?.type === 'Identifier') {
+            return callee.property.name === 'expectActionsToContainRoute' || callee.property.name === 'expectActionsNotToContainRoute';
+          }
+          return false;
+        }
+
+        return {
+          CallExpression(node) {
+            try {
+              if (!isTargetExpect(node.callee)) return;
+              const args = node.arguments || [];
+              if (args.length < 2) return;
+              const routeArg = args[1];
+              if (routeArg && routeArg.type === 'Literal' && typeof routeArg.value === 'string') {
+                context.report({ node: routeArg, messageId: 'useRoutesConst' });
+              }
+            } catch {
+              // ignore
+            }
+          },
+        };
+      },
+    },
   },
 };
 

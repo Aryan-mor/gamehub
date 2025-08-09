@@ -5,7 +5,7 @@ export const key = 'games.poker.room.ready';
 
 async function handleReady(context: HandlerContext): Promise<void> {
   const { ctx, user } = context;
-  const roomId = (context as HandlerContext & { _query?: Record<string, string> })._query?.roomId || '';
+  const roomId = context._query?.roomId || '';
   markReady(roomId, user.id);
   const ROUTES = (await import('@/modules/core/routes.generated')).ROUTES;
   await ctx.replySmart(ctx.t('poker.room.info.title'), {

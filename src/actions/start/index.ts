@@ -49,7 +49,7 @@ async function handleStart(context: HandlerContext): Promise<void> {
     const pokerText = ctx.t('bot.games.poker');
     const buttons = [
       { text: pokerText, callbackData: { action: encodeAction(ROUTES.games.poker.start) } },
-      { text: helpText, callbackData: { action: encodeAction('help') } },
+      { text: helpText, callbackData: { action: encodeAction(ROUTES.help) } },
     ];
 
     const replyMarkup = keyboard.createInlineKeyboard(

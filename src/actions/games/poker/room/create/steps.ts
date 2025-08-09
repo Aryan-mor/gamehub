@@ -63,17 +63,11 @@ export async function handleCreateFlow(context: HandlerContext, query: Record<st
     createRoom({ id: roomId, isPrivate: !!state.isPrivate, maxPlayers: state.maxPlayers ?? 2, smallBlind: state.smallBlind ?? 100, createdBy: user.id });
     setActiveRoomId(user.id, roomId);
 
+    // After successful creation, navigate to room info view
     const ROUTES3 = (await import('@/modules/core/routes.generated')).ROUTES;
-    const templates = {
-      share: { text: ctx.t('poker.room.buttons.share'), callback_data: ctx.keyboard.buildCallbackData(ROUTES3.games.poker.findRoom, { s: 'share' }) },
-      back: { text: ctx.t('poker.room.buttons.backToMenu'), callback_data: ctx.keyboard.buildCallbackData(ROUTES3.games.poker.start) },
-    } as const;
-    const keyboard = ctx.keyboard.createCustomKeyboard([
-      ['share'],
-      ['back'],
-    ], templates as Record<string, { text: string; callback_data: string }>);
-
-    await ctx.replySmart(ctx.t('poker.form.step4.created'), { parse_mode: 'HTML', reply_markup: keyboard });
+    const { dispatch } = await import('@/modules/core/smart-router');
+    context._query = { roomId };
+    await dispatch(ROUTES3.games.poker.room.info, context);
     return;
   }
 }

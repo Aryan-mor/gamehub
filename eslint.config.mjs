@@ -14,14 +14,6 @@ const compat = new FlatCompat({
 });
 
 const eslintConfig = [
-  // Global ignores to prevent test files from inheriting parserOptions.project
-  {
-    ignores: [
-      "src/**/*.test.ts",
-      "src/**/*.spec.ts",
-      "src/**/__tests__/**/*",
-    ],
-  },
   {
     files: ["src/**/*.ts", "src/**/*.tsx"],
     ignores: [
@@ -124,11 +116,12 @@ const eslintConfig = [
     },
     plugins: {
       "@typescript-eslint": tseslint,
+      "routes": routesPlugin,
     },
     rules: {
       ...tseslint.configs.recommended.rules,
       "@typescript-eslint/no-unused-vars": [
-        "error",
+        "warn",
         {
           argsIgnorePattern: "^_",
           varsIgnorePattern: "^_",
@@ -142,6 +135,10 @@ const eslintConfig = [
       // Disable i18n checks for test files
       "i18n-flat/check-translation-keys": "off",
       "no-restricted-syntax": "off",
+      // Enforce ROUTES.* usage in route assertions
+      "routes/expect-route-constant": "error",
+      // Allow require() style imports in tests
+      "@typescript-eslint/no-require-imports": "off",
     },
   },
   {

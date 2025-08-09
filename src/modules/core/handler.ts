@@ -9,6 +9,10 @@ export interface HandlerContext {
     username: string;
   };
   requestId?: string;
+  /**
+   * Optional query bag attached by router/middleware/tests to pass parameters across layers
+   */
+  _query?: Record<string, string>;
 }
 
 export type BaseHandler = (context: HandlerContext, query: Record<string, string>) => Promise<void> | void;

@@ -5,7 +5,7 @@ export const key = 'games.poker.room.info';
 
 async function handleRoomInfo(context: HandlerContext): Promise<void> {
   const { ctx } = context;
-  const roomId = (context as HandlerContext & { _query?: Record<string, string> })._query?.roomId || '';
+  const roomId = context._query?.roomId || '';
   const room = getRoom(roomId);
   const rows: Array<Array<{ text: string; callback_data: string }>> = [];
   if (room) {

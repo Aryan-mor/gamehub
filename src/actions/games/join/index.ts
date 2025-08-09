@@ -5,7 +5,7 @@ export const key = 'games.join';
 
 async function handleJoin(context: HandlerContext, query: Record<string, string> = {}): Promise<void> {
   const { ctx, user } = context;
-  const targetRoomId = query.roomId || (context as HandlerContext & { _query?: Record<string, string> })._query?.roomId || '';
+  const targetRoomId = query.roomId || context._query?.roomId || '';
   const activeRoomId = getActiveRoomId(user.id);
 
   if (!activeRoomId) {

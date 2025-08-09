@@ -7,11 +7,11 @@ export const key = 'games.poker.findRoom';
 async function handleFindRoom(context: HandlerContext): Promise<void> {
   const { ctx, user } = context;
   const NS = 'poker.findRoom';
-  let roomId = (context as HandlerContext & { _query?: Record<string, string> })._query?.roomId || '';
+  let roomId = context._query?.roomId || '';
   const room = getRoom(roomId);
   const rows: Array<Array<{ text: string; callback_data: string }>> = [];
   const isReady = !!room?.readyPlayers?.includes(user.id);
-  const s = (context as HandlerContext & { _query?: Record<string, string> })._query?.s;
+  const s = context._query?.s;
 
   // Persist last viewed roomId per user to avoid long callback_data
   if (roomId) {

@@ -71,7 +71,7 @@ import { encodeAction } from '@/modules/core/route-alias';
 describe('${route} e2e (scaffold)', () => {
   it('should encode callback under 64 bytes', () => {
     const payload = JSON.stringify({ action: encodeAction('${route}') });
-    expect(Buffer.byteLength(payload, 'utf8')).toBeLessThan(64);
+  expect(Buffer.byteLength(payload, 'utf8')).toBeLessThan(64);
   });
 });
 `;

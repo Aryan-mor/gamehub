@@ -113,7 +113,7 @@
   "poker.game.yourStatus.status": "Status",
   "poker.game.yourStatus.title": "👤 <b>Your Status</b>",
   "poker.help.error": "❌ Failed to show poker help. Please try again later.",
-  "poker.help.message": "🎰 <b>Poker Game Help</b>\n\n🃏 <b>Texas Hold'em Poker Rules:</b>\n\n📋 <b>Game Setup:</b>\n• Each player gets 2 hole cards\n• 5 community cards are dealt face up\n• Best 5-card hand wins the pot\n\n🎯 <b>Betting Rounds:</b>\n1. Pre-flop: After hole cards\n2. Flop: First 3 community cards\n3. Turn: 4th community card\n4. River: 5th community card\n\n🃏 <b>Actions:</b>\n• Call: Match current bet\n• Raise: Increase the bet\n• Fold: Give up hand\n• Check: Pass without betting (if no bet)\n• All-in: Bet all remaining chips\n\n💰 <b>Hand Rankings:</b>\n1. Royal Flush: A-K-Q-J-10 same suit\n2. Straight Flush: 5 consecutive same suit\n3. Four of a Kind: 4 cards same rank\n4. Full House: 3 of kind + 2 of kind\n5. Flush: 5 cards same suit\n6. Straight: 5 consecutive cards\n7. Three of a Kind: 3 cards same rank\n8. Two Pair: 2 pairs\n9. One Pair: 2 cards same rank\n10. High Card: Highest card wins\n\n🎮 <b>Ready to Play?</b>\nClick the button below to start a poker game!",
+  "poker.help.text": "🎰 <b>Poker Help</b>\n\nUse the buttons to create or join rooms.\nTexas Hold'em basics:\n• 2 hole cards per player\n• 5 community cards\n• Best 5-card hand wins\n\nActions: Call, Raise, Fold, Check, All-in.",
   "poker.help.startPoker": "🎰 Start Poker",
   "poker.middleware.error.alreadyMember": "",
   "poker.middleware.error.checkMembership": "",

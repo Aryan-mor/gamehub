@@ -23,6 +23,16 @@ export function extractActionsFromMarkup(markup: TestInlineKeyboard): string[] {
   });
 }
 
+export function extractPayloadsFromMarkup(markup: TestInlineKeyboard): Array<Record<string, unknown>> {
+  return markup.inline_keyboard.flat().map((b) => {
+    try {
+      return JSON.parse(b.callback_data) as Record<string, unknown>;
+    } catch {
+      return { action: b.callback_data } as Record<string, unknown>;
+    }
+  });
+}
+
 export function createTestGameHubContext(overrides?: Partial<GameHubContext & { keyboard: TestKeyboard }>): GameHubContext {
   const base: Partial<GameHubContext & { keyboard: TestKeyboard }> = {
     t: (k: string) => k,
@@ -64,7 +74,7 @@ export function buildTestKeyboard(): GameHubContext['keyboard'] {
     generateButton: vi.fn(),
     generateButtons: vi.fn(),
     createInlineKeyboard: (buttons: Array<{ text: string; callback_data: string }>) => ({ inline_keyboard: buttons.map((b) => [b]) }),
-    createCustomKeyboard: vi.fn(),
+    createCustomKeyboard: (layout: string[][], templates: Record<string, { text: string; callback_data: string }>) => ({ inline_keyboard: layout.map(row => row.map((key) => templates[key])) }),
     buildCallbackData: (action: string, params: Record<string, string> = {}) => JSON.stringify({ action: encodeAction(action), ...params }),
     parseCallbackData: vi.fn(),
   } as unknown as GameHubContext['keyboard'];
@@ -89,6 +99,40 @@ export async function runHandlerAndGetActions(handler: BaseHandler, query: Recor
   return { actions: extractActionsFromMarkup(first), sent };
 }
 
+export async function runHandlerAndGetPayloads(handler: BaseHandler, query: Record<string, string> = {}, overrides?: Partial<GameHubContext & { keyboard: TestKeyboard }>): Promise<{ payloads: Array<Record<string, unknown>>; sent: TestInlineKeyboard[] }>{
+  const { context, sent } = createCapturedContext(overrides);
+  await handler(context, query);
+  const first = sent[0] ?? { inline_keyboard: [] };
+  return { payloads: extractPayloadsFromMarkup(first), sent };
+}
+
+/**
+ * Run a handler with a synthetic _query attached to context (used by room flows)
+ */
+export async function runHandlerWithQuery(
+  handler: BaseHandler,
+  injectedQuery: Record<string, string>,
+  overrides?: Partial<GameHubContext & { keyboard: TestKeyboard }>
+): Promise<{ actions: string[]; sent: TestInlineKeyboard[] }>{
+  const { context, sent } = createCapturedContext(overrides);
+  (context as unknown as { _query?: Record<string, string> })._query = injectedQuery;
+  await handler(context, {});
+  const first = sent.at(-1) ?? { inline_keyboard: [] };
+  return { actions: extractActionsFromMarkup(first), sent };
+}
+
+export async function runHandlerWithQueryPayloads(
+  handler: BaseHandler,
+  injectedQuery: Record<string, string>,
+  overrides?: Partial<GameHubContext & { keyboard: TestKeyboard }>
+): Promise<{ payloads: Array<Record<string, unknown>>; sent: TestInlineKeyboard[] }>{
+  const { context, sent } = createCapturedContext(overrides);
+  (context as unknown as { _query?: Record<string, string> })._query = injectedQuery;
+  await handler(context, {});
+  const first = sent.at(-1) ?? { inline_keyboard: [] };
+  return { payloads: extractPayloadsFromMarkup(first), sent };
+}
+
 /**
  * Assertion helpers for route-based expectations
  */
@@ -98,6 +142,16 @@ export function expectActionsToContainRoute(actions: string[], route: ActionRout
 
 export function expectActionsNotToContainRoute(actions: string[], route: ActionRoute | string): void {
   expect(actions).not.toContain(encodeAction(route as string));
+}
+
+/**
+ * Assert all encoded action payloads stay under Telegram's 64-byte limit
+ */
+export function expectActionsUnder64Bytes(actions: string[]): void {
+  for (const action of actions) {
+    const payload = JSON.stringify({ action });
+    expect(Buffer.byteLength(payload, 'utf8')).toBeLessThan(64);
+  }
 }
 
 

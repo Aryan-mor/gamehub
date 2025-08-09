@@ -156,7 +156,7 @@ class SmartRouter {
     const parsed = parseMessageKey(messageKey);
     const pathString = parsed.path.join('.');
     // Merge router-parsed query with any query attached by upper layers (e.g., callback_query JSON)
-    const extraQuery = (context as unknown as { _query?: Record<string, string> })._query || {};
+    const extraQuery = context._query || {};
     const mergedQuery: Record<string, string> = { ...parsed.query, ...extraQuery };
     
     // First try exact match

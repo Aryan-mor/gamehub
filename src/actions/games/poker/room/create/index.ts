@@ -5,7 +5,7 @@ export const key = 'games.poker.room.create';
 
 async function handle(context: HandlerContext): Promise<void> {
   const { ctx } = context;
-  const q = (context as HandlerContext & { _query?: Record<string, string> })._query || {};
+  const q = context._query || {};
   if (q.s && q.v) {
     await handleCreateFlow(context, q);
     return;
