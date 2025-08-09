@@ -44,8 +44,8 @@ describe('games.join e2e', () => {
     const kb = sent[0] ?? { inline_keyboard: [] };
     const acts = kb.inline_keyboard.flat().map((b: any) => JSON.parse(b.callback_data).action);
     expect(acts).toContain('g.findStep');
-    expect(acts).toContain('g.jn.switch');
-    expect(acts).toContain('g.lv.active');
+    expect(acts).toContain('g.jn');
+    expect(acts).toContain('g.st');
   });
 });
 

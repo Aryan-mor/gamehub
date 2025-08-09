@@ -22,8 +22,8 @@ async function handleJoin(context: HandlerContext, query: Record<string, string>
   const R = (await import('@/modules/core/routes.generated')).ROUTES;
   const rows = [
     [{ text: ctx.t('poker.join.continueActive'), callback_data: ctx.keyboard.buildCallbackData(R.games.findStep, { roomId: activeRoomId }) }],
-    [{ text: ctx.t('poker.join.leaveAndJoinNew'), callback_data: ctx.keyboard.buildCallbackData('games.join.switch', { roomId: targetRoomId }) }],
-    [{ text: ctx.t('poker.join.leaveActive'), callback_data: ctx.keyboard.buildCallbackData('games.leave.active', { roomId: activeRoomId }) }],
+    [{ text: ctx.t('poker.join.leaveAndJoinNew'), callback_data: ctx.keyboard.buildCallbackData(R.games.join, { s: 'switch', roomId: targetRoomId }) }],
+    [{ text: ctx.t('poker.join.leaveActive'), callback_data: ctx.keyboard.buildCallbackData(R.games.start, { s: 'leaveActive', roomId: activeRoomId }) }],
   ];
   await ctx.replySmart(ctx.t('poker.join.conflictTitle'), { reply_markup: { inline_keyboard: rows } });
 }
