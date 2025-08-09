@@ -41,7 +41,7 @@ describe('games.join e2e', () => {
       log: { info: vi.fn(), error: vi.fn(), debug: vi.fn() },
     };
     await handler({ ctx, user: { id: 'u3', username: 't' }, _query: { roomId: newId } } as unknown as import('@/modules/core/handler').HandlerContext, { roomId: newId });
-    const kb = sent[0];
+    const kb = sent[0] ?? { inline_keyboard: [] };
     const acts = kb.inline_keyboard.flat().map((b: any) => JSON.parse(b.callback_data).action);
     expect(acts).toContain('g.findStep');
     expect(acts).toContain('g.jn.switch');
