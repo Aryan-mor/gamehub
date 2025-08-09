@@ -10,21 +10,21 @@ async function handleJoin(context: HandlerContext, query: Record<string, string>
 
   if (!activeRoomId) {
     setActiveRoomId(user.id, targetRoomId);
-    await ctx.replySmart(ctx.t('🎴 Poker'), { reply_markup: { inline_keyboard: [[{ text: ctx.t('poker.room.buttons.backToMenu'), callback_data: ctx.keyboard.buildCallbackData('games.poker.findRoom', { roomId: targetRoomId }) }]] } });
+    await ctx.replySmart(ctx.t('poker.join.welcome'), { reply_markup: { inline_keyboard: [[{ text: ctx.t('poker.room.buttons.backToMenu'), callback_data: ctx.keyboard.buildCallbackData((await import('@/modules/core/routes.generated')).ROUTES.games.poker.findRoom, { roomId: targetRoomId }) }]] } });
     return;
   }
 
   if (activeRoomId === targetRoomId) {
-    await ctx.replySmart(ctx.t('🎴 Poker'), { reply_markup: { inline_keyboard: [[{ text: ctx.t('poker.room.buttons.backToMenu'), callback_data: ctx.keyboard.buildCallbackData('games.findStep', { roomId: activeRoomId }) }]] } });
+    await ctx.replySmart(ctx.t('poker.join.welcome'), { reply_markup: { inline_keyboard: [[{ text: ctx.t('poker.room.buttons.backToMenu'), callback_data: ctx.keyboard.buildCallbackData((await import('@/modules/core/routes.generated')).ROUTES.games.findStep, { roomId: activeRoomId }) }]] } });
     return;
   }
 
   const rows = [
-    [{ text: ctx.t('Continue Active Room'), callback_data: ctx.keyboard.buildCallbackData('games.findStep', { roomId: activeRoomId }) }],
-    [{ text: ctx.t('Leave Active And Join New'), callback_data: ctx.keyboard.buildCallbackData('games.join.switch', { roomId: targetRoomId }) }],
-    [{ text: ctx.t('Leave Active'), callback_data: ctx.keyboard.buildCallbackData('games.leave.active', { roomId: activeRoomId }) }],
+    [{ text: ctx.t('poker.join.continueActive'), callback_data: ctx.keyboard.buildCallbackData((await import('@/modules/core/routes.generated')).ROUTES.games.findStep, { roomId: activeRoomId }) }],
+    [{ text: ctx.t('poker.join.leaveAndJoinNew'), callback_data: ctx.keyboard.buildCallbackData((await import('@/modules/core/routes.generated')).ROUTES.games.join.switch, { roomId: targetRoomId }) }],
+    [{ text: ctx.t('poker.join.leaveActive'), callback_data: ctx.keyboard.buildCallbackData((await import('@/modules/core/routes.generated')).ROUTES.games.leave.active, { roomId: activeRoomId }) }],
   ];
-  await ctx.replySmart(ctx.t('🎴 Poker'), { reply_markup: { inline_keyboard: rows } });
+  await ctx.replySmart(ctx.t('poker.join.conflictTitle'), { reply_markup: { inline_keyboard: rows } });
 }
 
 export default createHandler(handleJoin);

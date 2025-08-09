@@ -30,31 +30,31 @@ async function handleFindRoom(context: HandlerContext): Promise<void> {
       { id: 'u3', name: 'Friend 2' },
     ];
     for (const c of contacts) {
-      rows.push([{ text: c.name, callback_data: ctx.keyboard.buildCallbackData('games.poker.findRoom', { s: 'share', u: c.id }) }]);
+      rows.push([{ text: c.name, callback_data: ctx.keyboard.buildCallbackData((await import('@/modules/core/routes.generated')).ROUTES.games.poker.findRoom, { s: 'share', u: c.id }) }]);
     }
     // Copy link pseudo-action
-    rows.push([{ text: ctx.t('poker.room.buttons.copyLink'), callback_data: ctx.keyboard.buildCallbackData('games.poker.findRoom', { s: 'copy' }) }]);
+    rows.push([{ text: ctx.t('poker.room.buttons.copyLink'), callback_data: ctx.keyboard.buildCallbackData((await import('@/modules/core/routes.generated')).ROUTES.games.poker.findRoom, { s: 'copy' }) }]);
   } else {
     const readyCount = room?.readyPlayers?.length ?? 0;
     if (!room || room.players.length < 2 || readyCount < 2) {
-      rows.push([{ text: ctx.t('poker.room.buttons.share'), callback_data: ctx.keyboard.buildCallbackData('games.poker.findRoom', { s: 'share' }) }]);
+      rows.push([{ text: ctx.t('poker.room.buttons.share'), callback_data: ctx.keyboard.buildCallbackData((await import('@/modules/core/routes.generated')).ROUTES.games.poker.findRoom, { s: 'share' }) }]);
     } else {
-      rows.push([{ text: ctx.t('poker.room.buttons.startGame'), callback_data: ctx.keyboard.buildCallbackData('games.poker.room.start', { roomId }) }]);
+      rows.push([{ text: ctx.t('poker.room.buttons.startGame'), callback_data: ctx.keyboard.buildCallbackData((await import('@/modules/core/routes.generated')).ROUTES.games.poker.room.start, { roomId }) }]);
     }
   }
 
   // Player list/info placeholder button
-  rows.push([{ text: ctx.t('poker.room.buttons.info'), callback_data: ctx.keyboard.buildCallbackData('games.poker.room.info', { roomId }) }]);
+  rows.push([{ text: ctx.t('poker.room.buttons.info'), callback_data: ctx.keyboard.buildCallbackData((await import('@/modules/core/routes.generated')).ROUTES.games.poker.room.info, { roomId }) }]);
 
   // Ready/NotReady toggle for current user when in room
   if (room && room.players.includes(user.id)) {
     if (isReady) {
-      rows.push([{ text: ctx.t('poker.room.buttons.notReady'), callback_data: ctx.keyboard.buildCallbackData('games.poker.room.notready', { roomId }) }]);
+      rows.push([{ text: ctx.t('poker.room.buttons.notReady'), callback_data: ctx.keyboard.buildCallbackData((await import('@/modules/core/routes.generated')).ROUTES.games.poker.room.notready, { roomId }) }]);
     } else {
-      rows.push([{ text: ctx.t('poker.room.buttons.ready'), callback_data: ctx.keyboard.buildCallbackData('games.poker.room.ready', { roomId }) }]);
+      rows.push([{ text: ctx.t('poker.room.buttons.ready'), callback_data: ctx.keyboard.buildCallbackData((await import('@/modules/core/routes.generated')).ROUTES.games.poker.room.ready, { roomId }) }]);
     }
   }
-  rows.push([{ text: ctx.t('poker.room.buttons.backToMenu'), callback_data: ctx.keyboard.buildCallbackData('games.poker.start') }]);
+  rows.push([{ text: ctx.t('poker.room.buttons.backToMenu'), callback_data: ctx.keyboard.buildCallbackData((await import('@/modules/core/routes.generated')).ROUTES.games.poker.start) }]);
 
   await ctx.replySmart(ctx.t('poker.room.info.title'), { parse_mode: 'HTML', reply_markup: { inline_keyboard: rows } });
 }

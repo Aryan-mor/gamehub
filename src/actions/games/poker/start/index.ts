@@ -23,7 +23,7 @@ async function handlePokerStart(context: HandlerContext): Promise<void> {
     // Generate dynamic keyboard using the new button system
     const keyboard = ctx.poker.generateMainMenuKeyboard();
     // Append back button to games.start
-    const backButton = [{ text: ctx.t('poker.room.buttons.back'), callback_data: ctx.keyboard.buildCallbackData('games.start') }];
+    const backButton = [{ text: ctx.t('poker.room.buttons.back'), callback_data: ctx.keyboard.buildCallbackData((await import('@/modules/core/routes.generated')).ROUTES.games.start) }];
     keyboard.inline_keyboard.push(backButton);
     
     // Use replySmart to handle message editing/sending
