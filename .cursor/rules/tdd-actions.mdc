@@ -1,0 +1,9 @@
+---
+globs: src/actions/**/*.ts
+alwaysApply: false
+---
+rules:
+  - For any new or modified action handler, you must write an E2E test before implementing or modifying the handler logic in index.ts.
+  - The E2E test file must be named `e2e.test.ts` and placed in the same directory as the handler.
+  - Focus tests on inline button `callback_data` and navigation flow; only assert message text when absolutely necessary.
+  - A change is incomplete if the corresponding E2E test is missing or did not fail before implementation.

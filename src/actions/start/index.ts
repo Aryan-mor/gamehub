@@ -49,7 +49,6 @@ async function handleStart(context: HandlerContext): Promise<void> {
     const pokerText = ctx.t('bot.games.poker');
     const buttons = [
       { text: pokerText, callbackData: { action: encodeAction(ROUTES.games.poker.start) } },
-      // help archived in new stories; keep placeholder for future
       { text: helpText, callbackData: { action: encodeAction('help') } },
     ];
 

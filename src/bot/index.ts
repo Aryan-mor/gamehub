@@ -6,6 +6,7 @@ import { initializeRoutes } from '@/main-router';
 import { registerLogging } from './middleware/logging';
 import { registerCallbackDispatcher } from './middleware/callback';
 import { registerStartCommand } from './commands/start';
+import { registerActiveRoomRedirect } from './middleware/active-room';
 
 const token = process.env.TELEGRAM_BOT_TOKEN;
 const botUsername = process.env.TELEGRAM_BOT_USERNAME;
@@ -21,6 +22,7 @@ bot.use(getPluginMiddlewareChain());
 
 // Middlewares
 registerLogging(bot);
+registerActiveRoomRedirect(bot);
 registerCallbackDispatcher(bot);
 
 // Commands

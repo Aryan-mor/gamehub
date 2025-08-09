@@ -1,5 +1,9 @@
 import { describe, it, expect, vi } from 'vitest';
 import { encodeAction } from '../../modules/core/route-alias';
+import { createHandlerTestContext, TestInlineKeyboard, extractActionsFromMarkup, expectActionsToContainRoute } from '@/__tests__/helpers/context';
+import { ROUTES } from '@/modules/core/routes.generated';
+import type { BaseHandler } from '@/modules/core/handler';
+import type { SmartReplyOptions } from '@/types';
 
 // Mock userService to avoid external dependencies during handler execution
 vi.mock('@/modules/core/userService', () => ({
@@ -21,40 +25,26 @@ describe('start inline buttons', () => {
   });
 
   it('should produce keyboard with compact actions via handler', async () => {
-    const handlerModule = await import('./index');
-    const handleStart = handlerModule.default as (ctx: any, q: Record<string,string>) => Promise<void>;
+    const handlerModule: { default: BaseHandler } = await import('./index');
+    const handleStart = handlerModule.default;
 
     const sent: any[] = [];
-    const ctx: any = {
-      t: (k: string) => k,
-      keyboard: {
-        buildCallbackData: (action: string) => JSON.stringify({ action: encodeAction(action) })
-      },
-      replySmart: vi.fn(async (_text: string, opts: any) => { sent.push(opts?.reply_markup); }),
-      log: { error: vi.fn(), info: vi.fn(), debug: vi.fn() },
-      // mimic keyboard.createInlineKeyboard used in handler after refactor
+    const context = createHandlerTestContext({
       keyboard: {
         buildCallbackData: (action: string) => JSON.stringify({ action: encodeAction(action) }),
         createInlineKeyboard: (buttons: Array<{ text: string; callback_data: string }>) => ({ inline_keyboard: buttons.map(b => [b]) })
-      }
-    };
-
-    const context: any = {
-      ctx,
-      user: { id: '123', username: 'test' }
-    };
+      },
+    });
+    context.ctx.replySmart = async (_: string, opts?: SmartReplyOptions) => { sent.push(opts?.reply_markup as TestInlineKeyboard); };
 
     await handleStart(context, {});
 
     expect(sent.length).toBe(1);
-    const kb = sent[0];
+    const kb = (sent[0] ?? { inline_keyboard: [] }) as TestInlineKeyboard;
     expect(kb).toBeDefined();
-    const buttons = kb.inline_keyboard.flat();
-    const actions = buttons.map((b: any) => JSON.parse(b.callback_data).action);
-    // After ROUTES update with _self, start route is built via ROUTES.games.poker + '.start'
-    // Which is encoded as encodeAction(ROUTES.games.poker + '.start') => g.pk.st
-    expect(actions).toContain('g.pk.st');
-    expect(actions).toContain('h');
+    const actions = extractActionsFromMarkup(kb);
+    expectActionsToContainRoute(actions, ROUTES.games.poker.start);
+    expectActionsToContainRoute(actions, 'help');
   });
 });
 

@@ -31,16 +31,17 @@ function buildMaps(): SegmentMaps {
     gameEnd: 'ge',
     back: 'bk',
     management: 'mg',
+    findRoom: 'find',
+    join: 'jn',
+    leave: 'lv',
 
     // Room actions
     create: 'cr',
-    join: 'jn',
     list: 'ls',
     info: 'in',
     init: 'it',
     share: 'sh',
     kick: 'kk',
-    leave: 'lv',
     startgame: 'sg', // optional synonym if used
     startGame: 'sg',
     ready: 'ry',

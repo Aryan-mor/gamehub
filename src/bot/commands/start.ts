@@ -23,7 +23,16 @@ export function registerStartCommand(bot: Bot<GameHubContext>): void {
           username: username || 'Unknown'
         }
       };
-      await dispatch('start', context);
+      // Detect join payload: /start gprj<roomId>
+      const joinMatch = startPayload && /^gprj(.+)$/i.exec(startPayload);
+      if (joinMatch) {
+        const roomId = joinMatch[1];
+        // Attach query via context as smart-router merges _query
+        (context as unknown as { _query?: Record<string, string> })._query = { roomId };
+        await dispatch('games.join', context);
+      } else {
+        await dispatch('start', context);
+      }
 
       logFunctionEnd('startCommand', {}, { userId, action: 'regular' });
     } catch (error) {

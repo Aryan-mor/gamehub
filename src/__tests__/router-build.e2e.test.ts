@@ -47,6 +47,7 @@ describe('Smart router build compatibility (auto-discovery)', () => {
         };
          await dispatch('games.poker.room.list', context);
         await dispatch(decodeAction('g.pk.st'), context); // encoded route decoded to full path (games.poker.start)
+        await dispatch('games.join', { ...context, _query: { roomId: 'room_x' } });
         console.log('OK');
       })().catch((e) => { console.error('ERR', e && e.message || e); process.exit(1); });
     `;
