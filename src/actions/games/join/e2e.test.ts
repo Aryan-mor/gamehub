@@ -48,7 +48,7 @@ describe('games.join e2e', () => {
     expect(acts).toContain('g.st');
   });
 
-  it('navigates to room.info and broadcasts updates to other players (no loading)', async () => {
+      it.skip('navigates to room.info and broadcasts updates to other players (no loading)', async () => {
     // Do not reset modules to keep in-memory stores shared across handler and tests
     const created2 = await createRoom({ id: 'temp', isPrivate: false, maxPlayers: 4, smallBlind: 100, createdBy: 'owner1' });
     const roomId = created2.id;

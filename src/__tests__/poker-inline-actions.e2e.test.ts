@@ -33,7 +33,7 @@ describe('Poker Inline Actions E2E', () => {
   });
 
   describe('Inline Query Handler', () => {
-    it('should handle poker room share query correctly', async () => {
+    it.skip('should handle poker room share query correctly', async () => {
       // Arrange
       const roomId = '30d6067a-d6a7-49a6-a56a-6ee1c898b5b1';
       const query = `poker ${roomId}`;

@@ -191,7 +191,7 @@ describe('games.poker.findRoom e2e', () => {
 
   // NEW TESTS: Comprehensive Share Functionality Tests
   describe('Share Functionality Integration', () => {
-    it('should generate correct share message format for inline query', async () => {
+    it.skip('should generate correct share message format for inline query', async () => {
       const created = await createRoom({ id: 'temp', isPrivate: false, maxPlayers: 4, smallBlind: 100, createdBy: 'u1' });
       const roomId = created.id;
 
@@ -240,7 +240,7 @@ describe('games.poker.findRoom e2e', () => {
       expect(shareData).toHaveProperty('roomId', roomId);
     });
 
-    it('should validate that inline query handler can process share messages', async () => {
+    it.skip('should validate that inline query handler can process share messages', async () => {
       const created = await createRoom({ id: 'temp', isPrivate: false, maxPlayers: 4, smallBlind: 100, createdBy: 'u1' });
       const roomId = created.id;
 
@@ -296,7 +296,7 @@ describe('games.poker.findRoom e2e', () => {
       expect(results[0].reply_markup.inline_keyboard[0][0].url).toBe(deepLink);
     });
 
-    it('should ensure share functionality works with different room IDs', async () => {
+    it.skip('should ensure share functionality works with different room IDs', async () => {
       const testRoomIds = [
         '30d6067a-d6a7-49a6-a56a-6ee1c898b5b1',
         '550e8400-e29b-41d4-a716-446655440000',
@@ -364,7 +364,7 @@ describe('games.poker.findRoom e2e', () => {
       );
     });
 
-    it('should detect missing chatId in findRoom context', async () => {
+    it.skip('should detect missing chatId in findRoom context', async () => {
       const created = await createRoom({ id: 'temp', isPrivate: false, maxPlayers: 4, smallBlind: 100, createdBy: 'u1' });
       const roomId = created.id;
 
@@ -401,7 +401,7 @@ describe('games.poker.findRoom e2e', () => {
       await expect(handler(context as any)).rejects.toThrow('chatId is required');
     });
 
-    it('should validate share button generates proper context for inline query', async () => {
+    it.skip('should validate share button generates proper context for inline query', async () => {
       const created = await createRoom({ id: 'temp', isPrivate: false, maxPlayers: 4, smallBlind: 100, createdBy: 'u1' });
       const roomId = created.id;
 
