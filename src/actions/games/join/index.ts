@@ -1,6 +1,6 @@
 import { HandlerContext, createHandler } from '@/modules/core/handler';
 import { getActiveRoomId, setActiveRoomId } from '@/modules/core/userRoomState';
-import { getRoom, addPlayer } from '@/actions/games/poker/services/roomStore';
+import { getRoom, addPlayer } from '@/actions/games/poker/services/roomService';
 
 export const key = 'games.join';
 

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { createRoom, addPlayer, markReady } from '@/actions/games/poker/services/roomStore';
+import { createRoom, addPlayer, markReady } from '@/actions/games/poker/services/roomService';
 import { encodeAction } from '@/modules/core/route-alias';
 
 describe('games.poker.findRoom e2e', () => {

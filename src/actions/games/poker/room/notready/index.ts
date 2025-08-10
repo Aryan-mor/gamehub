@@ -1,5 +1,5 @@
 import { HandlerContext, createHandler } from '@/modules/core/handler';
-import { markNotReady } from '../../services/roomStore';
+import { markNotReady } from '../../services/roomService';
 
 export const key = 'games.poker.room.notready';
 

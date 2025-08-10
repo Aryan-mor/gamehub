@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { createRoom, addPlayer, markReady } from '../../services/roomStore';
+import { createRoom, addPlayer, markReady } from '../../services/roomService';
 import { encodeAction } from '../../../../../modules/core/route-alias';
 import { expectCallbackDataUnder64Bytes } from '../../../../../__tests__/helpers/context';
 

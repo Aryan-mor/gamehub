@@ -1,5 +1,5 @@
 import { User } from './types';
-import { api } from '@/lib/api';
+import * as api from '@/api';
 import { logFunctionStart, logFunctionEnd, logError } from './logger';
 
 export const getUser = async (userId: string): Promise<User> => {
@@ -94,7 +94,7 @@ export const addCoins = async (
     await api.wallets.updateBalance(userData.id, newBalance);
     
     // Record transaction
-    await api.transactions.create({
+    await (await import('@/lib/api')).api.transactions.create({
       user_id: userData.id,
       transaction_type: 'credit',
       amount: amount,
@@ -134,7 +134,7 @@ export const deductCoins = async (
       await api.wallets.updateBalance(userData.id, newBalance);
       
       // Record transaction
-      await api.transactions.create({
+      await (await import('@/lib/api')).api.transactions.create({
         user_id: userData.id,
         transaction_type: 'debit',
         amount: amount,

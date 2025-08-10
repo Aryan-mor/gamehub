@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { createRoom, addPlayer } from '@/actions/games/poker/services/roomStore';
+import { createRoom, addPlayer } from '@/actions/games/poker/services/roomService';
 import { getActiveRoomId, setActiveRoomId, clearActiveRoomId } from '@/modules/core/userRoomState';
 import { encodeAction } from '@/modules/core/route-alias';
 import type { BaseHandler } from '@/modules/core/handler';

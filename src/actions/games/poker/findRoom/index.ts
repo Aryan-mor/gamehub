@@ -1,5 +1,5 @@
 import { HandlerContext, createHandler } from '@/modules/core/handler';
-import { getRoom } from '../services/roomStore';
+import { getRoom } from '../services/roomService';
 import { setActiveRoomId } from '@/modules/core/userRoomState';
 
 export const key = 'games.poker.findRoom';
