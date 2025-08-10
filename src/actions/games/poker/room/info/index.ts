@@ -73,7 +73,7 @@ async function handleRoomInfo(context: HandlerContext): Promise<void> {
   const status = ctx.t('poker.room.status.waiting');
   // Force lastUpdate to include ms to ensure difference even within the same second
   const currentTime = new Date().toISOString();
-  const displayLastUpdate = room?.lastUpdate ? currentTime : '-';
+  const displayLastUpdate = currentTime;
 
   const header = ctx.t('poker.room.info.title');
   const detailsTitle = ctx.t('poker.room.info.section.details');
