@@ -4,5 +4,6 @@ export * as rooms from './rooms';
 export * as roomPlayers from './roomPlayers';
 export * as roomMessages from './roomMessages';
 export * as games from './games';
+export { api } from '@/lib/api';
 
 

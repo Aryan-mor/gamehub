@@ -1,11 +1,12 @@
 import { api } from '@/lib/api';
 
-export async function getById(roomId: string) {
-  return api.rooms.getById(roomId);
+// Fetch by internal UUID id
+export async function getById(roomUuid: string) {
+  return api.rooms.getById(roomUuid);
 }
 
 export async function create(roomData: {
-  room_id: string;
+  id?: string;
   name: string;
   game_type: string;
   status: string;

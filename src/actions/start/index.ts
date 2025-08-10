@@ -18,7 +18,7 @@ async function handleStart(context: HandlerContext): Promise<void> {
   
   try {
     // Import required services
-    const { setUserProfile, getUser, addCoins } = await import('@/modules/core/userService');
+    const { setUserProfile } = await import('@/modules/core/userService');
     const { keyboard } = ctx;
     const { ROUTES } = await import('@/modules/core/routes.generated');
     const { encodeAction } = await import('@/modules/core/route-alias');
@@ -29,18 +29,19 @@ async function handleStart(context: HandlerContext): Promise<void> {
     await setUserProfile(user.id, user.username, user.username || 'Unknown');
     
     // Get user data
-    const userData = await getUser(user.id);
+    // const userData = await getUser(user.id);
     
     // Build welcome message
     let welcome = `${ctx.t('bot.start.welcome')}\n\n` +
       `💰 ${ctx.t('bot.start.tips.freecoin')}\n\n` +
       `🎯 ${ctx.t('bot.start.chooseAction')}`;
     
+    // TODO: Coin system temporarily disabled
     // Give 100 coins to new users
-    if (userData.coins === 0 && !userData.lastFreeCoinAt) {
-      await addCoins(user.id, 100, 'initial grant');
-      welcome = `${ctx.t('bot.start.joinBonus')}\n\n` + welcome;
-    }
+    // if (userData.coins === 0 && !userData.lastFreeCoinAt) {
+    //   await addCoins(user.id, 100, 'initial grant');
+    //   welcome = `${ctx.t('bot.start.joinBonus')}\n\n` + welcome;
+    // }
     
     // Create buttons with proper translation
     const helpText = ctx.t('bot.buttons.help');

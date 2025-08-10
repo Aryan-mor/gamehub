@@ -8,9 +8,12 @@ async function handleFindRoom(context: HandlerContext): Promise<void> {
   const { ctx, user } = context;
   const NS = 'poker.findRoom';
   let roomId = context._query?.roomId || '';
-  const room = getRoom(roomId);
+  const room = await getRoom(roomId);
   const rows: Array<Array<{ text: string; callback_data: string }>> = [];
-  const isReady = !!room?.readyPlayers?.includes(user.id);
+  const users = await import('@/api/users');
+  const dbUser = await users.getByTelegramId(user.id);
+  const dbUserId = (dbUser && (dbUser as any).id) as string | undefined;
+  const isReady = !!(dbUserId && room?.readyPlayers?.includes(dbUserId));
   const s = context._query?.s;
 
   // Persist last viewed roomId per user to avoid long callback_data
@@ -37,21 +40,25 @@ async function handleFindRoom(context: HandlerContext): Promise<void> {
   } else {
     const readyCount = room?.readyPlayers?.length ?? 0;
     if (!room || room.players.length < 2 || readyCount < 2) {
-      rows.push([{ text: ctx.t('poker.room.buttons.share'), callback_data: ctx.keyboard.buildCallbackData((await import('@/modules/core/routes.generated')).ROUTES.games.poker.findRoom, { s: 'share' }) }]);
+      rows.push([{ text: ctx.t('poker.room.buttons.share'), callback_data: ctx.keyboard.buildCallbackData((await import('@/modules/core/routes.generated')).ROUTES.games.poker.findRoom, { s: 'share', roomId }) }]);
     } else {
-      rows.push([{ text: ctx.t('poker.room.buttons.startGame'), callback_data: ctx.keyboard.buildCallbackData((await import('@/modules/core/routes.generated')).ROUTES.games.poker.room.start, { roomId }) }]);
+      // Remove roomId from callback_data to avoid BUTTON_DATA_INVALID
+      rows.push([{ text: ctx.t('poker.room.buttons.startGame'), callback_data: ctx.keyboard.buildCallbackData((await import('@/modules/core/routes.generated')).ROUTES.games.poker.room.start) }]);
     }
   }
 
-  // Player list/info placeholder button
-  rows.push([{ text: ctx.t('poker.room.buttons.info'), callback_data: ctx.keyboard.buildCallbackData((await import('@/modules/core/routes.generated')).ROUTES.games.poker.room.info, { roomId }) }]);
+  // Player list/info placeholder button (no roomId in payload; handler reads from formState/active state)
+  rows.push([{ text: ctx.t('poker.room.buttons.info'), callback_data: ctx.keyboard.buildCallbackData((await import('@/modules/core/routes.generated')).ROUTES.games.poker.room.info) }]);
 
-  // Ready/NotReady toggle for current user when in room
-  if (room && room.players.includes(user.id)) {
+  // Ready/NotReady toggle for current user (always available; server validates)
+  {
+    const R = (await import('@/modules/core/routes.generated')).ROUTES;
     if (isReady) {
-      rows.push([{ text: ctx.t('poker.room.buttons.notReady'), callback_data: ctx.keyboard.buildCallbackData((await import('@/modules/core/routes.generated')).ROUTES.games.poker.room.notready, { roomId }) }]);
+      // Remove roomId from callback_data to avoid BUTTON_DATA_INVALID
+      rows.push([{ text: ctx.t('poker.room.buttons.notReady'), callback_data: ctx.keyboard.buildCallbackData(R.games.poker.room.notready) }]);
     } else {
-      rows.push([{ text: ctx.t('poker.room.buttons.ready'), callback_data: ctx.keyboard.buildCallbackData((await import('@/modules/core/routes.generated')).ROUTES.games.poker.room.ready, { roomId }) }]);
+      // Remove roomId from callback_data to avoid BUTTON_DATA_INVALID
+      rows.push([{ text: ctx.t('poker.room.buttons.ready'), callback_data: ctx.keyboard.buildCallbackData(R.games.poker.room.ready) }]);
     }
   }
   rows.push([{ text: ctx.t('poker.room.buttons.backToMenu'), callback_data: ctx.keyboard.buildCallbackData((await import('@/modules/core/routes.generated')).ROUTES.games.poker.start) }]);

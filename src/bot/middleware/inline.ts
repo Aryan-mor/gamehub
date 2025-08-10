@@ -3,11 +3,13 @@ import type { GameHubContext } from '@/plugins';
 import { logFunctionStart, logFunctionEnd, logError } from '@/modules/core/logger';
 
 export function registerInlineHandler(bot: Bot<GameHubContext>): void {
-  bot.inlineQuery(/^(?:poker)\s+(room_[A-Za-z0-9_\-]+)/i, async (ctx) => {
+  // Accept both legacy human-readable IDs and UUIDs
+  bot.inlineQuery(/^(?:poker)\s+([A-Za-z0-9_\-]{6,}|[0-9a-fA-F-]{36})/i, async (ctx) => {
     try {
       const query = ctx.inlineQuery.query;
       logFunctionStart('inlineQuery', { query });
-      const match = query.match(/^(?:poker)\s+(room_[A-Za-z0-9_\-]+)/i);
+      // Fix regex to handle both @botname poker roomId and poker roomId formats
+      const match = query.match(/(?:poker)\s+([A-Za-z0-9_\-]{6,}|[0-9a-fA-F-]{36})/i);
       const roomId = match?.[1] ?? '';
 
       const botUsername = process.env.TELEGRAM_BOT_USERNAME || 'playonhub_bot';

@@ -27,10 +27,10 @@ export function isValidUserId(id: string): id is UserId {
 }
 
 /**
- * Room ID validation - follows pattern: room_{alphanumeric}
+ * Room ID validation - UUID v4 pattern or general UUID
  */
 export function isValidRoomId(id: string): id is RoomId {
-  return /^room_[a-zA-Z0-9]+$/.test(id);
+  return /^[0-9a-fA-F-]{36}$/.test(id);
 }
 
 /**
@@ -114,7 +114,7 @@ export function validateIds(ids: Record<string, string>): {
  * Create a room ID from components
  */
 export function createRoomId(timestamp: number, userId: UserId): RoomId {
-  const roomId = `room_${timestamp}_${userId}` as RoomId;
+  const roomId = `${timestamp}-${userId}` as RoomId; // legacy generator no longer used; kept for compatibility
   assertValidId(roomId, isValidRoomId, 'Room ID creation');
   return roomId;
 }

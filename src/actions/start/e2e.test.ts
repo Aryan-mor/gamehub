@@ -6,7 +6,14 @@ import type { BaseHandler } from '@/modules/core/handler';
 // Mock userService to avoid external dependencies during handler execution
 vi.mock('@/modules/core/userService', () => ({
   setUserProfile: vi.fn(async () => {}),
-  getUser: vi.fn(async () => ({ coins: 0, lastFreeCoinAt: null })),
+  getUser: vi.fn(async () => ({ 
+    id: '123', 
+    coins: 0, 
+    createdAt: Date.now(), 
+    updatedAt: Date.now(),
+    username: 'test',
+    name: 'test'
+  })),
   addCoins: vi.fn(async () => {}),
 }));
 

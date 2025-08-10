@@ -38,6 +38,9 @@ export function createTestGameHubContext(overrides?: Partial<GameHubContext & { 
     t: (k: string) => k,
     log: { info: vi.fn(), error: vi.fn(), debug: vi.fn(), warn: vi.fn() },
     replySmart: vi.fn(async () => {}),
+    // Add proper chat and from for testing
+    chat: { id: 123456789, type: 'private', first_name: 'Test' },
+    from: { id: 123456789, first_name: 'Test', is_bot: false },
     keyboard: {
       generateButton: vi.fn(),
       generateButtons: vi.fn(),

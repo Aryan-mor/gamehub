@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { createRoom, addPlayer } from '@/actions/games/poker/services/roomService';
+import { createRoom, addPlayer } from '@/actions/games/poker/room/services/roomService';
 import { getActiveRoomId, setActiveRoomId, clearActiveRoomId } from '@/modules/core/userRoomState';
 import { encodeAction } from '@/modules/core/route-alias';
 import type { BaseHandler } from '@/modules/core/handler';
@@ -8,8 +8,8 @@ import type { SmartReplyOptions } from '@/types';
 describe('games.join e2e', () => {
   it('joins room when no active room: sets active and proceeds', async () => {
     clearActiveRoomId('u2');
-    const roomId = 'room_join_1';
-    createRoom({ id: roomId, isPrivate: false, maxPlayers: 4, smallBlind: 100, createdBy: 'u1' });
+    const created = await createRoom({ id: 'temp', isPrivate: false, maxPlayers: 4, smallBlind: 100, createdBy: 'u1' });
+    const roomId = created.id;
 
     const mod: { default: BaseHandler } = await import('./index');
     const handler = mod.default;
@@ -25,10 +25,10 @@ describe('games.join e2e', () => {
   });
 
   it('shows 3-option conflict UI when active room differs', async () => {
-    const activeId = 'room_active_1';
-    const newId = 'room_new_1';
-    createRoom({ id: activeId, isPrivate: false, maxPlayers: 2, smallBlind: 100, createdBy: 'u1' });
-    createRoom({ id: newId, isPrivate: false, maxPlayers: 2, smallBlind: 100, createdBy: 'u1' });
+    const createdActive = await createRoom({ id: 'temp', isPrivate: false, maxPlayers: 2, smallBlind: 100, createdBy: 'u1' });
+    const activeId = createdActive.id;
+    const createdNew = await createRoom({ id: 'temp', isPrivate: false, maxPlayers: 2, smallBlind: 100, createdBy: 'u1' });
+    const newId = createdNew.id;
     setActiveRoomId('u3', activeId);
 
     const mod: { default: BaseHandler } = await import('./index');
@@ -50,8 +50,8 @@ describe('games.join e2e', () => {
 
   it('navigates to room.info and broadcasts updates to other players (no loading)', async () => {
     // Do not reset modules to keep in-memory stores shared across handler and tests
-    const roomId = 'room_join_success_1';
-    createRoom({ id: roomId, isPrivate: false, maxPlayers: 4, smallBlind: 100, createdBy: 'owner1' });
+    const created2 = await createRoom({ id: 'temp', isPrivate: false, maxPlayers: 4, smallBlind: 100, createdBy: 'owner1' });
+    const roomId = created2.id;
 
     // Use real router to render room.info
 
@@ -74,10 +74,10 @@ describe('games.join e2e', () => {
   });
 
   it('rejects join when room is full', async () => {
-    const roomId = 'room_join_full_1';
-    createRoom({ id: roomId, isPrivate: false, maxPlayers: 1, smallBlind: 50, createdBy: 'owner2' });
+    const created3 = await createRoom({ id: 'temp', isPrivate: false, maxPlayers: 1, smallBlind: 50, createdBy: 'owner2' });
+    const roomId = created3.id;
     // Fill the room
-    addPlayer(roomId, 'owner2');
+    await addPlayer(roomId, 'owner2');
 
     const mod: { default: BaseHandler } = await import('./index');
     const handler = mod.default;

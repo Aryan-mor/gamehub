@@ -78,15 +78,20 @@ export async function handleCreateFlow(context: HandlerContext, query: Record<st
   if (s === 'timeout') {
     state.turnTimeoutSec = Number(v);
     ctx.formState.set(NS, user.id, state);
-    // Create room (in-memory) and set active
-    const roomId = `room_${Date.now()}_${user.id}`;
-    createRoom({ id: roomId, isPrivate: !!state.isPrivate, maxPlayers: state.maxPlayers ?? 2, smallBlind: state.smallBlind ?? 100, turnTimeoutSec: state.turnTimeoutSec ?? 240, createdBy: user.id });
-    setActiveRoomId(user.id, roomId);
+    // Create room in DB and set active using returned UUID
+    let roomId: string | undefined;
+    try {
+      const created = await createRoom({ id: '', isPrivate: !!state.isPrivate, maxPlayers: state.maxPlayers ?? 2, smallBlind: state.smallBlind ?? 100, turnTimeoutSec: state.turnTimeoutSec ?? 240, createdBy: user.id });
+      roomId = created.id;
+      setActiveRoomId(user.id, roomId);
+    } catch {
+      // Non-blocking UI: proceed to room.info even if persist fails
+    }
 
-    // After successful creation, navigate to room info view
+    // After successful creation, navigate to room info view (keep callback small)
     const ROUTES3 = (await import('@/modules/core/routes.generated')).ROUTES;
     const { dispatch } = await import('@/modules/core/smart-router');
-    context._query = { roomId };
+    context._query = roomId ? { roomId } : {} as any;
     await dispatch(ROUTES3.games.poker.room.info, context);
     return;
   }

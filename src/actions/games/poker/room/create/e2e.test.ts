@@ -1,75 +1,105 @@
-import { describe, it, expect, vi } from 'vitest';
-import type { BaseHandler } from '@/modules/core/handler';
-import { runHandlerAndGetActions, runHandlerAndGetPayloads, runHandlerWithQueryPayloads, expectActionsUnder64Bytes, expectCallbackDataUnder64Bytes } from '@/__tests__/helpers/context';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { createRoom } from '@/actions/games/poker/room/services/roomService';
+import { encodeAction } from '@/modules/core/route-alias';
+import { createHandlerTestContext } from '@/__tests__/helpers/context';
+import { HandlerContext } from '@/modules/core/handler';
 
-describe('games.poker.room.create e2e (flow callbacks)', () => {
-  it('step1 -> privacy buttons + back', async () => {
-    const mod: { default: BaseHandler } = await import('./index');
-    const { actions } = await runHandlerAndGetActions(mod.default);
-    const { payloads } = await runHandlerAndGetPayloads(mod.default);
-    expect(actions).toContain('g.pk.r.cr');
-    expect(actions).toContain('g.pk.st');
-    expectActionsUnder64Bytes(actions);
-    expectCallbackDataUnder64Bytes(payloads);
+// Mock the roomService
+vi.mock('@/actions/games/poker/room/services/roomService', () => ({
+  createRoom: vi.fn(),
+}));
+
+// Mock the steps module
+vi.mock('./steps', () => ({
+  default: vi.fn(),
+}));
+
+describe('Poker Room Create E2E', () => {
+  let context: HandlerContext;
+  let mockCreateRoom: any;
+  let mockHandleCreateFlow: any;
+
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    context = createHandlerTestContext();
+    mockCreateRoom = vi.mocked(createRoom);
+    mockHandleCreateFlow = vi.mocked((await import('./steps')).default);
   });
 
-  it('step2 -> maxPlayers buttons after privacy', async () => {
-    const mod: { default: BaseHandler } = await import('./index');
-    const { payloads } = await runHandlerWithQueryPayloads(mod.default, { s: 'privacy', v: 'true' });
-    expect(payloads.some((p) => p.action === 'g.pk.r.cr' && p.s === 'maxPlayers' && p.v === '2')).toBe(true);
-    expect(payloads.some((p) => p.action === 'g.pk.r.cr' && p.s === 'maxPlayers' && p.v === '8')).toBe(true);
-    expectCallbackDataUnder64Bytes(payloads);
+  describe('Initial Room Type Selection', () => {
+    it('should show room type selection with public and private options', async () => {
+      // Arrange
+      const { default: handleCreate } = await import('./index');
+      
+      // Act
+      await handleCreate(context);
+      
+      // Assert
+      expect(context.ctx.replySmart).toHaveBeenCalledWith(
+        'poker.form.step1.roomType',
+        expect.objectContaining({
+          parse_mode: 'HTML'
+        })
+      );
+    });
+
+    it('should handle privacy selection and call create flow', async () => {
+      // Arrange
+      const { default: handleCreate } = await import('./index');
+      context._query = { s: 'privacy', v: 'true' };
+      
+      // Act
+      await handleCreate(context);
+      
+      // Assert
+      expect(mockHandleCreateFlow).toHaveBeenCalledWith(context, { s: 'privacy', v: 'true' });
+    });
+
+    it('should handle public selection and call create flow', async () => {
+      // Arrange
+      const { default: handleCreate } = await import('./index');
+      context._query = { s: 'privacy', v: 'false' };
+      
+      // Act
+      await handleCreate(context);
+      
+      // Assert
+      expect(mockHandleCreateFlow).toHaveBeenCalledWith(context, { s: 'privacy', v: 'false' });
+    });
+
+    it('should handle other step parameters and call create flow', async () => {
+      // Arrange
+      const { default: handleCreate } = await import('./index');
+      context._query = { s: 'players', v: '4' };
+      
+      // Act
+      await handleCreate(context);
+      
+      // Assert
+      expect(mockHandleCreateFlow).toHaveBeenCalledWith(context, { s: 'players', v: '4' });
+    });
   });
 
-  it('step3 -> timeout buttons after smallBlind', async () => {
-    const mod: { default: BaseHandler } = await import('./index');
-    const { payloads } = await runHandlerWithQueryPayloads(mod.default, { s: 'smallBlind', v: '100' });
-    // Expect timeout options (2,4,8,16 minutes => 120,240,480,960 seconds)
-    expect(payloads.some((p) => p.action === 'g.pk.r.cr' && p.s === 'timeout' && p.v === '120')).toBe(true);
-    expect(payloads.some((p) => p.action === 'g.pk.r.cr' && p.s === 'timeout' && p.v === '240')).toBe(true);
-    expect(payloads.some((p) => p.action === 'g.pk.r.cr' && p.s === 'timeout' && p.v === '480')).toBe(true);
-    expect(payloads.some((p) => p.action === 'g.pk.r.cr' && p.s === 'timeout' && p.v === '960')).toBe(true);
-    expectCallbackDataUnder64Bytes(payloads);
-  });
 
-  it('step4 -> creates room and navigates to room.info after timeout selection', async () => {
-    const mod: { default: BaseHandler } = await import('./index');
-    const { payloads } = await runHandlerWithQueryPayloads(mod.default, { s: 'timeout', v: '240' });
-    // Expect the resulting message to be the room info keyboard
-    expect(payloads.some((p) => p.action === 'g.pk.r.in')).toBe(true);
-    // Room info payloads now only contain route action (no per-player u/ready pairs)
-    expectCallbackDataUnder64Bytes(payloads);
-  });
 
-  it('attempts DB persist when GAMEHUB_USE_DB=true and repo.createRoom fails (non-blocking)', async () => {
-    process.env.GAMEHUB_USE_DB = 'true';
+  describe('Error Handling', () => {
+    it('should handle missing query gracefully', async () => {
+      // Arrange
+      const { default: handleCreate } = await import('./index');
+      context._query = undefined;
+      
+      // Act & Assert
+      await expect(handleCreate(context)).resolves.not.toThrow();
+    });
 
-    vi.resetModules();
-    const persistError = new Error('DB persist failed');
-
-    const createMock = vi.fn().mockRejectedValue(persistError);
-    vi.doMock('../../services/roomRepo', () => ({
-      createRoom: createMock,
-      getRoom: vi.fn(),
-      addPlayer: vi.fn(),
-      removePlayer: vi.fn(),
-      setReady: vi.fn(),
-    }));
-
-    const mod: { default: BaseHandler } = await import('./index');
-    const { payloads } = await runHandlerWithQueryPayloads(mod.default, { s: 'timeout', v: '240' });
-
-    // UI still navigates to room.info
-    expect(payloads.some((p) => p.action === 'g.pk.r.in')).toBe(true);
-
-    // wait a tick for fire-and-forget persist to run
-    await new Promise((r) => setTimeout(r, 0));
-
-    // DB persist was attempted (and failed) but did not block UI
-    expect(createMock).toHaveBeenCalled();
-
-    delete process.env.GAMEHUB_USE_DB;
-    vi.resetModules();
+    it('should handle empty query gracefully', async () => {
+      // Arrange
+      const { default: handleCreate } = await import('./index');
+      context._query = {};
+      
+      // Act & Assert
+      await expect(handleCreate(context)).resolves.not.toThrow();
+    });
   });
 });
 

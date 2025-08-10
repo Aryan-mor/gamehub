@@ -1,6 +1,6 @@
 import { HandlerContext, createHandler } from '@/modules/core/handler';
 import { getActiveRoomId, setActiveRoomId } from '@/modules/core/userRoomState';
-import { getRoom, addPlayer } from '@/actions/games/poker/services/roomService';
+import { getRoom, addPlayer } from '@/actions/games/poker/room/services/roomService';
 
 export const key = 'games.join';
 
@@ -11,7 +11,7 @@ async function handleJoin(context: HandlerContext, query: Record<string, string>
 
   if (!activeRoomId) {
     // Validate room capacity and join
-    const room = getRoom(targetRoomId);
+    const room = await getRoom(targetRoomId);
     if (!room) {
       await ctx.replySmart(ctx.t('poker.room.error.notFound'));
       return;
@@ -22,33 +22,80 @@ async function handleJoin(context: HandlerContext, query: Record<string, string>
       return;
     }
     if (!isAlreadyMember) {
-      // Build display name from ctx.from if available
-      const firstName = (ctx.from as any)?.first_name as string | undefined;
-      const lastName = (ctx.from as any)?.last_name as string | undefined;
-      const displayName = [firstName, lastName].filter(Boolean).join(' ').trim() || undefined;
-      addPlayer(targetRoomId, user.id, displayName);
+      await addPlayer(targetRoomId, user.id);
+      // Update DB profile names for joining user
+      try {
+        const usersApi = await import('@/api/users');
+        await usersApi.upsert({
+          telegram_id: Number(user.id),
+          username: (ctx as any)?.from?.username,
+          first_name: (ctx as any)?.from?.first_name,
+          last_name: (ctx as any)?.from?.last_name,
+        });
+      } catch {
+        // ignore profile update errors
+      }
     }
     setActiveRoomId(user.id, targetRoomId);
     
-    // Get all players except current user for broadcasting
-    const otherPlayers = room.players.filter(p => String(p) !== String(user.id));
+    // Get updated room data after joining
+    const updated = await getRoom(targetRoomId);
+    if (!updated) return;
     
-    // Broadcast updated info to all other participants
-    for (const uid of otherPlayers) {
-      const { dispatch } = await import('@/modules/core/smart-router');
-      const broadcastContext = { 
-        ctx, 
-        user: { id: uid as unknown as string, username: '' }, 
-        _query: { roomId: targetRoomId, chatId: String(uid) } 
-      } as unknown as HandlerContext;
+    // Get user UUID for broadcasting
+            const { ensureUserUuid } = await import('@/actions/games/poker/room/services/roomRepo');
+    await ensureUserUuid(user.id);
+    
+    // Get all players for broadcasting (updated.players already includes the new user)
+    const allPlayers = updated.players; // Don't add userUuid again since it's already in updated.players
+    const usersApi = await import('@/api/users');
+    const dbUsers = await usersApi.getByIds(allPlayers); // Fetch user details by UUIDs
+    const userTelegramIdMap = new Map(dbUsers.map(u => [u.id, u.telegram_id])); // Map UUID to Telegram ID
+
+    // Get room info message text
+    // const { dispatch } = await import('@/modules/core/smart-router');
+    
+    // Get all user IDs for broadcasting
+    const allUserIds = Array.from(userTelegramIdMap.values()).map(String);
+    
+    // For each user, dispatch room.info with their chatId
+    console.log('🔍 join: starting broadcast to all users', {
+      allUserIds,
+      targetRoomId,
+      currentUserId: user.id
+    });
+    
+    for (const userId of allUserIds) {
+      console.log('🔍 join: broadcasting to user', {
+        userId,
+        isCurrentUser: userId === String(user.id),
+        currentUserTelegramId: user.id
+      });
       
-      await dispatch('games.poker.room.info', broadcastContext);
+      try {
+        // Import usersMessageHistory from smart-reply plugin
+        const { usersMessageHistory } = await import('@/plugins/smart-reply');
+        
+        // Get chatId from usersMessageHistory for this user
+        const userMessageHistory = usersMessageHistory[userId];
+        const userChatId = userMessageHistory?.chatId || userId;
+        
+        console.log('🔍 join: user chat info', {
+          userId,
+          userChatId,
+          hasMessageHistory: !!userMessageHistory
+        });
+        
+        // Use the central roomService to broadcast room info
+        const { broadcastRoomInfo } = await import('@/actions/games/poker/room/services/roomService');
+        await broadcastRoomInfo(ctx, targetRoomId, [userId]);
+      } catch (err) {
+        console.log('❌ join: failed to send room info to user', {
+          userId,
+          error: err instanceof Error ? err.message : 'Unknown error'
+        });
+      }
     }
-    
-    // Show room info to current user
-    const { dispatch } = await import('@/modules/core/smart-router');
-    (context as unknown as { _query?: Record<string, string> })._query = { roomId: targetRoomId };
-    await dispatch('games.poker.room.info', context);
     return;
   }
 

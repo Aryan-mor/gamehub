@@ -14,13 +14,13 @@ async function clearOldRooms(): Promise<void> {
     
     let deletedCount = 0;
     
-    for (const room of rooms) {
-      logger.info(`🗑️ Deleting old room: ${room.room_id} (maxPlayers: ${room.max_players})`);
+    for (const room of rooms as Array<Record<string, any>>) {
+      logger.info(`🗑️ Deleting old room: ${room.id} (maxPlayers: ${room.max_players})`);
       try {
-        await api.rooms.delete(room.room_id as string);
+        await api.rooms.delete(room.id as string);
         deletedCount++;
       } catch (deleteError) {
-        logger.error({ err: deleteError }, `❌ Error deleting room ${room.room_id}:`);
+        logger.error({ err: deleteError }, `❌ Error deleting room ${room.id}:`);
       }
     }
     

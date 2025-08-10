@@ -21,6 +21,13 @@ export function registerActiveRoomRedirect(bot: Bot<GameHubContext>): void {
 
       // Dispatch a generic games.findStep handler to resolve current game
       const { dispatch } = await import('@/modules/core/smart-router');
+      
+      // Ensure ctx.chat is properly set for the context
+      if (!ctx.chat && ctx.from) {
+        // Create a new context with proper chat info
+        (ctx as any).chat = { id: ctx.from.id, type: 'private' };
+      }
+      
       const context: HandlerContext = {
         ctx,
         user: { id: userId as UserId, username: ctx.from?.username || 'Unknown' }

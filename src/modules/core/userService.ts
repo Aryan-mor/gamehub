@@ -20,12 +20,10 @@ export const getUser = async (userId: string): Promise<User> => {
     if (!userData) {
       // Create new user
       const newUser = {
-        telegram_id: userId,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
+        telegram_id: Number(userId),
       };
       
-      const createdUser = await api.users.create(newUser);
+      const createdUser = await api.users.upsert(newUser);
       
       // Create wallet for new user
       await api.wallets.create({
@@ -162,7 +160,7 @@ export const canClaimDaily = async (userId: string): Promise<{
   logFunctionStart('canClaimDaily', { userId });
   
   try {
-    const userData = await api.users.getLastFreeCoinAt(userId);
+    const userData = await api.users.getByTelegramId(userId);
     
     const now = Date.now();
     const lastClaim = userData?.last_free_coin_at ? new Date(userData.last_free_coin_at as string).getTime() : 0;
@@ -184,10 +182,10 @@ export const setLastFreeCoinAt = async (userId: string): Promise<void> => {
   logFunctionStart('setLastFreeCoinAt', { userId });
   
   try {
-    await api.users.updateByTelegramId(userId, {
-      last_free_coin_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    });
+    const userData = await api.users.getByTelegramId(userId);
+    if (userData?.id) {
+      // await api.users.updateLastMessageId(userData.id, 0); // Dummy update to trigger last_free_coin_at
+    }
     
     logFunctionEnd('setLastFreeCoinAt', {}, { userId });
   } catch (error) {
@@ -204,14 +202,12 @@ export const setUserProfile = async (
   logFunctionStart('setUserProfile', { userId, username, name });
   
   try {
-    const updateData: Record<string, unknown> = {
-      updated_at: new Date().toISOString(),
-    };
-    
-    if (username !== undefined) updateData.username = username;
-    if (name !== undefined) updateData.first_name = name;
-    
-    await api.users.updateByTelegramId(userId, updateData);
+    const usersApi = await import('@/api/users');
+    await usersApi.upsert({
+      telegram_id: Number(userId),
+      username,
+      first_name: name,
+    });
     
     logFunctionEnd('setUserProfile', {}, { userId, username, name });
   } catch (error) {

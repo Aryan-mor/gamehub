@@ -16,11 +16,11 @@ function hasFlag(flag: string): boolean {
 
 async function deleteAllFrom(table: string, idColumn: string): Promise<DeleteResult> {
   try {
-    // Use a condition that matches all rows without using TRUNCATE
+    // Use a condition that matches all rows regardless of UUID type
     const { error } = await supabase
       .from(table)
       .delete()
-      .neq(idColumn, '');
+      .not(idColumn, 'is', null);
 
     if (error) {
       return { table, error: error.message };
@@ -77,8 +77,8 @@ async function main(): Promise<void> {
 
   // Order matters due to FKs
   const steps: Array<Promise<DeleteResult>> = [
-    deleteAllFrom('room_players', 'room_id'),
-    deleteAllFrom('rooms', 'room_id'),
+    deleteAllFrom('room_players', 'id'),
+    deleteAllFrom('rooms', 'id'),
     deleteAllFrom('users', 'id'),
   ];
 

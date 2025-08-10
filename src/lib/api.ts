@@ -7,28 +7,80 @@ import { supabase } from './supabase';
 export const api = {
   // User operations
   users: {
+    // Normalize arbitrary telegram identifier to a numeric form suitable for BIGINT columns
+    normalizeTelegramIdForDb(telegramId: string): number {
+      if (/^\d+$/.test(telegramId)) return Number(telegramId);
+      let hash = 0;
+      for (let i = 0; i < telegramId.length; i += 1) {
+        hash = ((hash << 5) - hash) + telegramId.charCodeAt(i);
+        hash |= 0; // 32-bit signed
+      }
+      return Math.abs(hash);
+    },
+
+    async getById(id: string): Promise<{
+      id: string;
+      telegram_id: number;
+      first_name?: string;
+      last_name?: string;
+      username?: string;
+      last_message_id?: number;
+      last_chat_id?: number;
+    } | null> {
+      const { data, error } = await supabase
+        .from('users')
+        .select('id, telegram_id, first_name, last_name, username, last_message_id, last_chat_id')
+        .eq('id', id)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+
+    async getByIds(userIds: string[]): Promise<Array<{
+      id: string;
+      telegram_id: number;
+      first_name?: string;
+      last_name?: string;
+      username?: string;
+    }>> {
+      if (!userIds || userIds.length === 0) return [];
+      const { data, error } = await supabase
+        .from('users')
+        .select('id, telegram_id, first_name, last_name, username')
+        .in('id', userIds);
+      if (error) throw error;
+      return data as Array<{ id: string; telegram_id: number; first_name?: string; last_name?: string; username?: string }>;
+    },
     async getByTelegramId(telegramId: string): Promise<{
       id: string;
       telegram_id: string;
       username?: string;
       first_name?: string;
       last_name?: string;
+      last_message_id?: number;
+      last_chat_id?: number;
       created_at: string;
       updated_at: string;
       last_free_coin_at?: string;
     } | null> {
+      const normalized = this.normalizeTelegramIdForDb(telegramId);
       const { data, error } = await supabase
         .from('users')
         .select('*')
-        .eq('telegram_id', telegramId)
-        .single();
+        .eq('telegram_id', normalized)
+        .maybeSingle();
       
-      if (error) throw error;
+      if (error) {
+        if ((error as any).code === 'PGRST116') {
+          return null;
+        }
+        throw error;
+      }
       return data;
     },
 
     async create(userData: {
-      telegram_id: string;
+      telegram_id: string | number;
       created_at?: string;
       updated_at?: string;
       username?: string;
@@ -44,30 +96,61 @@ export const api = {
       updated_at: string;
       last_free_coin_at?: string;
     }> {
+      const normalized = typeof userData.telegram_id === 'number' ? userData.telegram_id : this.normalizeTelegramIdForDb(String(userData.telegram_id));
+      const payload = { ...userData, telegram_id: normalized } as any;
       const { data, error } = await supabase
         .from('users')
-        .insert(userData)
+        .upsert(payload, { onConflict: 'telegram_id' })
         .select()
-        .single();
-      
+        .maybeSingle();
       if (error) throw error;
+      if (data) return data;
+      // Fallback select in case returning is disabled
+      const reselect = await supabase
+        .from('users')
+        .select('*')
+        .eq('telegram_id', normalized)
+        .maybeSingle();
+      if (reselect.error) throw reselect.error;
+      if (!reselect.data) throw new Error('User insert succeeded but could not reselect');
+      return reselect.data as any;
+    },
+
+    async upsert(userData: { telegram_id: number; username?: string; first_name?: string; last_name?: string; }): Promise<{
+      id: string;
+      telegram_id: number;
+      username?: string;
+      first_name?: string;
+      last_name?: string;
+    }> {
+      const { data, error } = await supabase
+        .from('users')
+        .upsert(userData, { onConflict: 'telegram_id' })
+        .select('id, telegram_id, username, first_name, last_name')
+        .maybeSingle();
+      if (error) throw error;
+      if (!data) throw new Error('User upsert failed');
       return data;
     },
 
+
+
     async updateByTelegramId(telegramId: string, updates: Record<string, unknown>): Promise<void> {
+      const normalized = this.normalizeTelegramIdForDb(telegramId);
       const { error } = await supabase
         .from('users')
         .update(updates)
-        .eq('telegram_id', telegramId);
+        .eq('telegram_id', normalized);
       
       if (error) throw error;
     },
 
     async getLastFreeCoinAt(telegramId: string): Promise<Record<string, unknown> | null> {
+      const normalized = this.normalizeTelegramIdForDb(telegramId);
       const { data, error } = await supabase
         .from('users')
         .select('last_free_coin_at')
-        .eq('telegram_id', telegramId)
+        .eq('telegram_id', normalized)
         .single();
       
       if (error) throw error;
@@ -128,19 +211,22 @@ export const api = {
 
   // Room operations
   rooms: {
-    async getById(roomId: string): Promise<Record<string, unknown> | null> {
+    async getById(roomUuid: string): Promise<Record<string, unknown> | null> {
       const { data, error } = await supabase
         .from('rooms')
         .select('*')
-        .eq('room_id', roomId)
-        .single();
+        .eq('id', roomUuid)
+        .maybeSingle();
       
-      if (error) throw error;
+      if (error) {
+        if ((error as any).code === 'PGRST116') return null;
+        throw error;
+      }
       return data;
     },
 
     async create(roomData: {
-      room_id: string;
+      id?: string;
       name: string;
       game_type: string;
       status: string;
@@ -152,19 +238,27 @@ export const api = {
     }): Promise<Record<string, unknown>> {
       const { data, error } = await supabase
         .from('rooms')
-        .insert(roomData)
+        .insert(roomData as any)
         .select()
-        .single();
-      
+        .maybeSingle();
       if (error) throw error;
-      return data;
+      if (data) return data;
+      // Fallback: reselect by name + created_by (best effort)
+      const reselect = await supabase
+        .from('rooms')
+        .select('*')
+        .eq('name', roomData.name)
+        .maybeSingle();
+      if (reselect.error) throw reselect.error;
+      if (!reselect.data) throw new Error('Room insert succeeded but could not reselect');
+      return reselect.data as any;
     },
 
     async update(roomId: string, updates: Record<string, unknown>): Promise<Record<string, unknown>> {
       const { data, error } = await supabase
         .from('rooms')
         .update(updates)
-        .eq('room_id', roomId)
+        .eq('id', roomId)
         .select()
         .single();
       
@@ -176,7 +270,7 @@ export const api = {
       const { error } = await supabase
         .from('rooms')
         .delete()
-        .eq('room_id', roomId);
+        .eq('id', roomId);
       
       if (error) throw error;
     },
@@ -357,6 +451,59 @@ export const api = {
         .delete()
         .eq('room_id', roomId)
         .eq('user_id', userId);
+      
+      if (error) throw error;
+    }
+  },
+
+  // Message tracking operations
+  messageTracking: {
+    async getByChatAndKey(chatId: number, messageKey: string): Promise<{
+      id: string;
+      chat_id: number;
+      message_key: string;
+      message_id: number;
+      created_at: string;
+      updated_at: string;
+    } | null> {
+      const { data, error } = await supabase
+        .from('message_tracking')
+        .select('*')
+        .eq('chat_id', chatId)
+        .eq('message_key', messageKey)
+        .maybeSingle();
+      
+      if (error) throw error;
+      return data;
+    },
+
+    async upsert(trackingData: {
+      chat_id: number;
+      message_key: string;
+      message_id: number;
+    }): Promise<void> {
+      const { error } = await supabase
+        .from('message_tracking')
+        .upsert(trackingData, { onConflict: 'chat_id,message_key' });
+      
+      if (error) throw error;
+    },
+
+    async deleteByChatAndKey(chatId: number, messageKey: string): Promise<void> {
+      const { error } = await supabase
+        .from('message_tracking')
+        .delete()
+        .eq('chat_id', chatId)
+        .eq('message_key', messageKey);
+      
+      if (error) throw error;
+    },
+
+    async deleteByChat(chatId: number): Promise<void> {
+      const { error } = await supabase
+        .from('message_tracking')
+        .delete()
+        .eq('chat_id', chatId);
       
       if (error) throw error;
     }

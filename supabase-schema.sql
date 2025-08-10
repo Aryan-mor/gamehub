@@ -11,6 +11,7 @@ CREATE TABLE IF NOT EXISTS users (
   username VARCHAR(255),
   first_name VARCHAR(255),
   last_name VARCHAR(255),
+
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   is_active BOOLEAN DEFAULT TRUE,
@@ -30,7 +31,6 @@ CREATE TABLE IF NOT EXISTS wallets (
 -- Rooms table
 CREATE TABLE IF NOT EXISTS rooms (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  room_id VARCHAR(255) UNIQUE NOT NULL,
   name VARCHAR(255) NOT NULL,
   game_type VARCHAR(50) NOT NULL,
   status VARCHAR(50) DEFAULT 'waiting',
@@ -106,20 +106,9 @@ CREATE TABLE IF NOT EXISTS transactions (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Room messages table for storing message IDs
-CREATE TABLE IF NOT EXISTS room_messages (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  room_id VARCHAR(255) NOT NULL,
-  user_id VARCHAR(255) NOT NULL,
-  message_id INTEGER NOT NULL,
-  chat_id BIGINT NOT NULL,
-  timestamp TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  UNIQUE(room_id, user_id)
-);
-
 -- Create indexes for better performance
 CREATE INDEX IF NOT EXISTS idx_users_telegram_id ON users(telegram_id);
-CREATE INDEX IF NOT EXISTS idx_rooms_room_id ON rooms(room_id);
+-- room_id dropped: no index required
 CREATE INDEX IF NOT EXISTS idx_rooms_game_type ON rooms(game_type);
 CREATE INDEX IF NOT EXISTS idx_rooms_status ON rooms(status);
 CREATE INDEX IF NOT EXISTS idx_games_game_id ON games(game_id);
@@ -131,8 +120,6 @@ CREATE INDEX IF NOT EXISTS idx_room_players_room_id ON room_players(room_id);
 CREATE INDEX IF NOT EXISTS idx_room_players_user_id ON room_players(user_id);
 CREATE INDEX IF NOT EXISTS idx_transactions_user_id ON transactions(user_id);
 CREATE INDEX IF NOT EXISTS idx_transactions_created_at ON transactions(created_at);
-CREATE INDEX IF NOT EXISTS idx_room_messages_room_id ON room_messages(room_id);
-CREATE INDEX IF NOT EXISTS idx_room_messages_user_id ON room_messages(user_id);
 
 -- Create updated_at trigger function
 CREATE OR REPLACE FUNCTION update_updated_at_column()
@@ -181,7 +168,6 @@ ALTER TABLE game_players ENABLE ROW LEVEL SECURITY;
 ALTER TABLE room_players ENABLE ROW LEVEL SECURITY;
 ALTER TABLE game_history ENABLE ROW LEVEL SECURITY;
 ALTER TABLE transactions ENABLE ROW LEVEL SECURITY;
-ALTER TABLE room_messages ENABLE ROW LEVEL SECURITY;
 
 -- Basic RLS policies (you may want to customize these based on your needs)
 DO $$ 
@@ -265,34 +251,6 @@ DO $$
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Anyone can create games' AND tablename = 'games') THEN
         CREATE POLICY "Anyone can create games" ON games FOR INSERT WITH CHECK (true);
-    END IF;
-END $$;
-
-DO $$ 
-BEGIN
-    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Anyone can view room messages' AND tablename = 'room_messages') THEN
-        CREATE POLICY "Anyone can view room messages" ON room_messages FOR SELECT USING (true);
-    END IF;
-END $$;
-
-DO $$ 
-BEGIN
-    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Anyone can insert room messages' AND tablename = 'room_messages') THEN
-        CREATE POLICY "Anyone can insert room messages" ON room_messages FOR INSERT WITH CHECK (true);
-    END IF;
-END $$;
-
-DO $$ 
-BEGIN
-    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Anyone can update room messages' AND tablename = 'room_messages') THEN
-        CREATE POLICY "Anyone can update room messages" ON room_messages FOR UPDATE USING (true);
-    END IF;
-END $$;
-
-DO $$ 
-BEGIN
-    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Anyone can delete room messages' AND tablename = 'room_messages') THEN
-        CREATE POLICY "Anyone can delete room messages" ON room_messages FOR DELETE USING (true);
     END IF;
 END $$;
 

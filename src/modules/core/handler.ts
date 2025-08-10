@@ -24,16 +24,44 @@ export function createHandler(handler: BaseHandler): BaseHandler {
   return async (context: HandlerContext, query: Record<string, string>) => {
     const fn = 'createHandlerWrapper';
     const requestId = context.requestId || `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    
+    // Enhanced logging for debugging follow issues
+    console.log('🔍 createHandlerWrapper: starting', {
+      userId: context.user.id,
+      query,
+      requestId,
+      contextChatId: context.ctx?.chat?.id,
+      contextFromId: context.ctx?.from?.id,
+      hasQuery: !!context._query
+    });
+    
     logFunctionStart(fn, { userId: context.user.id, query, requestId });
     try {
       await handler(context, query);
+      console.log('✅ createHandlerWrapper: completed successfully', {
+        userId: context.user.id,
+        requestId
+      });
       logFunctionEnd(fn, { success: true }, { userId: context.user.id, requestId });
     } catch (error) {
+      console.log('❌ createHandlerWrapper: error occurred', {
+        userId: context.user.id,
+        requestId,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
       logError(fn, error as Error, { userId: context.user.id, requestId });
       
       // Send error message to user if possible
       if (context.ctx && context.ctx.replySmart) {
-        await context.ctx.replySmart(context.ctx.t('bot.error.generic'));
+        try {
+          await context.ctx.replySmart(context.ctx.t('bot.error.generic'));
+        } catch (replyError) {
+          console.log('❌ createHandlerWrapper: failed to send error message', {
+            userId: context.user.id,
+            requestId,
+            replyError: replyError instanceof Error ? replyError.message : 'Unknown error'
+          });
+        }
       }
     }
   };

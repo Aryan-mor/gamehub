@@ -1,4 +1,4 @@
-import type { PokerRoom } from '../room/services/types';
+import type { PokerRoom } from './types';
 import { logFunctionStart, logFunctionEnd, logError } from '@/modules/core/logger';
 
 export async function createRoom(params: Omit<PokerRoom, 'players' | 'readyPlayers' | 'playerNames'>): Promise<PokerRoom> {
@@ -85,7 +85,7 @@ export async function broadcastRoomInfo(
     
     // Broadcast to all users using the public function
     await ctx.sendOrEditMessageToUsers(
-      userIds, // Keep as strings to avoid NaN issues
+      userIds.map(id => Number(id)), 
       message, 
       { 
         reply_markup: { inline_keyboard: rows }

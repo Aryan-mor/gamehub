@@ -3,6 +3,7 @@ import { Context } from 'grammy';
 import { LogContext } from './types';
 
 const debug = process.env.DEBUG === 'true';
+const logFilter = process.env.LOG_FILTER; // برای فیلتر کردن لاگ‌های خاص
 
 export const logger = pino({
   enabled: debug || process.env.LOG_LEVEL !== 'silent',
@@ -17,6 +18,12 @@ export const logger = pino({
     },
   },
 });
+
+// Helper function to check if log should be filtered
+export const shouldLog = (functionName: string): boolean => {
+  if (!logFilter) return true;
+  return functionName.includes(logFilter);
+};
 
 export const createLogger = (context: LogContext = {}): pino.Logger => {
   return logger.child(context);

@@ -1,5 +1,5 @@
 import { Context } from 'grammy';
-import { SmartReplyOptions } from '../types';
+import { SmartReplyOptions, BroadcastResult } from '../types';
 
 /**
  * Comprehensive GameHub Context that includes all plugins and features
@@ -10,6 +10,20 @@ export interface GameHubContext extends Context {
   replySmart(
     text: string,
     options?: SmartReplyOptions
+  ): Promise<void>;
+  sendOrEditMessageToUsers(
+    userIds: number[],
+    text: string,
+    messageOptions?: SmartReplyOptions,
+    broadcastOptions?: Omit<SmartReplyOptions, 'chatId' | 'userId'>
+  ): Promise<BroadcastResult[]>;
+  broadcastToUsers(
+    userIds: string[],
+    text: string,
+    options?: {
+      reply_markup?: any;
+      parse_mode?: 'HTML' | 'Markdown' | 'MarkdownV2';
+    }
   ): Promise<void>;
 
   // i18n Plugin

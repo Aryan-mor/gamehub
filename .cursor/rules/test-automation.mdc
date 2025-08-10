@@ -1,0 +1,35 @@
+---
+# Test Automation Rules
+
+## 🧪 Test Execution Guidelines
+
+### Test Execution Requirements
+- **Always run tests with `--run` flag**: Use `pnpm test --run` to execute tests once and exit automatically
+- **No manual intervention required**: Tests should complete without needing to press 'q' or any other key
+- **Automatic log reading**: After test completion, the assistant should automatically read and analyze the logs
+- **Error analysis**: The assistant should identify and fix test failures without requiring user input
+- **Continuous improvement**: Fix issues and re-run tests until all pass
+
+### Test Command Pattern
+```bash
+# ✅ CORRECT - Run tests once and exit
+pnpm test --run
+
+# ❌ WRONG - Run tests in watch mode requiring manual exit
+pnpm test
+```
+
+### Test Analysis Workflow
+1. Run tests with `--run` flag
+2. Wait for completion (no manual intervention)
+3. Read and analyze test output
+4. Identify failing tests and their root causes
+5. Fix issues in code
+6. Re-run tests to verify fixes
+7. Continue until all tests pass
+
+### User Preference
+The user prefers that the assistant writes complete test scenarios to cover the full game flow and automates running and closing tests with 'q' without waiting for user input. The assistant should keep the chat open and not end the session until the user has tested logs and the issues have been resolved.
+globs: *.test.ts
+alwaysApply: false
+---

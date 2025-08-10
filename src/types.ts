@@ -6,6 +6,14 @@ export interface SmartReplyOptions {
   messageId?: number;
   reply_markup?: InlineKeyboardMarkup | ReplyKeyboardMarkup | ReplyKeyboardRemove | ForceReply;
   parse_mode?: "HTML" | "Markdown" | "MarkdownV2";
+  userId?: string;
+  forceNewMessage?: boolean;
+}
+
+export interface BroadcastResult {
+  userId: number;
+  success: boolean;
+  error?: string;
 }
 
 export interface SmartContext extends Context {
@@ -13,4 +21,10 @@ export interface SmartContext extends Context {
     text: string,
     options?: SmartReplyOptions
   ): Promise<void>;
+  sendOrEditMessageToUsers(
+    userIds: number[],
+    text: string,
+    messageOptions?: SmartReplyOptions,
+    broadcastOptions?: Omit<SmartReplyOptions, 'chatId' | 'userId'>
+  ): Promise<BroadcastResult[]>;
 } 
