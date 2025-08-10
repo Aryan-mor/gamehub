@@ -1,13 +1,17 @@
 import type { PokerRoom } from './roomStore';
 import * as memoryStore from './roomStore';
+import { logFunctionStart, logFunctionEnd, logError } from '@/modules/core/logger';
 
 function useDb(): boolean {
   return process.env.GAMEHUB_USE_DB === 'true';
 }
 
 export function createRoom(params: Omit<PokerRoom, 'players' | 'readyPlayers' | 'playerNames'>): PokerRoom {
+  logFunctionStart('roomService.createRoom', { roomId: params.id, createdBy: params.createdBy });
   if (!useDb()) {
-    return memoryStore.createRoom(params);
+    const created = memoryStore.createRoom(params);
+    logFunctionEnd('roomService.createRoom', { mode: 'memory', roomId: created.id });
+    return created;
   }
   // Try DB, fallback to memory if unavailable
   try {
@@ -19,20 +23,24 @@ export function createRoom(params: Omit<PokerRoom, 'players' | 'readyPlayers' | 
       lastUpdate: Date.now(),
       playerNames: {},
     };
-    // Fire and forget DB persist via repo; ignore errors in tests
+    // Fire-and-forget persist to DB with error logging
     void (async () => {
       try {
-        const repo = await import('./roomRepo');
+        const repo = await import('@/actions/games/poker/services/roomRepo');
         await repo.createRoom(params);
-      } catch {
-        // ignore in tests
+      } catch (err) {
+        logError('roomService.createRoom.persist', err as Error, { roomId: params.id });
       }
     })();
     // Also keep memory copy for immediate reads
     memoryStore.createRoom(params);
+    logFunctionEnd('roomService.createRoom', { mode: 'db+memory', roomId: created.id });
     return created;
-  } catch {
-    return memoryStore.createRoom(params);
+  } catch (err) {
+    logError('roomService.createRoom', err as Error, { roomId: params.id });
+    const created = memoryStore.createRoom(params);
+    logFunctionEnd('roomService.createRoom', { mode: 'fallback-memory', roomId: created.id });
+    return created;
   }
 }
 

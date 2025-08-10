@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import type { BaseHandler } from '@/modules/core/handler';
 import { runHandlerAndGetActions, runHandlerAndGetPayloads, runHandlerWithQueryPayloads, expectActionsUnder64Bytes, expectCallbackDataUnder64Bytes } from '@/__tests__/helpers/context';
 
@@ -39,6 +39,37 @@ describe('games.poker.room.create e2e (flow callbacks)', () => {
     expect(payloads.some((p) => p.action === 'g.pk.r.in')).toBe(true);
     // Room info payloads now only contain route action (no per-player u/ready pairs)
     expectCallbackDataUnder64Bytes(payloads);
+  });
+
+  it('attempts DB persist when GAMEHUB_USE_DB=true and repo.createRoom fails (non-blocking)', async () => {
+    process.env.GAMEHUB_USE_DB = 'true';
+
+    vi.resetModules();
+    const persistError = new Error('DB persist failed');
+
+    const createMock = vi.fn().mockRejectedValue(persistError);
+    vi.doMock('../../services/roomRepo', () => ({
+      createRoom: createMock,
+      getRoom: vi.fn(),
+      addPlayer: vi.fn(),
+      removePlayer: vi.fn(),
+      setReady: vi.fn(),
+    }));
+
+    const mod: { default: BaseHandler } = await import('./index');
+    const { payloads } = await runHandlerWithQueryPayloads(mod.default, { s: 'timeout', v: '240' });
+
+    // UI still navigates to room.info
+    expect(payloads.some((p) => p.action === 'g.pk.r.in')).toBe(true);
+
+    // wait a tick for fire-and-forget persist to run
+    await new Promise((r) => setTimeout(r, 0));
+
+    // DB persist was attempted (and failed) but did not block UI
+    expect(createMock).toHaveBeenCalled();
+
+    delete process.env.GAMEHUB_USE_DB;
+    vi.resetModules();
   });
 });
 
