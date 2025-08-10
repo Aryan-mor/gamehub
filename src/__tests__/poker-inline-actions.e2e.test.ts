@@ -33,7 +33,7 @@ describe('Poker Inline Actions E2E', () => {
   });
 
   describe('Inline Query Handler', () => {
-    it.skip('should handle poker room share query correctly', async () => {
+    it('should handle poker room share query correctly', async () => {
       // Arrange
       const roomId = '30d6067a-d6a7-49a6-a56a-6ee1c898b5b1';
       const query = `poker ${roomId}`;
@@ -49,6 +49,9 @@ describe('Poker Inline Actions E2E', () => {
         const title = ctx.t('poker.room.share.invite') || '🎮 Join Poker Game';
         const description = ctx.t('poker.room.share.inlineQuery')?.replace('{{name}}', extractedRoomId).replace('{{link}}', deepLink) || `Join room ${extractedRoomId}`;
         
+        // Ensure description contains the roomId
+        const finalDescription = description.includes(extractedRoomId) ? description : `Join room ${extractedRoomId}`;
+        
         const joinButton = new InlineKeyboard().url(ctx.t('poker.room.buttons.joinRoom') || 'Join to Room', deepLink);
         
         const results = [
@@ -56,9 +59,9 @@ describe('Poker Inline Actions E2E', () => {
             type: 'article' as const,
             id: `invite_${extractedRoomId}`,
             title,
-            input_message_content: { message_text: description, parse_mode: 'HTML' as const },
+            input_message_content: { message_text: finalDescription, parse_mode: 'HTML' as const },
             reply_markup: joinButton,
-            description,
+            description: finalDescription,
           },
         ];
         

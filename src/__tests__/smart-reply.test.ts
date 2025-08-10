@@ -50,6 +50,9 @@ describe('SmartReplyPlugin', () => {
     });
 
     it.skip('should edit existing message when previous message exists', async () => {
+      // Reset plugin state
+      (plugin as any).usersMessageHistory = {};
+      
       const context = plugin.buildContext(mockContext as Context);
       const replySmart = context.replySmart!;
 
@@ -76,6 +79,9 @@ describe('SmartReplyPlugin', () => {
 
   describe('replySmart - Force New Message Mode', () => {
     it.skip('should send new message when forceNewMessage is true', async () => {
+      // Reset plugin state
+      (plugin as any).usersMessageHistory = {};
+      
       const context = plugin.buildContext(mockContext as Context);
       const replySmart = context.replySmart!;
 
@@ -134,6 +140,9 @@ describe('SmartReplyPlugin', () => {
 
   describe('Error Handling', () => {
     it.skip('should fallback to new message when edit fails', async () => {
+      // Reset plugin state
+      (plugin as any).usersMessageHistory = {};
+      
       const context = plugin.buildContext(mockContext as Context);
       const replySmart = context.replySmart!;
 
@@ -160,7 +169,12 @@ describe('SmartReplyPlugin', () => {
     it.skip('should throw error when chatId is undefined', async () => {
       const context = plugin.buildContext({
         chat: undefined,
-        from: { id: 123456789, first_name: 'Test', is_bot: false }
+        from: { id: 123456789, first_name: 'Test', is_bot: false },
+        api: {
+          sendMessage: vi.fn().mockResolvedValue({ message_id: 1 }),
+          editMessageText: vi.fn().mockResolvedValue({}),
+          deleteMessage: vi.fn().mockResolvedValue({})
+        }
       });
       const replySmart = context.replySmart!;
 
