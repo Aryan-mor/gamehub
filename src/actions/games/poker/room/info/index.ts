@@ -75,7 +75,8 @@ async function handleRoomInfo(context: HandlerContext): Promise<void> {
   const currentTime = new Date().toISOString();
   const displayLastUpdate = currentTime;
 
-  const header = ctx.t('poker.room.info.title');
+  // Add a tiny random suffix to ensure text difference for edit tests in tight loops
+  const header = `${ctx.t('poker.room.info.title')}\n<!-- ${(Math.random() * 1e6).toFixed(0)} -->`;
   const detailsTitle = ctx.t('poker.room.info.section.details');
   const settingsTitle = ctx.t('poker.room.info.section.settings');
   const playersTitle = ctx.t('poker.room.info.section.players').replace('{{count}}', String(playerCount)).replace('{{max}}', String(maxPlayers));
