@@ -1,14 +1,16 @@
 import { describe, it, expect } from 'vitest';
 import type { BaseHandler } from '@/modules/core/handler';
-import { runHandlerAndGetActions, runHandlerWithQueryPayloads, expectActionsUnder64Bytes } from '@/__tests__/helpers/context';
+import { runHandlerAndGetActions, runHandlerAndGetPayloads, runHandlerWithQueryPayloads, expectActionsUnder64Bytes, expectCallbackDataUnder64Bytes } from '@/__tests__/helpers/context';
 
 describe('games.poker.room.create e2e (flow callbacks)', () => {
   it('step1 -> privacy buttons + back', async () => {
     const mod: { default: BaseHandler } = await import('./index');
     const { actions } = await runHandlerAndGetActions(mod.default);
+    const { payloads } = await runHandlerAndGetPayloads(mod.default);
     expect(actions).toContain('g.pk.r.cr');
     expect(actions).toContain('g.pk.st');
     expectActionsUnder64Bytes(actions);
+    expectCallbackDataUnder64Bytes(payloads);
   });
 
   it('step2 -> maxPlayers buttons after privacy', async () => {
@@ -16,18 +18,27 @@ describe('games.poker.room.create e2e (flow callbacks)', () => {
     const { payloads } = await runHandlerWithQueryPayloads(mod.default, { s: 'privacy', v: 'true' });
     expect(payloads.some((p) => p.action === 'g.pk.r.cr' && p.s === 'maxPlayers' && p.v === '2')).toBe(true);
     expect(payloads.some((p) => p.action === 'g.pk.r.cr' && p.s === 'maxPlayers' && p.v === '8')).toBe(true);
-    const actions = payloads.map((p) => String(p.action ?? ''));
-    expectActionsUnder64Bytes(actions);
+    expectCallbackDataUnder64Bytes(payloads);
   });
 
-  it('step3 -> creates room and navigates to room.info', async () => {
+  it('step3 -> timeout buttons after smallBlind', async () => {
     const mod: { default: BaseHandler } = await import('./index');
-    // Choose smallBlind step directly to simulate completion
     const { payloads } = await runHandlerWithQueryPayloads(mod.default, { s: 'smallBlind', v: '100' });
-    // Expect the resulting message to be the room info keyboard (contains refresh to info with roomId)
-    expect(payloads.some((p) => p.action === 'g.pk.r.in' && typeof p.roomId === 'string' && (p.roomId as string).startsWith('room_'))).toBe(true);
-    const actions = payloads.map((p) => String(p.action ?? ''));
-    expectActionsUnder64Bytes(actions);
+    // Expect timeout options (2,4,8,16 minutes => 120,240,480,960 seconds)
+    expect(payloads.some((p) => p.action === 'g.pk.r.cr' && p.s === 'timeout' && p.v === '120')).toBe(true);
+    expect(payloads.some((p) => p.action === 'g.pk.r.cr' && p.s === 'timeout' && p.v === '240')).toBe(true);
+    expect(payloads.some((p) => p.action === 'g.pk.r.cr' && p.s === 'timeout' && p.v === '480')).toBe(true);
+    expect(payloads.some((p) => p.action === 'g.pk.r.cr' && p.s === 'timeout' && p.v === '960')).toBe(true);
+    expectCallbackDataUnder64Bytes(payloads);
+  });
+
+  it('step4 -> creates room and navigates to room.info after timeout selection', async () => {
+    const mod: { default: BaseHandler } = await import('./index');
+    const { payloads } = await runHandlerWithQueryPayloads(mod.default, { s: 'timeout', v: '240' });
+    // Expect the resulting message to be the room info keyboard
+    expect(payloads.some((p) => p.action === 'g.pk.r.in')).toBe(true);
+    // Room info payloads now only contain route action (no per-player u/ready pairs)
+    expectCallbackDataUnder64Bytes(payloads);
   });
 });
 

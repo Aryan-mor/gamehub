@@ -12,6 +12,7 @@ export const api = {
       telegram_id: string;
       username?: string;
       first_name?: string;
+      last_name?: string;
       created_at: string;
       updated_at: string;
       last_free_coin_at?: string;
@@ -32,11 +33,13 @@ export const api = {
       updated_at?: string;
       username?: string;
       first_name?: string;
+      last_name?: string;
     }): Promise<{
       id: string;
       telegram_id: string;
       username?: string;
       first_name?: string;
+      last_name?: string;
       created_at: string;
       updated_at: string;
       last_free_coin_at?: string;

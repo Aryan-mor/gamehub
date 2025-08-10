@@ -16,17 +16,20 @@ export class SmartReplyPlugin implements GameHubPlugin {
     return {
       replySmart: async (text: string, options: SmartReplyOptions = {}): Promise<void> => {
         const chatId = options.chatId ?? ctx.chat?.id;
+        // Only allow editing when triggered from a callback (editing bot's own message)
         const messageId =
           options.messageId ??
-          ctx.callbackQuery?.message?.message_id ??
-          ctx.msg?.message_id;
+          ctx.callbackQuery?.message?.message_id;
 
         if (!chatId) {
           throw new Error("chatId is required");
         }
 
+        // If sending to a different chat than the current context, skip edit and send a new message
+        const isDifferentChat = options.chatId !== undefined && options.chatId !== ctx.chat?.id;
+
         try {
-          if (messageId) {
+          if (!isDifferentChat && messageId) {
             await ctx.api.editMessageText(chatId, messageId, text, {
               reply_markup: options.reply_markup as InlineKeyboardMarkup,
               parse_mode: options.parse_mode,

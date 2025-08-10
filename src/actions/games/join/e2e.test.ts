@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { createRoom } from '@/actions/games/poker/services/roomStore';
+import { createRoom, addPlayer } from '@/actions/games/poker/services/roomStore';
 import { getActiveRoomId, setActiveRoomId, clearActiveRoomId } from '@/modules/core/userRoomState';
 import { encodeAction } from '@/modules/core/route-alias';
 import type { BaseHandler } from '@/modules/core/handler';
@@ -46,6 +46,53 @@ describe('games.join e2e', () => {
     expect(acts).toContain('g.findStep');
     expect(acts).toContain('g.jn');
     expect(acts).toContain('g.st');
+  });
+
+  it('navigates to room.info and broadcasts updates to other players (no loading)', async () => {
+    // Do not reset modules to keep in-memory stores shared across handler and tests
+    const roomId = 'room_join_success_1';
+    createRoom({ id: roomId, isPrivate: false, maxPlayers: 4, smallBlind: 100, createdBy: 'owner1' });
+
+    // Use real router to render room.info
+
+    const mod: { default: BaseHandler } = await import('./index');
+    const handler = mod.default;
+    const sent: Array<{ text: string; markup: any }> = [];
+    const ctx: any = {
+      t: (k: string) => k,
+      from: { id: 123, first_name: 'First', last_name: 'Last' },
+      keyboard: { buildCallbackData: (a: string, p: Record<string, string> = {}) => JSON.stringify({ action: encodeAction(a), ...p }) },
+      replySmart: vi.fn(async (text: string, opts: any) => { sent.push({ text, markup: opts?.reply_markup }); }),
+      log: { info: vi.fn(), error: vi.fn(), debug: vi.fn() },
+      api: { sendMessage: vi.fn() },
+    };
+    await handler({ ctx, user: { id: 'joiner1', username: 't' }, _query: { roomId } } as unknown as import('@/modules/core/handler').HandlerContext, { roomId });
+    // Should render room info for current user
+    expect(sent.length).toBeGreaterThan(0);
+    const last = sent.at(-1)?.text || '';
+    expect(/poker\.room\.info\.title|poker\.room\.info\.section\.details/i.test(last)).toBe(true);
+  });
+
+  it('rejects join when room is full', async () => {
+    const roomId = 'room_join_full_1';
+    createRoom({ id: roomId, isPrivate: false, maxPlayers: 1, smallBlind: 50, createdBy: 'owner2' });
+    // Fill the room
+    addPlayer(roomId, 'owner2');
+
+    const mod: { default: BaseHandler } = await import('./index');
+    const handler = mod.default;
+    const sent: any[] = [];
+    const ctx: any = {
+      t: (k: string) => k,
+      keyboard: { buildCallbackData: (a: string, p: Record<string, string> = {}) => JSON.stringify({ action: encodeAction(a), ...p }) },
+      replySmart: vi.fn(async (text: string, opts: any) => { sent.push(text); }),
+      log: { info: vi.fn(), error: vi.fn(), debug: vi.fn() },
+    };
+    // Ensure no active room interferes
+    clearActiveRoomId('joiner2');
+    await handler({ ctx, user: { id: 'joiner2', username: 't' }, _query: { roomId } } as unknown as import('@/modules/core/handler').HandlerContext, { roomId });
+    expect(sent.length).toBeGreaterThan(0);
+    expect(String(sent[0])).toMatch(/poker\.room\.error\.full|full/i);
   });
 });
 

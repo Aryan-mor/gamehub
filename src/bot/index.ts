@@ -5,6 +5,7 @@ import { logFunctionStart, logFunctionEnd, logError } from '@/modules/core/logge
 import { initializeRoutes } from '@/main-router';
 import { registerLogging } from './middleware/logging';
 import { registerCallbackDispatcher } from './middleware/callback';
+import { registerInlineHandler } from './middleware/inline';
 import { registerStartCommand } from './commands/start';
 import { registerActiveRoomRedirect } from './middleware/active-room';
 
@@ -24,6 +25,7 @@ bot.use(getPluginMiddlewareChain());
 registerLogging(bot);
 registerActiveRoomRedirect(bot);
 registerCallbackDispatcher(bot);
+registerInlineHandler(bot);
 
 // Commands
 registerStartCommand(bot);

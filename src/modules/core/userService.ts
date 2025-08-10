@@ -61,7 +61,7 @@ export const getUser = async (userId: string): Promise<User> => {
       createdAt: new Date(userData.created_at).getTime(),
       updatedAt: new Date(userData.updated_at).getTime(),
       username: userData.username,
-      name: userData.first_name,
+      name: [userData.first_name, userData.last_name].filter(Boolean).join(' ').trim() || userData.first_name,
     };
     
     logFunctionEnd('getUser', user, { userId });

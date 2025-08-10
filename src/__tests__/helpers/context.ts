@@ -154,4 +154,14 @@ export function expectActionsUnder64Bytes(actions: string[]): void {
   }
 }
 
+/**
+ * Assert each callback_data string is < 64 bytes (Telegram hard limit)
+ */
+export function expectCallbackDataUnder64Bytes(payloads: Array<Record<string, unknown>>): void {
+  for (const p of payloads) {
+    const callback = JSON.stringify(p);
+    expect(Buffer.byteLength(callback, 'utf8')).toBeLessThan(64);
+  }
+}
+
 

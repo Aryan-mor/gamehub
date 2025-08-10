@@ -8,6 +8,7 @@ interface CreateState {
   isPrivate?: boolean;
   maxPlayers?: number;
   smallBlind?: number;
+  turnTimeoutSec?: number;
 }
 
 export async function handleCreateFlow(context: HandlerContext, query: Record<string, string>): Promise<void> {
@@ -58,9 +59,28 @@ export async function handleCreateFlow(context: HandlerContext, query: Record<st
   if (s === 'smallBlind') {
     state.smallBlind = Number(v);
     ctx.formState.set(NS, user.id, state);
+    // Show timeout selection step
+    const ROUTES2 = (await import('@/modules/core/routes.generated')).ROUTES;
+    const templates = {
+      t2: { text: ctx.t('poker.form.option.t120'), callback_data: ctx.keyboard.buildCallbackData(ROUTES2.games.poker.room.create, { s: 'timeout', v: '120' }) },
+      t4: { text: ctx.t('poker.form.option.t240'), callback_data: ctx.keyboard.buildCallbackData(ROUTES2.games.poker.room.create, { s: 'timeout', v: '240' }) },
+      t8: { text: ctx.t('poker.form.option.t480'), callback_data: ctx.keyboard.buildCallbackData(ROUTES2.games.poker.room.create, { s: 'timeout', v: '480' }) },
+      t16: { text: ctx.t('poker.form.option.t960'), callback_data: ctx.keyboard.buildCallbackData(ROUTES2.games.poker.room.create, { s: 'timeout', v: '960' }) },
+    } as const;
+    const keyboard = ctx.keyboard.createCustomKeyboard([
+      ['t2', 't4'],
+      ['t8', 't16'],
+    ], templates as Record<string, { text: string; callback_data: string }>);
+    await ctx.replySmart(ctx.t('poker.form.step5.turnTimeout'), { parse_mode: 'HTML', reply_markup: keyboard });
+    return;
+  }
+
+  if (s === 'timeout') {
+    state.turnTimeoutSec = Number(v);
+    ctx.formState.set(NS, user.id, state);
     // Create room (in-memory) and set active
     const roomId = `room_${Date.now()}_${user.id}`;
-    createRoom({ id: roomId, isPrivate: !!state.isPrivate, maxPlayers: state.maxPlayers ?? 2, smallBlind: state.smallBlind ?? 100, createdBy: user.id });
+    createRoom({ id: roomId, isPrivate: !!state.isPrivate, maxPlayers: state.maxPlayers ?? 2, smallBlind: state.smallBlind ?? 100, turnTimeoutSec: state.turnTimeoutSec ?? 240, createdBy: user.id });
     setActiveRoomId(user.id, roomId);
 
     // After successful creation, navigate to room info view

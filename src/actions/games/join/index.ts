@@ -1,5 +1,6 @@
 import { HandlerContext, createHandler } from '@/modules/core/handler';
 import { getActiveRoomId, setActiveRoomId } from '@/modules/core/userRoomState';
+import { getRoom, addPlayer } from '@/actions/games/poker/services/roomStore';
 
 export const key = 'games.join';
 
@@ -9,13 +10,53 @@ async function handleJoin(context: HandlerContext, query: Record<string, string>
   const activeRoomId = getActiveRoomId(user.id);
 
   if (!activeRoomId) {
+    // Validate room capacity and join
+    const room = getRoom(targetRoomId);
+    if (!room) {
+      await ctx.replySmart(ctx.t('poker.room.error.notFound'));
+      return;
+    }
+    const isAlreadyMember = room.players.includes(user.id as unknown as string);
+    if (!isAlreadyMember && room.players.length >= room.maxPlayers) {
+      await ctx.replySmart(ctx.t('poker.room.error.full') || '❌ Room is full');
+      return;
+    }
+    if (!isAlreadyMember) {
+      // Build display name from ctx.from if available
+      const firstName = (ctx.from as any)?.first_name as string | undefined;
+      const lastName = (ctx.from as any)?.last_name as string | undefined;
+      const displayName = [firstName, lastName].filter(Boolean).join(' ').trim() || undefined;
+      addPlayer(targetRoomId, user.id, displayName);
+    }
     setActiveRoomId(user.id, targetRoomId);
-    await ctx.replySmart(ctx.t('poker.join.welcome'), { reply_markup: { inline_keyboard: [[{ text: ctx.t('poker.room.buttons.backToMenu'), callback_data: ctx.keyboard.buildCallbackData((await import('@/modules/core/routes.generated')).ROUTES.games.poker.findRoom, { roomId: targetRoomId }) }]] } });
+    
+    // Get all players except current user for broadcasting
+    const otherPlayers = room.players.filter(p => String(p) !== String(user.id));
+    
+    // Broadcast updated info to all other participants
+    for (const uid of otherPlayers) {
+      const { dispatch } = await import('@/modules/core/smart-router');
+      const broadcastContext = { 
+        ctx, 
+        user: { id: uid as unknown as string, username: '' }, 
+        _query: { roomId: targetRoomId, chatId: String(uid) } 
+      } as unknown as HandlerContext;
+      
+      await dispatch('games.poker.room.info', broadcastContext);
+    }
+    
+    // Show room info to current user
+    const { dispatch } = await import('@/modules/core/smart-router');
+    (context as unknown as { _query?: Record<string, string> })._query = { roomId: targetRoomId };
+    await dispatch('games.poker.room.info', context);
     return;
   }
 
   if (activeRoomId === targetRoomId) {
-    await ctx.replySmart(ctx.t('poker.join.welcome'), { reply_markup: { inline_keyboard: [[{ text: ctx.t('poker.room.buttons.backToMenu'), callback_data: ctx.keyboard.buildCallbackData((await import('@/modules/core/routes.generated')).ROUTES.games.findStep, { roomId: activeRoomId }) }]] } });
+    // User is already in this room, just show current info
+    const { dispatch } = await import('@/modules/core/smart-router');
+    (context as unknown as { _query?: Record<string, string> })._query = { roomId: activeRoomId };
+    await dispatch('games.poker.room.info', context);
     return;
   }
 
