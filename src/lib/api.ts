@@ -2,6 +2,7 @@
 // This replaces direct Supabase calls throughout the application
 
 import { supabase } from './supabase';
+import { logFunctionStart, logFunctionEnd, logError } from '@/modules/core/logger';
 
 // User operations
 export const api = {
@@ -64,19 +65,26 @@ export const api = {
       last_free_coin_at?: string;
     } | null> {
       const normalized = this.normalizeTelegramIdForDb(telegramId);
-      const { data, error } = await supabase
-        .from('users')
-        .select('*')
-        .eq('telegram_id', normalized)
-        .maybeSingle();
-      
-      if (error) {
-        if ((error as any).code === 'PGRST116') {
-          return null;
+      logFunctionStart('api.users.getByTelegramId', { telegramId, normalized });
+      try {
+        const { data, error } = await supabase
+          .from('users')
+          .select('*')
+          .eq('telegram_id', normalized)
+          .maybeSingle();
+        if (error) {
+          if ((error as unknown as { code?: string }).code === 'PGRST116') {
+            logFunctionEnd('api.users.getByTelegramId', { found: false, normalized });
+            return null;
+          }
+          throw error;
         }
-        throw error;
+        logFunctionEnd('api.users.getByTelegramId', { found: !!data, normalized });
+        return data;
+      } catch (err) {
+        logError('api.users.getByTelegramId', err as Error, { telegramId, normalized });
+        throw err as Error;
       }
-      return data;
     },
 
     async create(userData: {
@@ -123,14 +131,21 @@ export const api = {
       first_name?: string;
       last_name?: string;
     }> {
-      const { data, error } = await supabase
-        .from('users')
-        .upsert(userData, { onConflict: 'telegram_id' })
-        .select('id, telegram_id, username, first_name, last_name')
-        .maybeSingle();
-      if (error) throw error;
-      if (!data) throw new Error('User upsert failed');
-      return data;
+      logFunctionStart('api.users.upsert', { telegram_id: userData.telegram_id });
+      try {
+        const { data, error } = await supabase
+          .from('users')
+          .upsert(userData, { onConflict: 'telegram_id' })
+          .select('id, telegram_id, username, first_name, last_name')
+          .maybeSingle();
+        if (error) throw error;
+        if (!data) throw new Error('User upsert failed');
+        logFunctionEnd('api.users.upsert', { id: data.id });
+        return data;
+      } catch (err) {
+        logError('api.users.upsert', err as Error, { telegram_id: userData.telegram_id });
+        throw err as Error;
+      }
     },
 
 
@@ -236,22 +251,33 @@ export const api = {
       settings: Record<string, unknown>;
       is_private: boolean;
     }): Promise<Record<string, unknown>> {
-      const { data, error } = await supabase
-        .from('rooms')
-        .insert(roomData as any)
-        .select()
-        .maybeSingle();
-      if (error) throw error;
-      if (data) return data;
-      // Fallback: reselect by name + created_by (best effort)
-      const reselect = await supabase
-        .from('rooms')
-        .select('*')
-        .eq('name', roomData.name)
-        .maybeSingle();
-      if (reselect.error) throw reselect.error;
-      if (!reselect.data) throw new Error('Room insert succeeded but could not reselect');
-      return reselect.data as any;
+      logFunctionStart('api.rooms.create', { created_by: roomData.created_by, max_players: roomData.max_players, stake_amount: roomData.stake_amount, is_private: roomData.is_private });
+      try {
+        const { data, error } = await supabase
+          .from('rooms')
+          .insert(roomData as any)
+          .select()
+          .maybeSingle();
+        if (error) throw error;
+        if (data) {
+          logFunctionEnd('api.rooms.create', { id: (data as { id?: string }).id });
+          return data;
+        }
+        // Fallback: reselect by name + created_by (best effort)
+        const reselect = await supabase
+          .from('rooms')
+          .select('*')
+          .eq('name', roomData.name)
+          .maybeSingle();
+        if (reselect.error) throw reselect.error;
+        if (!reselect.data) throw new Error('Room insert succeeded but could not reselect');
+        logFunctionEnd('api.rooms.create', { id: (reselect.data as { id?: string }).id, via: 'reselect' });
+        return reselect.data as any;
+      } catch (err) {
+        const e = err as Error & { code?: string; details?: unknown; hint?: unknown; message?: string };
+        logError('api.rooms.create', e, { code: e.code, details: e.details, hint: e.hint, message: e.message });
+        throw err as Error;
+      }
     },
 
     async update(roomId: string, updates: Record<string, unknown>): Promise<Record<string, unknown>> {

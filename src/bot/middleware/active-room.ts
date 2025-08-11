@@ -19,6 +19,21 @@ export function registerActiveRoomRedirect(bot: Bot<GameHubContext>): void {
       const roomId = getActiveRoomId(userId);
       if (!roomId) return await next();
 
+      // If user has an active room:
+      // - For /start: redirect to current room step (preferred UX)
+      // - For other bot commands (e.g., /help): let them pass
+      // - For normal messages: redirect to current room step
+      const text = ctx.message?.text || '';
+      const hasBotCommandEntity = Array.isArray(ctx.message?.entities)
+        ? ctx.message!.entities!.some((e) => e.type === 'bot_command')
+        : false;
+      const isStartCommand = hasBotCommandEntity && text.trim().startsWith('/start');
+      const isOtherBotCommand = hasBotCommandEntity && !isStartCommand;
+
+      if (isOtherBotCommand) {
+        return await next();
+      }
+
       // Dispatch a generic games.findStep handler to resolve current game
       const { dispatch } = await import('@/modules/core/smart-router');
       
@@ -32,7 +47,7 @@ export function registerActiveRoomRedirect(bot: Bot<GameHubContext>): void {
         ctx,
         user: { id: userId as UserId, username: ctx.from?.username || 'Unknown' }
       };
-      logFunctionStart('activeRoomRedirect', { userId, roomId, trigger: ctx.update?.message ? 'message' : 'other' });
+      logFunctionStart('activeRoomRedirect', { userId, roomId, trigger: ctx.update?.message ? (isStartCommand ? 'start' : 'message') : 'other' });
       // Attach roomId for the next handler
       (context as HandlerContext & { _query?: Record<string, string> })._query = { roomId };
       await dispatch('games.findStep', context);

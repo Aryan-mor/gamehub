@@ -25,8 +25,10 @@ async function handleStart(context: HandlerContext): Promise<void> {
     
     // Legacy keys intentionally not used to keep minimal main menu
     
-    // Save user profile
-    await setUserProfile(user.id, user.username, user.username || 'Unknown');
+    // Save user profile in background to avoid blocking the reply
+    const saveProfilePromise = setUserProfile(user.id, user.username, user.username || 'Unknown').catch((err: unknown) => {
+      ctx.log?.warn?.('setUserProfile failed (non-blocking)', { error: err instanceof Error ? err.message : String(err) });
+    });
     
     // Get user data
     // const userData = await getUser(user.id);
@@ -61,6 +63,8 @@ async function handleStart(context: HandlerContext): Promise<void> {
       parse_mode: 'HTML',
       reply_markup: replyMarkup
     });
+    // Best-effort wait (brief) for profile save without blocking user response
+    await Promise.race([saveProfilePromise, new Promise<void>((resolve) => setTimeout(resolve, 1000))]);
     
   } catch (error) {
     ctx.log?.error?.('Start command error', { error: error instanceof Error ? error.message : String(error) });

@@ -33,6 +33,8 @@ export const extractUserInfo = (ctx: Context): {
 export class UserPlugin implements GameHubPlugin {
   name = 'user';
   version = '1.0.0';
+  // kept for future use if we need to re-introduce a soft timeout
+  // private static readonly USER_PLUGIN_TIMEOUT_MS = 2500;
 
   buildContext: ContextBuilder = (ctx: Context): Partial<GameHubContext> => {
     const userId = ctx.from?.id?.toString() || '';
@@ -57,16 +59,25 @@ export class UserPlugin implements GameHubPlugin {
         return;
       }
 
-      // Get or create user profile
-      try {
-        await getUser(userId);
-        ctx.user.isNewUser = false;
-      } catch {
-        // User doesn't exist, create new profile
-        await setUserProfile(userId, ctx.from?.username, ctx.from?.username || 'Unknown');
-        await getUser(userId);
-        ctx.user.isNewUser = true;
-      }
+      // Get or create user profile in background to avoid blocking the pipeline
+      const work = (async (): Promise<void> => {
+        try {
+          await getUser(userId);
+          ctx.user.isNewUser = false;
+        } catch {
+          try {
+            await setUserProfile(userId, ctx.from?.username, ctx.from?.username || 'Unknown');
+            await getUser(userId);
+            ctx.user.isNewUser = true;
+          } catch (innerError) {
+            ctx.log?.warn?.('User plugin create/fetch failed', {
+              error: innerError instanceof Error ? innerError.message : String(innerError),
+            });
+          }
+        }
+      })();
+      // Do not await; let it run in background
+      void work.catch((e) => ctx.log?.warn?.('User plugin background task error', { error: e instanceof Error ? e.message : String(e) }));
 
       // Update user context with additional data
       ctx.user = {

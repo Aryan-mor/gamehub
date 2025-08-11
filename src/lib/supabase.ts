@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import dotenv from 'dotenv';
 import { z } from 'zod';
+import { logFunctionStart, logFunctionEnd, logError } from '@/modules/core/logger';
 
 // Load environment variables from .env file
 dotenv.config();
@@ -27,3 +28,25 @@ export const supabase = createClient(supabaseUrl, supabaseServiceKey, {
 });
 
 export default supabase; 
+
+/**
+ * Perform a fast health check against Supabase to ensure DB is reachable.
+ * Fails within timeoutMs to avoid hanging the bot startup.
+ */
+export async function checkSupabaseConnectivity(timeoutMs = 3000): Promise<void> {
+  logFunctionStart('checkSupabaseConnectivity', { timeoutMs, url: supabaseUrl });
+  try {
+    const pingPromise = supabase
+      .from('users')
+      .select('id', { count: 'exact', head: true })
+      .limit(1);
+    await Promise.race([
+      pingPromise,
+      new Promise((_, reject) => setTimeout(() => reject(new Error('timeout:db-healthcheck')), timeoutMs))
+    ]);
+    logFunctionEnd('checkSupabaseConnectivity', { ok: true });
+  } catch (error) {
+    logError('checkSupabaseConnectivity', error as Error, { url: supabaseUrl });
+    throw error as Error;
+  }
+}

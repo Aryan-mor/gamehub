@@ -125,7 +125,7 @@ describe('Poker Room Create Steps E2E', () => {
   });
 
   describe('Timeout Selection and Room Creation', () => {
-    it.skip('should create room successfully and navigate to room info', async () => {
+    it('should create room successfully and navigate to room info', async () => {
       // Arrange
       const { handleCreateFlow } = await import('./steps');
       const query = { s: 'timeout', v: '120' };
@@ -139,18 +139,21 @@ describe('Poker Room Create Steps E2E', () => {
       expect(mockSetActiveRoomId).toHaveBeenCalledWith(context.user.id, 'test-room-id');
       expect(mockDispatch).toHaveBeenCalledWith(
         'games.poker.room.info',
-        expect.objectContaining({ roomId: 'test-room-id' })
+        expect.objectContaining({ _query: { roomId: 'test-room-id' } })
       );
     });
 
-    it.skip('should handle room creation failure gracefully', async () => {
+    it('should handle room creation failure gracefully', async () => {
       // Arrange
       const { handleCreateFlow } = await import('./steps');
       const query = { s: 'timeout', v: '120' };
       mockCreateRoom.mockRejectedValue(new Error('Database error'));
       
-      // Act & Assert
-      await expect(handleCreateFlow(context, query)).rejects.toThrow('Database error');
+      // Act
+      await handleCreateFlow(context, query);
+      
+      // Assert: shows error and re-renders step 5 instead of throwing
+      expect(context.ctx.replySmart).toHaveBeenCalled();
       expect(mockSetActiveRoomId).not.toHaveBeenCalled();
     });
   });

@@ -67,9 +67,17 @@ export async function createRoom(params: Omit<PokerRoom, 'players' | 'readyPlaye
   try {
     const rooms = await import('@/api/rooms');
     const { roomPlayers } = await import('@/api');
-    const creatorUuid = await ensureUserUuid(params.createdBy);
+    // Add safety timeouts to avoid indefinite hangs on external services
+    const withTimeout = async <T>(promise: Promise<T>, ms: number, label: string): Promise<T> => {
+      return await Promise.race<T>([
+        promise,
+        new Promise<T>((_r, reject) => setTimeout(() => reject(new Error(`timeout:${label}`)), ms)) as Promise<T>,
+      ]);
+    };
+
+    const creatorUuid = await withTimeout(ensureUserUuid(params.createdBy), 4000, 'ensureUserUuid');
     const maybeUuid = /^[0-9a-fA-F-]{36}$/.test(params.id) ? params.id : undefined;
-    const db = await rooms.create({
+    const db = await withTimeout(rooms.create({
       id: maybeUuid,
       name: params.name ?? '',
       game_type: 'poker',
@@ -79,13 +87,15 @@ export async function createRoom(params: Omit<PokerRoom, 'players' | 'readyPlaye
       stake_amount: params.smallBlind,
       settings: { turnTimeoutSec: params.turnTimeoutSec ?? 240 },
       is_private: params.isPrivate,
-    });
+    }), 5000, 'rooms.create');
     const roomUuid = (db as any).id as string;
-    await roomPlayers.add(roomUuid, creatorUuid, false);
+    await withTimeout(roomPlayers.add(roomUuid, creatorUuid, false), 4000, 'roomPlayers.add');
     const mapped = mapDbRoom(db, [{ user_id: creatorUuid, ready: false }]);
     logFunctionEnd('roomRepo.createRoom', { ok: true, roomId: params.id });
     return mapped;
   } catch (err) {
+    // Log detailed error for observability
+    const e = err as Error;
     logError('roomRepo.createRoom', err as Error, { roomId: params.id });
     throw err;
   }

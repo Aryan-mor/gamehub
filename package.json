@@ -38,7 +38,12 @@
     "i18n:convert": "tsx scripts/flatten-translations.ts all",
     "i18n:test": "tsx scripts/test-flat-translations.ts",
     "db:clean": "tsx src/scripts/cleanSupabase.ts --yes",
-    "db:clean:skip-auth": "tsx src/scripts/cleanSupabase.ts --yes --skip-auth"
+    "db:clean:skip-auth": "tsx src/scripts/cleanSupabase.ts --yes --skip-auth",
+    "db:start": "supabase start",
+    "db:stop": "supabase stop",
+    "db:status": "supabase status",
+    "db:reset": "supabase stop && supabase start",
+    "dev:with-db": "supabase start && DEBUG=true pnpm bot"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.39.0",
