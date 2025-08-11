@@ -6,12 +6,12 @@ import type { SmartReplyOptions } from '@/types';
 
 describe('games.poker.room.start -> game state', () => {
   it('should transition to game state with proper inline buttons after pressing Start', async () => {
-    const roomId = '550e8400-e29b-41d4-a716-446655440000';
-    createRoom({ id: roomId, isPrivate: false, maxPlayers: 2, smallBlind: 100, createdBy: 'u1' });
-    addPlayer(roomId, 'u2');
+    const created = await createRoom({ id: '', isPrivate: false, maxPlayers: 2, smallBlind: 100, createdBy: 'u1' });
+    const roomId = created.id;
+    await addPlayer(roomId, 'u2');
     // both ready to meet Start condition
-    markReady(roomId, 'u1');
-    markReady(roomId, 'u2');
+    await markReady(roomId, 'u1');
+    await markReady(roomId, 'u2');
 
     const mod: { default: BaseHandler } = await import('../../findRoom/index');
     const findRoom = mod.default;

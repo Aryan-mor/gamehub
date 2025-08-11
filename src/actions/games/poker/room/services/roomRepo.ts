@@ -95,7 +95,6 @@ export async function createRoom(params: Omit<PokerRoom, 'players' | 'readyPlaye
     return mapped;
   } catch (err) {
     // Log detailed error for observability
-    const e = err as Error;
     logError('roomRepo.createRoom', err as Error, { roomId: params.id });
     throw err;
   }

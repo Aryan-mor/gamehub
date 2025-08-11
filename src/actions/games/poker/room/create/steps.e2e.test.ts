@@ -1,11 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { createRoom } from '@/actions/games/poker/room/services/roomService';
+import { createRoom } from '@/actions/games/poker/services/roomService';
 import { setActiveRoomId } from '@/modules/core/userRoomState';
 import { createHandlerTestContext } from '@/__tests__/helpers/context';
 import { HandlerContext } from '@/modules/core/handler';
 
-// Mock the roomService
-vi.mock('@/actions/games/poker/room/services/roomService', () => ({
+// Mock the roomService (match the exact path used by steps.ts)
+vi.mock('@/actions/games/poker/services/roomService', () => ({
   createRoom: vi.fn(),
 }));
 
