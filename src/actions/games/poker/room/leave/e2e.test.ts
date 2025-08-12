@@ -55,7 +55,7 @@ describe('Poker Room Leave E2E', () => {
       const roomId = 'test-room-id';
       const userUuid = 'user-uuid-123';
       
-      context._query = { roomId };
+      context._query = { roomId, c: '1' } as any;
       const mockRoom = { 
         id: roomId, 
         players: [userUuid], 
@@ -82,7 +82,7 @@ describe('Poker Room Leave E2E', () => {
       const roomId = 'active-room-id';
       const userUuid = 'user-uuid-123';
       
-      context._query = {};
+      context._query = { c: '1' } as any;
       mockGetActiveRoomId.mockReturnValue(roomId);
       const mockRoom = { 
         id: roomId, 
@@ -110,7 +110,7 @@ describe('Poker Room Leave E2E', () => {
       const roomId = 'form-room-id';
       const userUuid = 'user-uuid-123';
       
-      context._query = {};
+      context._query = { c: '1' } as any;
       mockGetActiveRoomId.mockReturnValue(null);
       context.ctx.formState.get = vi.fn().mockReturnValue({ roomId });
       
@@ -142,7 +142,7 @@ describe('Poker Room Leave E2E', () => {
       const roomId = 'test-room-id';
       const userUuid = 'user-uuid-123';
       
-      context._query = { roomId };
+      context._query = { roomId, c: '1' } as any;
       const mockRoom = { 
         id: roomId, 
         players: [userUuid], 
@@ -178,7 +178,7 @@ describe('Poker Room Leave E2E', () => {
       const userUuid = 'user-uuid-123';
       const otherUserUuid = 'other-user-uuid';
       
-      context._query = { roomId };
+      context._query = { roomId, c: '1' } as any;
       const mockRoom = { 
         id: roomId, 
         players: [userUuid, otherUserUuid], 
@@ -211,7 +211,7 @@ describe('Poker Room Leave E2E', () => {
       const roomId = 'test-room-id';
       const userUuid = 'user-uuid-123';
       
-      context._query = { roomId };
+      context._query = { roomId, c: '1' } as any;
       const mockRoom = { 
         id: roomId, 
         players: [userUuid], 
@@ -243,7 +243,7 @@ describe('Poker Room Leave E2E', () => {
       const roomId = 'test-room-id';
       const userUuid = 'user-uuid-123';
       
-      context._query = { roomId };
+      context._query = { roomId, c: '1' } as any;
       const mockRoom = { 
         id: roomId, 
         players: [userUuid], 
@@ -287,7 +287,7 @@ describe('Poker Room Leave E2E', () => {
       const { default: handleLeave } = await import('./index');
       const roomId = 'non-existent-room';
       
-      context._query = { roomId };
+      context._query = { roomId, c: '1' } as any;
       mockGetRoom.mockResolvedValue(null);
       
       // Act
@@ -319,7 +319,7 @@ describe('Poker Room Leave E2E', () => {
       const userUuid = 'user-uuid-123';
       const otherUserUuid = 'other-user-uuid';
       
-      context._query = { roomId };
+      context._query = { roomId, c: '1' } as any;
       const mockRoom = { 
         id: roomId, 
         players: [otherUserUuid], // User not in room
@@ -357,7 +357,7 @@ describe('Poker Room Leave E2E', () => {
       const roomId = 'test-room-id';
       const userUuid = 'user-uuid-123';
       
-      context._query = { roomId };
+      context._query = { roomId, c: '1' } as any;
       const mockRoom = { 
         id: roomId, 
         players: [userUuid], 
@@ -395,7 +395,7 @@ describe('Poker Room Leave E2E', () => {
       const { default: handleLeave } = await import('./index');
       const roomId = 'test-room-id';
       
-      context._query = { roomId };
+      context._query = { roomId, c: '1' } as any;
       context.user.id = null as any; // Invalid user ID
       
       // Act
@@ -416,7 +416,7 @@ describe('Poker Room Leave E2E', () => {
       const userUuid = 'user-uuid-123';
       const otherUserUuid = 'other-user-uuid';
       
-      context._query = { roomId };
+      context._query = { roomId, c: '1' } as any;
       const initialRoom = { 
         id: roomId, 
         players: [userUuid, otherUserUuid], 
@@ -447,6 +447,66 @@ describe('Poker Room Leave E2E', () => {
       
       // Verify no success message was sent
       expect(context.ctx.replySmart).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('Confirmation Step', () => {
+    it('should show confirmation UI before leaving when not confirmed', async () => {
+      // Arrange
+      const { default: handleLeave } = await import('./index');
+      const roomId = 'confirm-room-id';
+      const userUuid = 'user-uuid-123';
+
+      context._query = { roomId };
+      const mockRoom = {
+        id: roomId,
+        players: [userUuid],
+        readyPlayers: []
+      };
+
+      mockGetRoom.mockResolvedValue(mockRoom);
+      mockEnsureUserUuid.mockResolvedValue(userUuid);
+      mockRemovePlayer.mockResolvedValue(undefined);
+
+      // Act
+      await handleLeave(context);
+
+      // Assert: should NOT remove yet; should show confirm keyboard
+      expect(mockRemovePlayer).not.toHaveBeenCalled();
+      expect(context.ctx.replySmart).toHaveBeenCalled();
+      const call = (context.ctx.replySmart as any).mock.calls.pop();
+      const options = call?.[1];
+      const kb = options?.reply_markup?.inline_keyboard ?? [];
+      const callbacks = kb.flat().map((b: any) => b.callback_data as string);
+      const hasYes = callbacks.some((c: string) => c.startsWith('g.pk.r.lv') && c.includes('c=1'));
+      const hasBack = callbacks.some((c: string) => c === 'g.pk.r.in');
+      expect(hasYes).toBe(true);
+      expect(hasBack).toBe(true);
+    });
+
+    it('should proceed to leave when confirmed (c=1)', async () => {
+      // Arrange
+      const { default: handleLeave } = await import('./index');
+      const roomId = 'confirmed-room-id';
+      const userUuid = 'user-uuid-123';
+
+      context._query = { roomId, c: '1' } as any;
+      const mockRoom = {
+        id: roomId,
+        players: [userUuid],
+        readyPlayers: []
+      };
+
+      mockGetRoom.mockResolvedValue(mockRoom);
+      mockEnsureUserUuid.mockResolvedValue(userUuid);
+      mockRemovePlayer.mockResolvedValue(undefined);
+
+      // Act
+      await handleLeave(context);
+
+      // Assert: should remove and dispatch
+      expect(mockRemovePlayer).toHaveBeenCalledWith(roomId, context.user.id.toString());
+      expect(mockDispatch).toHaveBeenCalledWith(ROUTES.games.start, context);
     });
   });
 });

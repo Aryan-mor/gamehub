@@ -44,6 +44,22 @@ async function handleLeaveRoom(context: HandlerContext, query: Record<string, st
   }
 
   try {
+    // Confirmation step: require c=1 to proceed
+    const confirmed = context._query?.c === '1' || query.c === '1';
+    if (!confirmed) {
+      const yesCb = `g.pk.r.lv?roomId=${roomIdParam}&c=1`;
+      const backCb = 'g.pk.r.in';
+      await ctx.replySmart(ctx.t('poker.room.leave.confirm') || 'Are you sure you want to leave?', {
+        parse_mode: 'HTML',
+        reply_markup: {
+          inline_keyboard: [[
+            { text: ctx.t('bot.buttons.yes') || '✅ Yes', callback_data: yesCb },
+            { text: ctx.t('poker.room.buttons.backToRoomInfo') || '🔙 Back to Room Info', callback_data: backCb }
+          ]]
+        }
+      });
+      return;
+    }
     ctx.log.info('Starting leave room process', { userId: user.id, roomId: roomIdParam });
 
     // Check if room exists and user is in it

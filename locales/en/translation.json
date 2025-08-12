@@ -196,6 +196,7 @@
   "poker.room.kick.error": "❌ Kick player error\n\n{{error}}",
   "poker.room.kick.select": "👢 <b>Kick Player</b>\n\nSelect a player to kick:\n\n⚠️ This action cannot be undone.",
   "poker.room.leave.error": "❌ Failed to leave the room. Please try again.",
+  "poker.room.leave.confirm": "⚠️ Are you sure you want to leave this room?",
   "poker.room.leave.success": "✅ You left the room and returned to the main menu.",
   "poker.room.list.count": "📊 <b>Total rooms:</b> {{count}}",
   "poker.room.list.count_one": "",
@@ -358,4 +359,6 @@
   "poker.room.start.error.onlyCreator": "Only the room creator can start the game",
   "poker.room.start.error.alreadyStarted": "The game has already started",
   "poker.room.start.error.minPlayers": "At least 2 players are required to start the game"
+  ,
+  "bot.buttons.yes": "✅ Yes"
 }
