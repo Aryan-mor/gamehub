@@ -500,5 +500,125 @@ describe('Poker Room Service E2E', () => {
         })
       );
     });
+
+    it('should include Start Game button for admin when players >= 2', async () => {
+      // Arrange
+      const { broadcastRoomInfo } = await import('./roomService');
+      const roomId = 'admin-start-room-id';
+      const mockRoom = {
+        id: roomId,
+        isPrivate: false,
+        maxPlayers: 4,
+        smallBlind: 200,
+        turnTimeoutSec: 240,
+        players: ['user1', 'user2'],
+        readyPlayers: [],
+        lastUpdate: Date.now(),
+        createdBy: 'user1'
+      };
+      mockGetRoom.mockResolvedValue(mockRoom);
+
+      // Map both users to telegram ids, admin = 1001
+      const mockUsers = [
+        { id: 'user1', first_name: 'Admin', last_name: 'User', username: 'admin', telegram_id: 1001 },
+        { id: 'user2', first_name: 'Player', last_name: 'Two', username: 'p2', telegram_id: 1002 }
+      ];
+      mockGetByIds.mockResolvedValue(mockUsers);
+
+      const sent: any[] = [];
+      context.sendOrEditMessageToUsers = vi.fn().mockImplementation(async (_uids, _text, opts) => {
+        sent.push(opts?.reply_markup);
+        return [{ userId: 1001, success: true }];
+      });
+
+      // Act - target admin only
+      await broadcastRoomInfo(context, roomId, ['1001']);
+
+      // Assert
+      const kb = sent[0];
+      const flat = kb.inline_keyboard.flat();
+      const hasStart = flat.some((b: any) => b.callback_data === 'g.pk.r.st');
+      expect(hasStart).toBe(true);
+    });
+
+    it('should NOT include Start Game button for non-admin even when players >= 2', async () => {
+      // Arrange
+      const { broadcastRoomInfo } = await import('./roomService');
+      const roomId = 'nonadmin-start-room-id';
+      const mockRoom = {
+        id: roomId,
+        isPrivate: false,
+        maxPlayers: 4,
+        smallBlind: 200,
+        turnTimeoutSec: 240,
+        players: ['user1', 'user2'],
+        readyPlayers: [],
+        lastUpdate: Date.now(),
+        createdBy: 'user1'
+      };
+      mockGetRoom.mockResolvedValue(mockRoom);
+
+      const mockUsers = [
+        { id: 'user1', first_name: 'Admin', last_name: 'User', username: 'admin', telegram_id: 1001 },
+        { id: 'user2', first_name: 'Player', last_name: 'Two', username: 'p2', telegram_id: 1002 }
+      ];
+      mockGetByIds.mockResolvedValue(mockUsers);
+
+      const sent: any[] = [];
+      context.sendOrEditMessageToUsers = vi.fn().mockImplementation(async (_uids, _text, opts) => {
+        sent.push(opts?.reply_markup);
+        return [{ userId: 1002, success: true }];
+      });
+
+      // Act - target non-admin only
+      await broadcastRoomInfo(context, roomId, ['1002']);
+
+      // Assert
+      const kb = sent[0];
+      const flat = kb.inline_keyboard.flat();
+      const hasStart = flat.some((b: any) => b.callback_data === 'g.pk.r.st');
+      expect(hasStart).toBe(false);
+    });
+
+    it('should place Start Game as the first button for admin when players >= 2', async () => {
+      // Arrange
+      const { broadcastRoomInfo } = await import('./roomService');
+      const roomId = 'admin-first-row-room-id';
+      const mockRoom = {
+        id: roomId,
+        isPrivate: false,
+        maxPlayers: 4,
+        smallBlind: 200,
+        turnTimeoutSec: 240,
+        players: ['user1', 'user2'],
+        readyPlayers: [],
+        lastUpdate: Date.now(),
+        createdBy: 'user1'
+      };
+      mockGetRoom.mockResolvedValue(mockRoom);
+
+      // Map both users to telegram ids, admin = 7771
+      const mockUsers = [
+        { id: 'user1', first_name: 'Admin', last_name: 'User', username: 'admin', telegram_id: 7771 },
+        { id: 'user2', first_name: 'Player', last_name: 'Two', username: 'p2', telegram_id: 7772 }
+      ];
+      mockGetByIds.mockResolvedValue(mockUsers);
+
+      const sent: any[] = [];
+      context.sendOrEditMessageToUsers = vi.fn().mockImplementation(async (_uids, _text, opts) => {
+        sent.push(opts?.reply_markup);
+        return [{ userId: 7771, success: true }];
+      });
+
+      // Act - target admin only
+      await broadcastRoomInfo(context, roomId, ['7771']);
+
+      // Assert: first row contains Start Game
+      const kb = sent[0];
+      const firstRow = kb.inline_keyboard[0];
+      expect(firstRow).toBeDefined();
+      const firstCallback = firstRow[0]?.callback_data;
+      expect(firstCallback).toBe('g.pk.r.st');
+    });
   });
 });

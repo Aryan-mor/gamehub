@@ -37,11 +37,13 @@ async function handleFindRoom(context: HandlerContext): Promise<void> {
     }
     rows.push([{ text: ctx.t('poker.room.buttons.copyLink'), callback_data: ctx.keyboard.buildCallbackData(ROUTES.games.poker.findRoom, { s: 'copy' }) }]);
   } else {
-    const readyCount = room?.readyPlayers?.length ?? 0;
-    if (!room || room.players.length < 2 || readyCount < 2) {
+    const playerCount = room?.players?.length ?? 0;
+    const isAdmin = !!(room && dbUserId && room.createdBy === dbUserId);
+    if (!room || playerCount < 2) {
       // Keep callback_data short; handler resolves roomId from state
       rows.push([{ text: ctx.t('poker.room.buttons.share'), callback_data: ctx.keyboard.buildCallbackData(ROUTES.games.poker.findRoom, { s: 'share' }) }]);
-    } else {
+    } else if (isAdmin) {
+      // Show Start Game only to admin when room has at least 2 players
       rows.push([{ text: ctx.t('poker.room.buttons.startGame'), callback_data: ctx.keyboard.buildCallbackData(ROUTES.games.poker.room.start) }]);
     }
   }

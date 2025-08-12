@@ -92,15 +92,28 @@ export async function broadcastRoomInfo(
       })
       .join('\n');
     
-    // Generate inline keyboard buttons
-    const rows: Array<Array<{ text: string; callback_data?: string; switch_inline_query?: string }>> = [];
+    // Generate inline keyboard buttons (base layout)
+    const baseRows: Array<Array<{ text: string; callback_data?: string; switch_inline_query?: string }>> = [];
     const refreshText = (ctx as any)?.t ? (ctx as any).t('bot.buttons.refresh') : '🔄 Refresh';
     const shareText = (ctx as any)?.t ? (ctx as any).t('bot.buttons.share') : '📤 Share';
     const leaveText = (ctx as any)?.t ? (ctx as any).t('poker.room.buttons.leave') : '🚪 Leave Room';
     
-    rows.push([{ text: refreshText, callback_data: 'g.pk.r.in' }]);
-    rows.push([{ text: shareText, switch_inline_query: `poker ${roomId}` }]);
-    rows.push([{ text: leaveText, callback_data: `g.pk.r.lv?roomId=${roomId}` }]);
+    baseRows.push([{ text: refreshText, callback_data: 'g.pk.r.in' }]);
+    baseRows.push([{ text: shareText, switch_inline_query: `poker ${roomId}` }]);
+    baseRows.push([{ text: leaveText, callback_data: `g.pk.r.lv?roomId=${roomId}` }]);
+
+    // Prepare admin-specific layout if conditions met
+    const adminTelegramId = idToTelegramId[adminId];
+    const hasAtLeastTwoPlayers = (room.players?.length ?? 0) >= 2;
+    const startText = (ctx as any)?.t ? (ctx as any).t('poker.room.buttons.startGame') : '🎮 Start Game';
+    const adminRows: Array<Array<{ text: string; callback_data?: string; switch_inline_query?: string }>> = hasAtLeastTwoPlayers
+      ? [
+          [{ text: startText, callback_data: 'g.pk.r.st' }],
+          [{ text: refreshText, callback_data: 'g.pk.r.in' }],
+          [{ text: shareText, switch_inline_query: `poker ${roomId}` }],
+          [{ text: leaveText, callback_data: `g.pk.r.lv?roomId=${roomId}` }],
+        ]
+      : baseRows;
     
     const message = `🏠 Poker Room Info\n\n📋 Room Details:\n• ID: ${roomId}\n• Status: ⏳ Waiting for players\n• Type: 🌐 Public\n\n⚙️ Game Settings:\n• Small Blind: ${smallBlind}\n• Big Blind: ${bigBlind}\n• Max Players: ${maxPlayers}\n• Turn Timeout: ${timeoutMinutes} min\n\n👥 Players (${playerCount}/${maxPlayers}):\n${playerNames}\n\nLast update: ${lastUpdate}`;
     
@@ -139,7 +152,7 @@ export async function broadcastRoomInfo(
         fallback,
         message,
         {
-          reply_markup: { inline_keyboard: rows }
+          reply_markup: { inline_keyboard: baseRows }
         }
       );
       logFunctionEnd('roomService.broadcastRoomInfo', {
@@ -151,14 +164,29 @@ export async function broadcastRoomInfo(
       return;
     }
 
-    // Broadcast to all users using the public function
-    await ctx.sendOrEditMessageToUsers(
-      recipientChatIds,
-      message,
-      {
-        reply_markup: { inline_keyboard: rows }
-      }
-    );
+    // Split recipients into admin and non-admin for personalized keyboards
+    const adminRecipients = recipientChatIds.filter((id) => id === adminTelegramId);
+    const nonAdminRecipients = recipientChatIds.filter((id) => id !== adminTelegramId);
+
+    if (adminRecipients.length > 0) {
+      await ctx.sendOrEditMessageToUsers(
+        adminRecipients,
+        message,
+        {
+          reply_markup: { inline_keyboard: adminRows }
+        }
+      );
+    }
+
+    if (nonAdminRecipients.length > 0) {
+      await ctx.sendOrEditMessageToUsers(
+        nonAdminRecipients,
+        message,
+        {
+          reply_markup: { inline_keyboard: baseRows }
+        }
+      );
+    }
     
     logFunctionEnd('roomService.broadcastRoomInfo', { 
       roomId, 

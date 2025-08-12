@@ -31,13 +31,10 @@ describe('games.poker.findRoom e2e', () => {
     expect(actions).not.toContain('g.pk.r.sg'); // no start game
   });
 
-  it('should show Start Game when room has >= 2 players and at least two ready', async () => {
+  it('should show Start Game when room has >= 2 players and current user is admin', async () => {
     const created2 = await createRoom({ id: 'temp', isPrivate: false, maxPlayers: 4, smallBlind: 100, createdBy: 'u1' });
     const roomId = created2.id;
     await addPlayer(roomId, 'u2');
-    // both ready
-    await markReady(roomId, 'u1');
-    await markReady(roomId, 'u2');
 
     const mod = await import('./index');
     const handler = mod.default as (ctx: any, q?: Record<string, string>) => Promise<void>;
@@ -53,6 +50,7 @@ describe('games.poker.findRoom e2e', () => {
       formState: { get: vi.fn(), set: vi.fn() }
     };
 
+    // Admin is u1
     await handler({ ctx, user: { id: 'u1', username: 't' }, _query: { roomId } } as unknown as import('@/modules/core/handler').HandlerContext, { roomId });
 
     expect(sent.length).toBe(1);
@@ -60,15 +58,12 @@ describe('games.poker.findRoom e2e', () => {
     const actions = kb.inline_keyboard.flat().map((b: any) => JSON.parse(b.callback_data).action);
     expect(actions).toContain('g.pk.r.st'); // start game visible (games.poker.room.start)
     expect(actions).toContain('g.pk.st');
-    // When >=2 players, Share should not be primary action row anymore
   });
 
-  it('should NOT show Start Game when players >= 2 but ready < 2', async () => {
+  it('should NOT show Start Game to non-admin even with >= 2 players', async () => {
     const created3 = await createRoom({ id: 'temp', isPrivate: false, maxPlayers: 4, smallBlind: 100, createdBy: 'u1' });
     const roomId = created3.id;
     await addPlayer(roomId, 'u2');
-    // only one ready
-    await markReady(roomId, 'u1');
 
     const mod = await import('./index');
     const handler = mod.default as (ctx: any, q?: Record<string, string>) => Promise<void>;
@@ -84,12 +79,13 @@ describe('games.poker.findRoom e2e', () => {
       formState: { get: vi.fn(), set: vi.fn() }
     };
 
-    await handler({ ctx, user: { id: 'u1', username: 't' }, _query: { roomId } } as unknown as import('@/modules/core/handler').HandlerContext, { roomId });
+    // Non-admin user u2
+    await handler({ ctx, user: { id: 'u2', username: 't2' }, _query: { roomId } } as unknown as import('@/modules/core/handler').HandlerContext, { roomId });
 
     expect(sent.length).toBe(1);
     const kb = sent[0];
     const actions = kb.inline_keyboard.flat().map((b: any) => JSON.parse(b.callback_data).action);
-    expect(actions).not.toContain('g.pk.r.st'); // start game hidden
+    expect(actions).not.toContain('g.pk.r.st'); // start game hidden for non-admin
     expect(actions).toContain('g.pk.st');
   });
 
