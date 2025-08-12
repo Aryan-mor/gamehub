@@ -19,6 +19,9 @@ function buildMaps(): SegmentMaps {
     financial: 'fin',
     start: 'st',
     help: 'h',
+    settings: 'set',
+    language: 'lang',
+    set: 's',
 
     // Games
     poker: 'pk',

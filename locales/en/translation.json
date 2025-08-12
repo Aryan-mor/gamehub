@@ -351,6 +351,13 @@
   "bot.balance.tips.stake": "Stake coins to increase your winnings"
   ,
   "Action expired. Please use the latest message.": "Expired. Use latest message.",
+  "settings.title": "⚙️ Settings",
+  "settings.language": "🌐 Language",
+  "settings.language.title": "🌐 Select your language",
+  "settings.language.updated": "✅ Language updated.",
+  "settings.language.invalid": "❌ Invalid language",
+  "settings.language.en": "English",
+  "settings.language.fa": "Farsi",
   "bot.freecoin.tip.playMore": "💡 <b>Tip:</b> Play poker to earn more coins!",
   "poker.room.leave.deleted": "🚪 <b>Room deleted!</b>\n\n✅ You left the room and since you were the creator, the room was deleted.\n\n📊 <b>Next steps:</b>\n• Create a new room\n• Join other rooms\n• Go back to main menu",
   "poker.room.leave.creator": "🚪 <b>Room left!</b>\n\n✅ You left the room.\n\n📊 <b>Next steps:</b>\n• Create a new room\n• Join other rooms\n• Go back to main menu",

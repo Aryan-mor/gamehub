@@ -45,14 +45,22 @@ export async function markNotReady(roomId: string, userId: string): Promise<void
 }
 
 // Central function to broadcast room info to all players
+import type { GameHubContext } from '@/plugins';
+import type { HandlerContext } from '@/modules/core/handler';
+
 export async function broadcastRoomInfo(
-  ctx: any, 
-  roomId: string, 
+  ctx: GameHubContext | HandlerContext,
+  roomId: string,
   targetUserIds?: string[]
 ): Promise<void> {
   logFunctionStart('roomService.broadcastRoomInfo', { roomId, targetUserIds });
   
   try {
+    const escapeHtml = (input: string): string =>
+      input
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
     // Get room data
     const room = await getRoom(roomId);
     if (!room) {
@@ -81,7 +89,7 @@ export async function broadcastRoomInfo(
     for (const u of dbUsers) {
       const fullName = [u.first_name, u.last_name].filter(Boolean).join(' ').trim();
       const display = fullName || u.first_name || u.username || String(u.telegram_id) || 'Unknown';
-      idToDisplayName[String(u.id)] = display;
+      idToDisplayName[String(u.id)] = escapeHtml(display);
       idToTelegramId[String(u.id)] = Number(u.telegram_id);
     }
     const playerNames = room.players
@@ -93,10 +101,21 @@ export async function broadcastRoomInfo(
       .join('\n');
     
     // Generate inline keyboard buttons (base layout)
-    const baseRows: Array<Array<{ text: string; callback_data?: string; switch_inline_query?: string }>> = [];
-    const refreshText = (ctx as any)?.t ? (ctx as any).t('bot.buttons.refresh') : '🔄 Refresh';
-    const shareText = (ctx as any)?.t ? (ctx as any).t('bot.buttons.share') : '📤 Share';
-    const leaveText = (ctx as any)?.t ? (ctx as any).t('poker.room.buttons.leave') : '🚪 Leave Room';
+    type Btn = { text: string } & ({ callback_data: string } | { switch_inline_query: string });
+    const baseRows: Btn[][] = [];
+    const gctx: GameHubContext = (typeof (ctx as GameHubContext).t === 'function')
+      ? (ctx as GameHubContext)
+      : (ctx as HandlerContext).ctx as unknown as GameHubContext;
+    const tr = (key: string, fallback: string, options?: Record<string, unknown>): string => {
+      const v = gctx.t(key, options) as string;
+      // If i18n not wired in tests (t returns key), fallback to English
+      const looksLikeKey = v.includes('.') || v.includes('poker.') || v.includes('bot.');
+      const hasUnresolved = v.includes('{{');
+      return v && !looksLikeKey && !hasUnresolved ? v : fallback;
+    };
+    const refreshText = tr('bot.buttons.refresh', '🔄 Refresh');
+    const shareText = tr('bot.buttons.share', '📤 Share');
+    const leaveText = tr('poker.room.buttons.leave', '🚪 Leave Room');
     
     baseRows.push([{ text: refreshText, callback_data: 'g.pk.r.in' }]);
     baseRows.push([{ text: shareText, switch_inline_query: `poker ${roomId}` }]);
@@ -105,8 +124,8 @@ export async function broadcastRoomInfo(
     // Prepare admin-specific layout if conditions met
     const adminTelegramId = idToTelegramId[adminId];
     const hasAtLeastTwoPlayers = (room.players?.length ?? 0) >= 2;
-    const startText = (ctx as any)?.t ? (ctx as any).t('poker.room.buttons.startGame') : '🎮 Start Game';
-    const adminRows: Array<Array<{ text: string; callback_data?: string; switch_inline_query?: string }>> = hasAtLeastTwoPlayers
+    const startText = tr('poker.room.buttons.startGame', '🎮 Start Game');
+    const adminRows: Btn[][] = hasAtLeastTwoPlayers
       ? [
           [{ text: startText, callback_data: 'g.pk.r.st' }],
           [{ text: refreshText, callback_data: 'g.pk.r.in' }],
@@ -115,7 +134,20 @@ export async function broadcastRoomInfo(
         ]
       : baseRows;
     
-    const message = `🏠 Poker Room Info\n\n📋 Room Details:\n• ID: ${roomId}\n• Status: ⏳ Waiting for players\n• Type: 🌐 Public\n\n⚙️ Game Settings:\n• Small Blind: ${smallBlind}\n• Big Blind: ${bigBlind}\n• Max Players: ${maxPlayers}\n• Turn Timeout: ${timeoutMinutes} min\n\n👥 Players (${playerCount}/${maxPlayers}):\n${playerNames}\n\nLast update: ${lastUpdate}`;
+    const title = tr('poker.room.info.title', '🏠 Poker Room Info');
+    const sectionDetails = tr('poker.room.info.section.details', '📋 Room Details');
+    const fieldId = tr('poker.room.info.field.id', '• ID');
+    const fieldStatus = tr('poker.room.info.field.status', '• Status');
+    const fieldType = tr('poker.room.info.field.type', '• Type');
+    const sectionSettings = tr('poker.room.info.section.settings', '⚙️ Game Settings');
+    const fieldSmallBlind = tr('poker.room.info.field.smallBlind', '• Small Blind');
+    // const fieldRound = gctx.t('poker.room.info.field.round') || '• Round';
+    const fieldMaxPlayers = tr('poker.room.info.field.maxPlayers', '• Max Players');
+    const fieldTurnTimeout = tr('poker.room.info.field.turnTimeout', '• Turn Timeout');
+    const sectionPlayers = tr('poker.room.info.section.players', `👥 Players (${playerCount}/${maxPlayers}):`, { count: playerCount, max: maxPlayers });
+    const fieldLastUpdate = tr('poker.room.info.field.lastUpdate', 'Last update');
+
+    const message = `${title}\n\n${sectionDetails}\n${fieldId}: ${escapeHtml(roomId)}\n${fieldStatus}: ⏳ Waiting for players\n${fieldType}: 🌐 Public\n\n${sectionSettings}\n${fieldSmallBlind}: ${smallBlind}\n• Big Blind: ${bigBlind}\n${fieldMaxPlayers}: ${maxPlayers}\n${fieldTurnTimeout}: ${timeoutMinutes} min\n\n${sectionPlayers}\n${playerNames}\n\n${fieldLastUpdate}: ${escapeHtml(lastUpdate)}`;
     
     // Resolve recipient chat IDs:
     // - If explicit targetUserIds provided (Telegram IDs as strings), use them
@@ -139,7 +171,7 @@ export async function broadcastRoomInfo(
 
     if (recipientChatIds.length === 0) {
       // Fallback: try explicit targetUserIds if any; otherwise use initiator chat id
-      const initiatorId = Number(((ctx as any)?.from?.id) ?? ((ctx as any)?.ctx?.from?.id));
+      const initiatorId = Number((gctx as any)?.from?.id);
       const fallback = (Array.isArray(targetUserIds) && targetUserIds.length > 0)
         ? targetUserIds.map((id) => Number(id)).filter((n) => Number.isFinite(n))
         : (Number.isFinite(initiatorId) ? [initiatorId] : []);
@@ -148,10 +180,12 @@ export async function broadcastRoomInfo(
         return;
       }
       // Use fallback recipients
-      await ctx.sendOrEditMessageToUsers(
+      const send = (ctx as any).sendOrEditMessageToUsers ?? (gctx as any).sendOrEditMessageToUsers;
+      await send(
         fallback,
         message,
         {
+          parse_mode: 'HTML',
           reply_markup: { inline_keyboard: baseRows }
         }
       );
@@ -169,20 +203,24 @@ export async function broadcastRoomInfo(
     const nonAdminRecipients = recipientChatIds.filter((id) => id !== adminTelegramId);
 
     if (adminRecipients.length > 0) {
-      await ctx.sendOrEditMessageToUsers(
+      const send = (ctx as any).sendOrEditMessageToUsers ?? (gctx as any).sendOrEditMessageToUsers;
+      await send(
         adminRecipients,
         message,
         {
+          parse_mode: 'HTML',
           reply_markup: { inline_keyboard: adminRows }
         }
       );
     }
 
     if (nonAdminRecipients.length > 0) {
-      await ctx.sendOrEditMessageToUsers(
+      const send = (ctx as any).sendOrEditMessageToUsers ?? (gctx as any).sendOrEditMessageToUsers;
+      await send(
         nonAdminRecipients,
         message,
         {
+          parse_mode: 'HTML',
           reply_markup: { inline_keyboard: baseRows }
         }
       );

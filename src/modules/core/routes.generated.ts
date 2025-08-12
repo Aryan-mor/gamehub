@@ -1,7 +1,7 @@
 // GENERATED FILE – DO NOT EDIT
 // Generated from src/actions folder structure
 
-export const ALL_ROUTES = ["games.findStep","games.join","games.poker","games.poker.findRoom","games.poker.help","games.poker.room.call","games.poker.room.check","games.poker.room.create","games.poker.room.fold","games.poker.room.info","games.poker.room.leave","games.poker.room.notready","games.poker.room.ready","games.poker.room.start","games.poker.start","games.start","help","start"] as const;
+export const ALL_ROUTES = ["games.findStep","games.join","games.poker","games.poker.findRoom","games.poker.help","games.poker.room.call","games.poker.room.check","games.poker.room.create","games.poker.room.fold","games.poker.room.info","games.poker.room.leave","games.poker.room.notready","games.poker.room.ready","games.poker.room.start","games.poker.start","games.start","help","settings","settings.language","settings.language.set","start"] as const;
 export type ActionRoute = typeof ALL_ROUTES[number];
 export const ROUTES = {
   "games": {
@@ -27,6 +27,13 @@ export const ROUTES = {
     "start": "games.start"
   },
   "help": "help",
+  "settings": {
+    "_self": "settings",
+    "language": {
+      "_self": "settings.language",
+      "set": "settings.language.set"
+    }
+  },
   "start": "start"
 } as const;
 export function isRoute(v: string): v is ActionRoute { return (ALL_ROUTES as readonly string[]).includes(v); }

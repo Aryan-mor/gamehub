@@ -22,6 +22,7 @@ async function handleStart(context: HandlerContext): Promise<void> {
     const { keyboard } = ctx;
     const { ROUTES } = await import('@/modules/core/routes.generated');
     const { encodeAction } = await import('@/modules/core/route-alias');
+    const { getPreferredLanguage } = await import('@/modules/global/language');
     
     // Legacy keys intentionally not used to keep minimal main menu
     
@@ -45,14 +46,33 @@ async function handleStart(context: HandlerContext): Promise<void> {
     //   welcome = `${ctx.t('bot.start.joinBonus')}\n\n` + welcome;
     // }
     
+    // If user has no preferred language stored, prompt language selection first
+    const preferredLang = await getPreferredLanguage(user.id);
+    if (!preferredLang) {
+      const title = `🌐 Select your language\n\nلطفاً زبان خود را انتخاب کنید`;
+      const setRoute = ROUTES.settings.language.set;
+      const enBtn = { text: `🇬🇧 ${ctx.t('settings.language.en') || 'English'}`, callback_data: JSON.stringify({ action: encodeAction(setRoute), lang: 'en' }) };
+      const faBtn = { text: `🇮🇷 ${ctx.t('settings.language.fa') || 'فارسی'}`, callback_data: JSON.stringify({ action: encodeAction(setRoute), lang: 'fa' }) };
+      const replyMarkup = keyboard.createInlineKeyboard([
+        enBtn,
+        faBtn,
+      ]);
+      await ctx.replySmart(title, { reply_markup: replyMarkup, parse_mode: 'HTML' });
+      await Promise.race([saveProfilePromise, new Promise<void>((resolve) => setTimeout(resolve, 1000))]);
+      return;
+    }
+
     // Create buttons with proper translation
     const helpText = ctx.t('bot.buttons.help');
     
     // New minimal main menu focusing on Poker entry and Help; other actions will be re-added in new stories
     const pokerText = ctx.t('bot.games.poker');
+    const settingsText = ctx.t('settings.title') || '⚙️ Settings';
+    const settingsRoute = ROUTES.settings._self;
     const buttons = [
       { text: pokerText, callbackData: { action: encodeAction(ROUTES.games.poker.start) } },
       { text: helpText, callbackData: { action: encodeAction(ROUTES.help) } },
+      { text: settingsText, callbackData: { action: encodeAction(settingsRoute) } },
     ];
 
     const replyMarkup = keyboard.createInlineKeyboard(

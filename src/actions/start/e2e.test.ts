@@ -26,6 +26,9 @@ describe('start inline buttons', () => {
 
   it('should produce keyboard with Poker and Help actions', async () => {
     const mod: { default: BaseHandler } = await import('./index');
+    // Ensure preferred language is set so main menu is shown (not language prompt)
+    const { setPreferredLanguageInCache } = await import('@/modules/global/language');
+    setPreferredLanguageInCache('123', 'en');
     const { actions } = await runHandlerAndGetActions(mod.default);
     expectActionsToContainRoute(actions, ROUTES.games.poker.start);
     expectActionsToContainRoute(actions, ROUTES.help);

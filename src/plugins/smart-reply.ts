@@ -228,7 +228,10 @@ export class SmartReplyPlugin implements GameHubPlugin {
                   userId,
                   previousMessage!.messageId,
                   text,
-                  { reply_markup: messageOptions.reply_markup as InlineKeyboardMarkup }
+                  {
+                    reply_markup: messageOptions.reply_markup as InlineKeyboardMarkup,
+                    parse_mode: messageOptions.parse_mode,
+                  }
                 );
                 (ctx as any)?.log?.debug?.('smart-reply.sendOrEditMessageToUsers: edited message for user', {
                   userId,
@@ -258,7 +261,10 @@ export class SmartReplyPlugin implements GameHubPlugin {
             const newMessage = await ctx.api.sendMessage(
               userId,
               text,
-              { reply_markup: messageOptions.reply_markup as InlineKeyboardMarkup }
+              {
+                reply_markup: messageOptions.reply_markup as InlineKeyboardMarkup,
+                parse_mode: messageOptions.parse_mode,
+              }
             );
             usersMessageHistory[userChatId] = {
               chatId: userChatId,

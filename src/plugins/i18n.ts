@@ -2,6 +2,7 @@ import { Context } from 'grammy';
 import i18next from 'i18next';
 import Backend from 'i18next-fs-backend';
 import { GameHubContext, GameHubPlugin, ContextBuilder } from './context';
+import { getPreferredLanguageFromCache } from '@/modules/global/language';
 import { logFunctionStart, logFunctionEnd, logError } from '../modules/core/logger';
 
 /**
@@ -50,8 +51,12 @@ export class I18nPlugin implements GameHubPlugin {
   buildContext: ContextBuilder = (ctx: Context): Partial<GameHubContext> => {
     return {
       t: (key: string, options?: Record<string, unknown>): string => {
-        const userLanguage = ctx.from?.language_code || 'en';
-        const language = i18next.languages.includes(userLanguage) ? userLanguage : 'en';
+        // Prefer cached preferred language if available
+        const preferred = ctx.from?.id ? getPreferredLanguageFromCache(String(ctx.from.id)) : undefined;
+        const userLanguage = (preferred || ctx.from?.language_code || 'en') as string;
+        // Validate against supported languages instead of i18next.languages order
+        const SUPPORTED_LANGUAGES = ['en', 'fa'] as const;
+        const language = (SUPPORTED_LANGUAGES as readonly string[]).includes(userLanguage) ? userLanguage : 'en';
         const result = i18next.t(key, { lng: language, ...options });
         
         // If result is empty string and language is English, return the key itself
