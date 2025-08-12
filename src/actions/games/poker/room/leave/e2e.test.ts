@@ -301,8 +301,8 @@ describe('Poker Room Leave E2E', () => {
           reply_markup: expect.objectContaining({
             inline_keyboard: expect.arrayContaining([
               expect.arrayContaining([
-                expect.objectContaining({
-                  text: 'bot.buttons.back',
+                 expect.objectContaining({
+                   text: 'poker.room.buttons.back',
                   callback_data: expect.stringContaining('games.start')
                 })
               ])
@@ -340,8 +340,8 @@ describe('Poker Room Leave E2E', () => {
           reply_markup: expect.objectContaining({
             inline_keyboard: expect.arrayContaining([
               expect.arrayContaining([
-                expect.objectContaining({
-                  text: 'bot.buttons.back',
+                 expect.objectContaining({
+                   text: 'poker.room.buttons.back',
                   callback_data: expect.stringContaining('games.start')
                 })
               ])
@@ -379,8 +379,8 @@ describe('Poker Room Leave E2E', () => {
           reply_markup: expect.objectContaining({
             inline_keyboard: expect.arrayContaining([
               expect.arrayContaining([
-                expect.objectContaining({
-                  text: 'bot.buttons.back',
+                 expect.objectContaining({
+                   text: 'poker.room.buttons.back',
                   callback_data: expect.stringContaining('games.start')
                 })
               ])
