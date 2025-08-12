@@ -87,7 +87,22 @@ async function handleJoin(context: HandlerContext, query: Record<string, string>
   }
 
   if (activeRoomId === targetRoomId) {
-    // User is already in this room, just show current info
+    // User may already be in this room; verify membership against DB
+    const room = await getRoom(targetRoomId);
+    if (room) {
+      try {
+        const { ensureUserUuid } = await import('@/actions/games/poker/room/services/roomRepo');
+        const userUuid = await ensureUserUuid(String(user.id));
+        const isMember = room.players.includes(userUuid);
+        if (!isMember) {
+          // Re-join silently if user left previously but active state still points here
+          await addPlayer(targetRoomId, String(user.id));
+        }
+      } catch {
+        // ignore membership repair errors; we'll still show info
+      }
+    }
+    // Show current info
     const { dispatch } = await import('@/modules/core/smart-router');
     (context as unknown as { _query?: Record<string, string> })._query = { roomId: activeRoomId };
     await dispatch('games.poker.room.info', context);

@@ -303,7 +303,7 @@ describe('Poker Room Service E2E', () => {
         { id: 'user1', first_name: 'John', last_name: 'Doe', username: 'johndoe' },
         { id: 'user2', first_name: 'Jane', last_name: 'Smith', username: 'janesmith' }
       ];
-      mockGetByIds.mockResolvedValue(mockUsers);
+      mockGetByIds.mockResolvedValue(mockUsers.map(u => ({ ...u, telegram_id: 1000 })));
       
       // Mock sendOrEditMessageToUsers
       context.sendOrEditMessageToUsers = vi.fn().mockResolvedValue([
@@ -358,7 +358,7 @@ describe('Poker Room Service E2E', () => {
         { id: 'user1', first_name: 'John', last_name: 'Doe', username: 'johndoe' },
         { id: 'user3', first_name: 'Bob', last_name: 'Johnson', username: 'bobjohnson' }
       ];
-      mockGetByIds.mockResolvedValue(mockUsers);
+      mockGetByIds.mockResolvedValue(mockUsers.map(u => ({ ...u, telegram_id: 1000 })));
       
       context.sendOrEditMessageToUsers = vi.fn().mockResolvedValue([
         { userId: 'user1', success: true, action: 'edited' },
@@ -466,7 +466,7 @@ describe('Poker Room Service E2E', () => {
       const mockUsers = [
         { id: 'user1', first_name: 'John', last_name: 'Doe', username: 'johndoe' }
       ];
-      mockGetByIds.mockResolvedValue(mockUsers);
+      mockGetByIds.mockResolvedValue(mockUsers.map(u => ({ ...u, telegram_id: 1000 })));
       
       context.sendOrEditMessageToUsers = vi.fn().mockResolvedValue([
         { userId: 'user1', success: true, action: 'edited' }

@@ -76,13 +76,39 @@ async function handleLeaveRoom(context: HandlerContext, query: Record<string, st
     await removePlayer(roomIdParam, telegramUserId);
     ctx.log.info('Player removed from room successfully', { telegramUserId, userUuid, roomId: roomIdParam });
 
+    // Clear active room state for the user immediately after leaving
+    try {
+      const { clearActiveRoomId } = await import('@/modules/core/userRoomState');
+      clearActiveRoomId(user.id);
+    } catch { /* noop */ }
+
     // Get updated room state
     const updatedRoom = await getRoom(roomIdParam);
     
-    // If room still exists, broadcast updated info to remaining players
-    if (updatedRoom && updatedRoom.players.length > 0) {
-      await broadcastRoomInfo(ctx, roomIdParam);
-      ctx.log.info('Broadcasted room update to remaining players', { roomId: roomIdParam });
+    // If room still exists, handle admin reassignment/closure and broadcast updates
+    if (updatedRoom) {
+      try {
+        const roomsApi = await import('@/api/rooms');
+        if (updatedRoom.players.length === 0) {
+          // Close the room if empty
+          await roomsApi.update(roomIdParam, { status: 'finished' });
+          ctx.log.info('Room closed (no players remain)', { roomId: roomIdParam });
+        } else {
+          // Reassign admin if the leaving user was the admin
+          if (room.createdBy === userUuid) {
+            const newAdmin = updatedRoom.players[0];
+            await roomsApi.update(roomIdParam, { created_by: newAdmin });
+            ctx.log.info('Room admin reassigned', { roomId: roomIdParam, newAdmin });
+          }
+        }
+      } catch (e) {
+        ctx.log.warn?.('Leave room post-update failed (ignored)', { roomId: roomIdParam, error: (e as Error)?.message });
+      }
+      // Broadcast update to remaining players (regardless of update success)
+      if (updatedRoom.players.length > 0) {
+        await broadcastRoomInfo(ctx, roomIdParam);
+        ctx.log.info('Broadcasted room update to remaining players', { roomId: roomIdParam });
+      }
     }
 
     // Directly redirect to games.start action instead of showing a message

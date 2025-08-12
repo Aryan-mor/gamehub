@@ -69,12 +69,28 @@ export async function broadcastRoomInfo(
     const smallBlind = room.smallBlind || 200;
     const bigBlind = smallBlind * 2;
     const timeout = room.turnTimeoutSec || 120;
+    const timeoutMinutes = Math.round(timeout / 60);
     const lastUpdate = room.lastUpdate ? new Date(room.lastUpdate).toISOString() : 'Unknown';
     
-    // Get player names
+    // Get player names and map UUID → Telegram chat ID
     const { getByIds } = await import('@/api/users');
     const dbUsers = await getByIds(room.players);
-    const playerNames = dbUsers.map(u => u.first_name || u.username || 'Unknown').join('\n');
+    const adminId = room.createdBy;
+    const idToDisplayName: Record<string, string> = {};
+    const idToTelegramId: Record<string, number> = {};
+    for (const u of dbUsers) {
+      const fullName = [u.first_name, u.last_name].filter(Boolean).join(' ').trim();
+      const display = fullName || u.first_name || u.username || String(u.telegram_id) || 'Unknown';
+      idToDisplayName[String(u.id)] = display;
+      idToTelegramId[String(u.id)] = Number(u.telegram_id);
+    }
+    const playerNames = room.players
+      .map((uid) => {
+        const name = idToDisplayName[uid] || 'Unknown';
+        const isAdmin = uid === adminId;
+        return `${isAdmin ? '👑 ' : ''}${name}`;
+      })
+      .join('\n');
     
     // Generate inline keyboard buttons
     const rows: Array<Array<{ text: string; callback_data?: string; switch_inline_query?: string }>> = [];
@@ -86,13 +102,60 @@ export async function broadcastRoomInfo(
     rows.push([{ text: shareText, switch_inline_query: `poker ${roomId}` }]);
     rows.push([{ text: leaveText, callback_data: `g.pk.r.lv?roomId=${roomId}` }]);
     
-    const message = `🏠 Poker Room Info\n\n📋 Room Details:\n• ID: ${roomId}\n• Status: ⏳ Waiting for players\n• Type: 🌐 Public\n\n⚙️ Game Settings:\n• Small Blind: ${smallBlind}\n• Big Blind: ${bigBlind}\n• Max Players: ${maxPlayers}\n• Turn Timeout: ${timeout}\n\n👥 Players (${playerCount}/${maxPlayers}):\n${playerNames}\n\nLast update: ${lastUpdate}`;
+    const message = `🏠 Poker Room Info\n\n📋 Room Details:\n• ID: ${roomId}\n• Status: ⏳ Waiting for players\n• Type: 🌐 Public\n\n⚙️ Game Settings:\n• Small Blind: ${smallBlind}\n• Big Blind: ${bigBlind}\n• Max Players: ${maxPlayers}\n• Turn Timeout: ${timeoutMinutes} min\n\n👥 Players (${playerCount}/${maxPlayers}):\n${playerNames}\n\nLast update: ${lastUpdate}`;
     
+    // Resolve recipient chat IDs:
+    // - If explicit targetUserIds provided (Telegram IDs as strings), use them
+    // - Else map room player UUIDs → Telegram chat IDs via idToTelegramId
+    let recipientChatIds: number[] = [];
+    if (Array.isArray(targetUserIds) && targetUserIds.length > 0) {
+      const numeric = targetUserIds.map((id) => Number(id)).filter((n) => Number.isFinite(n));
+      if (numeric.length === targetUserIds.length) {
+        recipientChatIds = numeric;
+      } else {
+        // Assume provided IDs are UUIDs → map to telegram ids
+        recipientChatIds = targetUserIds
+          .map((uuid) => idToTelegramId[uuid])
+          .filter((n): n is number => typeof n === 'number' && Number.isFinite(n));
+      }
+    } else {
+      recipientChatIds = room.players
+        .map((uuid) => idToTelegramId[uuid])
+        .filter((n): n is number => typeof n === 'number' && Number.isFinite(n));
+    }
+
+    if (recipientChatIds.length === 0) {
+      // Fallback: try explicit targetUserIds if any; otherwise use initiator chat id
+      const initiatorId = Number(((ctx as any)?.from?.id) ?? ((ctx as any)?.ctx?.from?.id));
+      const fallback = (Array.isArray(targetUserIds) && targetUserIds.length > 0)
+        ? targetUserIds.map((id) => Number(id)).filter((n) => Number.isFinite(n))
+        : (Number.isFinite(initiatorId) ? [initiatorId] : []);
+      if (fallback.length === 0) {
+        logError('roomService.broadcastRoomInfo', new Error('no_recipients'), { roomId, targetUserIds });
+        return;
+      }
+      // Use fallback recipients
+      await ctx.sendOrEditMessageToUsers(
+        fallback,
+        message,
+        {
+          reply_markup: { inline_keyboard: rows }
+        }
+      );
+      logFunctionEnd('roomService.broadcastRoomInfo', {
+        roomId,
+        targetUserIds: fallback.length,
+        messageLength: message.length,
+        note: 'fallback'
+      });
+      return;
+    }
+
     // Broadcast to all users using the public function
     await ctx.sendOrEditMessageToUsers(
-      userIds.map(id => Number(id)), 
-      message, 
-      { 
+      recipientChatIds,
+      message,
+      {
         reply_markup: { inline_keyboard: rows }
       }
     );
