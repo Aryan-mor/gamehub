@@ -85,21 +85,10 @@ async function handleLeaveRoom(context: HandlerContext, query: Record<string, st
       ctx.log.info('Broadcasted room update to remaining players', { roomId: roomIdParam });
     }
 
-    // Show games.start action (main games menu)
-    const message = ctx.t('poker.room.leave.success');
+    // Directly redirect to games.start action instead of showing a message
+    const { dispatch } = await import('@/modules/core/smart-router');
+    await dispatch(ROUTES.games.start, context);
     
-    // Create keyboard that navigates to games.start (main games menu)
-    const keyboard = {
-      inline_keyboard: [
-        [{ text: ctx.t('bot.buttons.backToGames'), callback_data: ctx.keyboard.buildCallbackData(ROUTES.games.start) }]
-      ]
-    };
-
-    await ctx.replySmart(message, {
-      parse_mode: 'HTML',
-      reply_markup: keyboard
-    });
-
     ctx.log.info('Leave room action completed successfully', { telegramUserId, userUuid, roomId: roomIdParam });
 
   } catch (error) {
