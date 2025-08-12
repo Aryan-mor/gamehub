@@ -80,8 +80,11 @@ export async function broadcastRoomInfo(
     const rows: Array<Array<{ text: string; callback_data?: string; switch_inline_query?: string }>> = [];
     const refreshText = (ctx as any)?.t ? (ctx as any).t('bot.buttons.refresh') : '🔄 Refresh';
     const shareText = (ctx as any)?.t ? (ctx as any).t('bot.buttons.share') : '📤 Share';
+    const leaveText = (ctx as any)?.t ? (ctx as any).t('poker.room.buttons.leave') : '🚪 Leave Room';
+    
     rows.push([{ text: refreshText, callback_data: 'g.pk.r.in' }]);
     rows.push([{ text: shareText, switch_inline_query: `poker ${roomId}` }]);
+    rows.push([{ text: leaveText, callback_data: `g.pk.r.le?roomId=${roomId}` }]);
     
     const message = `🏠 Poker Room Info\n\n📋 Room Details:\n• ID: ${roomId}\n• Status: ⏳ Waiting for players\n• Type: 🌐 Public\n\n⚙️ Game Settings:\n• Small Blind: ${smallBlind}\n• Big Blind: ${bigBlind}\n• Max Players: ${maxPlayers}\n• Turn Timeout: ${timeout}\n\n👥 Players (${playerCount}/${maxPlayers}):\n${playerNames}\n\nLast update: ${lastUpdate}`;
     
