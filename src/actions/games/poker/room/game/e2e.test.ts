@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { createRoom, addPlayer, markReady } from '@/actions/games/poker/services/roomService';
+import { createRoom, addPlayer, markReady } from '@/actions/games/poker/room/services/roomService';
 import { encodeAction } from '@/modules/core/route-alias';
 import type { BaseHandler } from '@/modules/core/handler';
 import type { SmartReplyOptions } from '@/types';

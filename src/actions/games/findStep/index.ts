@@ -8,7 +8,7 @@ async function handleFindStep(context: HandlerContext, query: Record<string, str
   const { dispatch } = await import('@/modules/core/smart-router');
   // If we have a roomId, choose route by room status
   if (roomId) {
-    const { getRoom } = await import('@/actions/games/poker/services/roomService');
+    const { getRoom } = await import('@/actions/games/poker/room/services/roomService');
     const room = await getRoom(roomId);
     if (room) {
       // If room is waiting (lobby state): show info; otherwise go to in-game state (start)

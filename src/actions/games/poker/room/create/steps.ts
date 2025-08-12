@@ -1,6 +1,6 @@
 import { HandlerContext, createHandler } from '@/modules/core/handler';
 import { setActiveRoomId } from '@/modules/core/userRoomState';
-import { createRoom } from '../../services/roomService';
+import { createRoom } from '../services/roomService';
 
 const NS = 'poker.room.create';
 
