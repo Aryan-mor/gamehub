@@ -56,7 +56,7 @@ export async function broadcastRoomInfo(
     // Get room data
     const room = await getRoom(roomId);
     if (!room) {
-      console.log('❌ roomService.broadcastRoomInfo: room not found', { roomId });
+      logError('roomService.broadcastRoomInfo', new Error('room not found'), { roomId });
       return;
     }
 
@@ -77,9 +77,11 @@ export async function broadcastRoomInfo(
     const playerNames = dbUsers.map(u => u.first_name || u.username || 'Unknown').join('\n');
     
     // Generate inline keyboard buttons
-    const rows = [];
-    rows.push([{ text: '🔄 Refresh', callback_data: 'g.pk.r.in' }]);
-    rows.push([{ text: '📤 Share', switch_inline_query: `poker ${roomId}` }]);
+    const rows: Array<Array<{ text: string; callback_data?: string; switch_inline_query?: string }>> = [];
+    const refreshText = (ctx as any)?.t ? (ctx as any).t('bot.buttons.refresh') : '🔄 Refresh';
+    const shareText = (ctx as any)?.t ? (ctx as any).t('bot.buttons.share') : '📤 Share';
+    rows.push([{ text: refreshText, callback_data: 'g.pk.r.in' }]);
+    rows.push([{ text: shareText, switch_inline_query: `poker ${roomId}` }]);
     
     const message = `🏠 Poker Room Info\n\n📋 Room Details:\n• ID: ${roomId}\n• Status: ⏳ Waiting for players\n• Type: 🌐 Public\n\n⚙️ Game Settings:\n• Small Blind: ${smallBlind}\n• Big Blind: ${bigBlind}\n• Max Players: ${maxPlayers}\n• Turn Timeout: ${timeout}\n\n👥 Players (${playerCount}/${maxPlayers}):\n${playerNames}\n\nLast update: ${lastUpdate}`;
     

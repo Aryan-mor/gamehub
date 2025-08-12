@@ -133,35 +133,20 @@ class SmartRouter {
         try {
           const module = await import(fullImportPath);
           if (module && module.default) {
-            console.log('✅ smart-router.autoDiscover: found handler', {
-              pathString,
-              entry,
-              fullImportPath
-            });
+            logFunctionEnd('smartRouter.autoDiscover.found', { entry, fullImportPath }, { pathString });
             logFunctionEnd('smartRouter.autoDiscover', { discovered: true, entry }, { pathString });
             return module.default;
           }
         } catch (importError) {
-          console.log('🔍 smart-router.autoDiscover: trying next candidate', {
-            pathString,
-            entry,
-            fullImportPath,
-            importError: importError instanceof Error ? importError.message : 'Unknown error'
-          });
+          logFunctionStart('smartRouter.autoDiscover.tryNext', { pathString, entry, fullImportPath, importError: importError instanceof Error ? importError.message : 'Unknown error' });
           // Try next candidate
         }
       }
 
-      console.log('❌ smart-router.autoDiscover: no handler found', {
-        pathString,
-        candidateFiles
-      });
+      logFunctionEnd('smartRouter.autoDiscover.none', { candidateFiles }, { pathString });
       logFunctionEnd('smartRouter.autoDiscover', { discovered: false }, { pathString });
     } catch (error) {
-      console.log('❌ smart-router.autoDiscover: error during discovery', {
-        pathString,
-        error: error instanceof Error ? error.message : 'Unknown error'
-      });
+      logError('smartRouter.autoDiscover.exception', error as Error, { pathString });
       logError('smartRouter.autoDiscover', error as Error, { pathString });
     }
     
@@ -179,14 +164,7 @@ class SmartRouter {
     const mergedQuery: Record<string, string> = { ...parsed.query, ...extraQuery };
     
     // Enhanced logging for debugging follow issues
-    console.log('🔍 smart-router.dispatch: called', {
-      messageKey,
-      pathString,
-      extraQuery,
-      mergedQuery,
-      contextUserId: context.user?.id,
-      contextChatId: context.ctx?.chat?.id
-    });
+    logFunctionStart('smartRouter.dispatch', { messageKey, pathString, extraQuery, mergedQuery, contextUserId: context.user?.id, contextChatId: context.ctx?.chat?.id });
     
     // First try exact match
     const exactHandler = this.exactHandlers.get(pathString);
@@ -198,11 +176,7 @@ class SmartRouter {
     // Then try auto-discovery (before pattern matching)
     const discoveredHandler = await this.autoDiscoverHandler(pathString);
     if (discoveredHandler) {
-      console.log('✅ smart-router.dispatch: using auto-discovered handler', {
-        pathString,
-        contextUserId: context.user?.id,
-        contextChatId: context.ctx?.chat?.id
-      });
+      logFunctionEnd('smartRouter.dispatch.autoDiscovered', { ok: true }, { pathString, contextUserId: context.user?.id, contextChatId: context.ctx?.chat?.id });
       
       // Cache the discovered handler for future use
       this.exactHandlers.set(pathString, discoveredHandler);

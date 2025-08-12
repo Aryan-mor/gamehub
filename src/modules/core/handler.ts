@@ -25,8 +25,8 @@ export function createHandler(handler: BaseHandler): BaseHandler {
     const fn = 'createHandlerWrapper';
     const requestId = context.requestId || `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     
-    // Enhanced logging for debugging follow issues
-    console.log('🔍 createHandlerWrapper: starting', {
+    // Enhanced logging via project logger (no console)
+    logFunctionStart('createHandlerWrapper.start', {
       userId: context.user.id,
       query,
       requestId,
@@ -38,17 +38,10 @@ export function createHandler(handler: BaseHandler): BaseHandler {
     logFunctionStart(fn, { userId: context.user.id, query, requestId });
     try {
       await handler(context, query);
-      console.log('✅ createHandlerWrapper: completed successfully', {
-        userId: context.user.id,
-        requestId
-      });
+      logFunctionEnd('createHandlerWrapper.end', { success: true }, { userId: context.user.id, requestId });
       logFunctionEnd(fn, { success: true }, { userId: context.user.id, requestId });
     } catch (error) {
-      console.log('❌ createHandlerWrapper: error occurred', {
-        userId: context.user.id,
-        requestId,
-        error: error instanceof Error ? error.message : 'Unknown error'
-      });
+      logError('createHandlerWrapper', error as Error, { userId: context.user.id, requestId });
       logError(fn, error as Error, { userId: context.user.id, requestId });
       
       // Send error message to user if possible
@@ -56,11 +49,7 @@ export function createHandler(handler: BaseHandler): BaseHandler {
         try {
           await context.ctx.replySmart(context.ctx.t('bot.error.generic'));
         } catch (replyError) {
-          console.log('❌ createHandlerWrapper: failed to send error message', {
-            userId: context.user.id,
-            requestId,
-            replyError: replyError instanceof Error ? replyError.message : 'Unknown error'
-          });
+          logError('createHandlerWrapper.replyError', replyError as Error, { userId: context.user.id, requestId });
         }
       }
     }

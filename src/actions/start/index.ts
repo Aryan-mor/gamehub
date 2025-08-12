@@ -34,7 +34,7 @@ async function handleStart(context: HandlerContext): Promise<void> {
     // const userData = await getUser(user.id);
     
     // Build welcome message
-    let welcome = `${ctx.t('bot.start.welcome')}\n\n` +
+    const welcome = `${ctx.t('bot.start.welcome')}\n\n` +
       `💰 ${ctx.t('bot.start.tips.freecoin')}\n\n` +
       `🎯 ${ctx.t('bot.start.chooseAction')}`;
     

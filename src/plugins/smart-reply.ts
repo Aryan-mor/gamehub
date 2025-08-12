@@ -32,7 +32,7 @@ export class SmartReplyPlugin implements GameHubPlugin {
         const forceNewMessage = options.forceNewMessage ?? false;
 
         // Enhanced logging for debugging
-        console.log('🔍 smart-reply.replySmart: called', {
+        (ctx as any)?.log?.debug?.('smart-reply.replySmart: called', {
           targetChatId: chatIdString,
           ctxChatId: ctx.chat?.id,
           ctxFromId: fromId,
@@ -46,7 +46,7 @@ export class SmartReplyPlugin implements GameHubPlugin {
         const previousMessage = usersMessageHistory[userId];
         
         // Enhanced logging for usersMessageHistory
-        console.log('🔍 smart-reply.usersMessageHistory: checking', {
+        (ctx as any)?.log?.debug?.('smart-reply.usersMessageHistory: checking', {
           userId,
           hasPreviousMessage: !!previousMessage,
           previousMessage,
@@ -62,7 +62,7 @@ export class SmartReplyPlugin implements GameHubPlugin {
                        previousMessage.chatId === chatIdString;
 
         // Enhanced logging for edit decision
-        console.log('🔍 smart-reply.replySmart: edit decision', {
+        (ctx as any)?.log?.debug?.('smart-reply.replySmart: edit decision', {
           canEdit,
           hasPreviousMessage: !!previousMessage,
           previousMessageChatId: previousMessage?.chatId,
@@ -78,7 +78,7 @@ export class SmartReplyPlugin implements GameHubPlugin {
 
         if (canEdit) {
           try {
-            console.log('🔍 smart-reply.replySmart: attempting to edit message', {
+            (ctx as any)?.log?.debug?.('smart-reply.replySmart: attempting to edit message', {
               chatId: chatIdString,
               messageId: previousMessage.messageId,
               userId
@@ -90,7 +90,7 @@ export class SmartReplyPlugin implements GameHubPlugin {
               parse_mode: options.parse_mode,
             });
             
-            console.log('✅ smart-reply.replySmart: edit successful', {
+            (ctx as any)?.log?.debug?.('smart-reply.replySmart: edit successful', {
               chatId: chatIdString,
               messageId: previousMessage.messageId,
               userId
@@ -106,7 +106,7 @@ export class SmartReplyPlugin implements GameHubPlugin {
             };
             return;
           } catch (err) {
-            console.log('❌ smart-reply.replySmart: edit failed, will send new message', {
+            (ctx as any)?.log?.warn?.('smart-reply.replySmart: edit failed, will send new message', {
               chatId: chatIdString,
               messageId: previousMessage.messageId,
               userId,
@@ -137,7 +137,7 @@ export class SmartReplyPlugin implements GameHubPlugin {
         }
 
         // Send new message
-        console.log('🔍 smart-reply.replySmart: sending new message', {
+        (ctx as any)?.log?.debug?.('smart-reply.replySmart: sending new message', {
           chatId: chatIdString,
           userId,
           forceNewMessage
@@ -149,7 +149,7 @@ export class SmartReplyPlugin implements GameHubPlugin {
             parse_mode: options.parse_mode,
           });
 
-          console.log('✅ smart-reply.replySmart: new message sent successfully', {
+          (ctx as any)?.log?.debug?.('smart-reply.replySmart: new message sent successfully', {
             chatId: chatIdString,
             messageId: sent.message_id,
             userId
@@ -164,7 +164,7 @@ export class SmartReplyPlugin implements GameHubPlugin {
               userId,
               messageType: 'room_info'
             };
-            console.log('💾 smart-reply.replySmart: stored message in history', {
+            (ctx as any)?.log?.debug?.('smart-reply.replySmart: stored message in history', {
               userId,
               chatId: chatIdString,
               messageId: sent.message_id,
@@ -173,7 +173,7 @@ export class SmartReplyPlugin implements GameHubPlugin {
             });
           }
         } catch (sendErr) {
-          console.log('❌ smart-reply.replySmart: failed to send new message', {
+          (ctx as any)?.log?.error?.('smart-reply.replySmart: failed to send new message', {
             chatId: chatIdString,
             userId,
             error: sendErr instanceof Error ? sendErr.message : 'Unknown error'
@@ -184,7 +184,7 @@ export class SmartReplyPlugin implements GameHubPlugin {
 
       // Enhanced function to broadcast message to multiple users with individual tracking
             sendOrEditMessageToUsers: async (userIds: number[], text: string, messageOptions: SmartReplyOptions = {}, broadcastOptions: Omit<SmartReplyOptions, 'chatId' | 'userId'> = {}): Promise<BroadcastResult[]> => {
-        console.log('🔍 smart-reply.sendOrEditMessageToUsers: starting broadcast', {
+        (ctx as any)?.log?.debug?.('smart-reply.sendOrEditMessageToUsers: starting broadcast', {
           userIds,
           textLength: text.length,
           messageOptions,
@@ -194,7 +194,7 @@ export class SmartReplyPlugin implements GameHubPlugin {
         const results: BroadcastResult[] = [];
         
         for (const userId of userIds) {
-          console.log('🔍 smart-reply.sendOrEditMessageToUsers: processing user', {
+          (ctx as any)?.log?.debug?.('smart-reply.sendOrEditMessageToUsers: processing user', {
             userId,
             currentIndex: results.length + 1,
             totalUsers: userIds.length
@@ -214,14 +214,14 @@ export class SmartReplyPlugin implements GameHubPlugin {
                   { reply_markup: messageOptions.reply_markup as InlineKeyboardMarkup }
                 );
                 
-                console.log('✅ smart-reply.sendOrEditMessageToUsers: edited message for user', {
+                (ctx as any)?.log?.debug?.('smart-reply.sendOrEditMessageToUsers: edited message for user', {
                   userId,
                   messageId: previousMessage.messageId
                 });
                 
                 results.push({ userId, success: true });
               } catch (editError) {
-                console.log('⚠️ smart-reply.sendOrEditMessageToUsers: edit failed, sending new message', {
+                (ctx as any)?.log?.warn?.('smart-reply.sendOrEditMessageToUsers: edit failed, sending new message', {
                   userId,
                   messageId: previousMessage.messageId,
                   error: editError instanceof Error ? editError.message : 'Unknown error'
@@ -243,7 +243,7 @@ export class SmartReplyPlugin implements GameHubPlugin {
                   messageType: 'room_info'
                 };
                 
-                console.log('✅ smart-reply.sendOrEditMessageToUsers: sent new message to user', {
+                (ctx as any)?.log?.debug?.('smart-reply.sendOrEditMessageToUsers: sent new message to user', {
                   userId,
                   newMessageId: newMessage.message_id
                 });
@@ -267,7 +267,7 @@ export class SmartReplyPlugin implements GameHubPlugin {
                 messageType: 'room_info'
               };
               
-              console.log('✅ smart-reply.sendOrEditMessageToUsers: sent new message to user', {
+              (ctx as any)?.log?.debug?.('smart-reply.sendOrEditMessageToUsers: sent new message to user', {
                 userId,
                 newMessageId: newMessage.message_id
               });
@@ -276,7 +276,7 @@ export class SmartReplyPlugin implements GameHubPlugin {
             }
           } catch (err) {
             const errorMessage = err instanceof Error ? err.message : 'Unknown error';
-            console.log('❌ smart-reply.sendOrEditMessageToUsers: failed for user', {
+            (ctx as any)?.log?.error?.('smart-reply.sendOrEditMessageToUsers: failed for user', {
               userId,
               error: errorMessage
             });
@@ -286,7 +286,7 @@ export class SmartReplyPlugin implements GameHubPlugin {
           }
         }
 
-        console.log('📊 smart-reply.sendOrEditMessageToUsers: broadcast completed', {
+        (ctx as any)?.log?.debug?.('smart-reply.sendOrEditMessageToUsers: broadcast completed', {
           totalUsers: userIds.length,
           successful: results.filter(r => r.success).length,
           failed: results.filter(r => !r.success).length,
@@ -303,7 +303,7 @@ export class SmartReplyPlugin implements GameHubPlugin {
         reply_markup?: InlineKeyboardMarkup | ReplyKeyboardMarkup | ReplyKeyboardRemove | ForceReply;
         parse_mode?: 'HTML' | 'Markdown' | 'MarkdownV2';
       } = {}) => {
-        console.log('🔍 smart-reply.broadcastToUsers: starting legacy broadcast', {
+        (ctx as any)?.log?.debug?.('smart-reply.broadcastToUsers: starting legacy broadcast', {
           userIds,
           textLength: text.length,
           options
@@ -313,7 +313,7 @@ export class SmartReplyPlugin implements GameHubPlugin {
         let failureCount = 0;
         
         for (const userId of userIds) {
-          console.log('🔍 smart-reply.broadcastToUsers: processing user', {
+          (ctx as any)?.log?.debug?.('smart-reply.broadcastToUsers: processing user', {
             userId,
             currentIndex: successCount + failureCount + 1,
             totalUsers: userIds.length
@@ -322,10 +322,10 @@ export class SmartReplyPlugin implements GameHubPlugin {
           try {
             await (ctx as any).replySmart(text, { ...options, userId: userId });
             successCount++;
-            console.log('✅ smart-reply.broadcastToUsers: success for user', { userId });
+            (ctx as any)?.log?.debug?.('smart-reply.broadcastToUsers: success for user', { userId });
           } catch (err) {
             failureCount++;
-            console.log('❌ smart-reply.broadcastToUsers: failed for user', {
+            (ctx as any)?.log?.error?.('smart-reply.broadcastToUsers: failed for user', {
               userId,
               error: err instanceof Error ? err.message : 'Unknown error'
             });
@@ -333,7 +333,7 @@ export class SmartReplyPlugin implements GameHubPlugin {
           }
         }
         
-        console.log('📊 smart-reply.broadcastToUsers: legacy broadcast completed', {
+        (ctx as any)?.log?.debug?.('smart-reply.broadcastToUsers: legacy broadcast completed', {
           totalUsers: userIds.length,
           successful: successCount,
           failed: failureCount

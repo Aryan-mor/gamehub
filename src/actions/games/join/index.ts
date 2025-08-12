@@ -59,18 +59,11 @@ async function handleJoin(context: HandlerContext, query: Record<string, string>
     const allUserIds = Array.from(userTelegramIdMap.values()).map(String);
     
     // For each user, dispatch room.info with their chatId
-    console.log('🔍 join: starting broadcast to all users', {
-      allUserIds,
-      targetRoomId,
-      currentUserId: user.id
-    });
+    const { logFunctionStart } = await import('@/modules/core/logger');
+    logFunctionStart('join.broadcast.start', { allUserIds, targetRoomId, currentUserId: user.id });
     
     for (const userId of allUserIds) {
-      console.log('🔍 join: broadcasting to user', {
-        userId,
-        isCurrentUser: userId === String(user.id),
-        currentUserTelegramId: user.id
-      });
+      logFunctionStart('join.broadcast.toUser', { userId, isCurrentUser: userId === String(user.id), currentUserTelegramId: user.id });
       
       try {
         // Import usersMessageHistory from smart-reply plugin
@@ -80,20 +73,14 @@ async function handleJoin(context: HandlerContext, query: Record<string, string>
         const userMessageHistory = usersMessageHistory[userId];
         const userChatId = userMessageHistory?.chatId || userId;
         
-        console.log('🔍 join: user chat info', {
-          userId,
-          userChatId,
-          hasMessageHistory: !!userMessageHistory
-        });
+        logFunctionStart('join.user.chatInfo', { userId, userChatId, hasMessageHistory: !!userMessageHistory });
         
         // Use the central roomService to broadcast room info
         const { broadcastRoomInfo } = await import('@/actions/games/poker/room/services/roomService');
         await broadcastRoomInfo(ctx, targetRoomId, [userId]);
       } catch (err) {
-        console.log('❌ join: failed to send room info to user', {
-          userId,
-          error: err instanceof Error ? err.message : 'Unknown error'
-        });
+        const { logError } = await import('@/modules/core/logger');
+        logError('join.broadcast.failed', err as Error, { userId });
       }
     }
     return;

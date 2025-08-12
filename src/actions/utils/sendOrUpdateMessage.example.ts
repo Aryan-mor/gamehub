@@ -4,6 +4,7 @@
  */
 
 import { Context } from 'grammy';
+import { logError } from '@/modules/core/logger';
 import { 
   sendOrUpdateMessage, 
   sendOrUpdateMessageToUsers,
@@ -15,7 +16,7 @@ import {
 } from './sendOrUpdateMessage';
 
 // Example 1: Game Status Updates
-export async function updateGameStatus(ctx: Context, gameId: string, status: string, chatId: number) {
+export async function updateGameStatus(ctx: Context, gameId: string, status: string, chatId: number): Promise<ReturnType<typeof sendOrUpdateMessage>> {
   const messageKey = createGameMessageKey(gameId, 'status');
   
   const payload: SendPayload = {
@@ -24,8 +25,8 @@ export async function updateGameStatus(ctx: Context, gameId: string, status: str
       parse_mode: 'HTML',
       reply_markup: {
         inline_keyboard: [
-          [{ text: 'View Game', callback_data: `game_view_${gameId}` }],
-          [{ text: 'Leave Game', callback_data: `game_leave_${gameId}` }]
+          [{ text: (ctx as any)?.t ? (ctx as any).t('bot.buttons.viewGame') : 'View Game', callback_data: `game_view_${gameId}` }],
+          [{ text: (ctx as any)?.t ? (ctx as any).t('bot.buttons.leaveGame') : 'Leave Game', callback_data: `game_leave_${gameId}` }]
         ]
       }
     }
@@ -39,14 +40,14 @@ export async function updateGameStatus(ctx: Context, gameId: string, status: str
   const result = await sendOrUpdateMessage(ctx, chatId, payload, options);
   
   if (!result.success) {
-    console.error(`Failed to update game status: ${result.error}`);
+    logError('example.updateGameStatus', new Error(result.error || 'unknown'), { gameId, chatId });
   }
   
   return result;
 }
 
 // Example 2: Room Management
-export async function updateRoomStatus(ctx: Context, roomId: string, playerCount: number, maxPlayers: number, chatId: number) {
+export async function updateRoomStatus(ctx: Context, roomId: string, playerCount: number, maxPlayers: number, chatId: number): Promise<ReturnType<typeof sendOrUpdateMessage>> {
   const messageKey = createRoomMessageKey(roomId, 'status');
   
   const payload: SendPayload = {
@@ -55,8 +56,8 @@ export async function updateRoomStatus(ctx: Context, roomId: string, playerCount
       parse_mode: 'HTML',
       reply_markup: {
         inline_keyboard: [
-          [{ text: 'Join Room', callback_data: `room_join_${roomId}` }],
-          [{ text: 'Leave Room', callback_data: `room_leave_${roomId}` }]
+          [{ text: (ctx as any)?.t ? (ctx as any).t('bot.buttons.joinRoom') : 'Join Room', callback_data: `room_join_${roomId}` }],
+          [{ text: (ctx as any)?.t ? (ctx as any).t('bot.buttons.leaveRoom') : 'Leave Room', callback_data: `room_leave_${roomId}` }]
         ]
       }
     }
@@ -71,7 +72,7 @@ export async function updateRoomStatus(ctx: Context, roomId: string, playerCount
 }
 
 // Example 3: User Notifications (Force New Message)
-export async function sendUserNotification(ctx: Context, userId: number, notification: string) {
+export async function sendUserNotification(ctx: Context, userId: number, notification: string): Promise<ReturnType<typeof sendOrUpdateMessage>> {
   const messageKey = createUserMessageKey(userId, 'notification');
   
   const payload: SendPayload = {
@@ -91,15 +92,15 @@ export async function sendUserNotification(ctx: Context, userId: number, notific
 }
 
 // Example 4: Multi-user Broadcasting
-export async function notifyGamePlayers(ctx: Context, playerIds: number[], message: string) {
+export async function notifyGamePlayers(ctx: Context, playerIds: number[], message: string): Promise<Awaited<ReturnType<typeof sendOrUpdateMessageToUsers>>> {
   const payload: SendPayload = {
     text: `🎯 ${message}`,
     extra: {
       parse_mode: 'HTML',
       reply_markup: {
         inline_keyboard: [
-          [{ text: 'Ready', callback_data: 'game_ready' }],
-          [{ text: 'Not Ready', callback_data: 'game_not_ready' }]
+          [{ text: (ctx as any)?.t ? (ctx as any).t('bot.buttons.ready') : 'Ready', callback_data: 'game_ready' }],
+          [{ text: (ctx as any)?.t ? (ctx as any).t('bot.buttons.notReady') : 'Not Ready', callback_data: 'game_not_ready' }]
         ]
       }
     }
@@ -115,14 +116,14 @@ export async function notifyGamePlayers(ctx: Context, playerIds: number[], messa
   // Check for failures
   const failures = results.filter(r => !r.success);
   if (failures.length > 0) {
-    console.log(`Failed to notify ${failures.length} players:`, failures);
+    logError('example.notifyGamePlayers', new Error('some notifications failed'), { failures });
   }
   
   return results;
 }
 
 // Example 5: Progressive Game Updates
-export async function updateGameProgress(ctx: Context, gameId: string, round: number, chatId: number) {
+export async function updateGameProgress(ctx: Context, gameId: string, round: number, chatId: number): Promise<ReturnType<typeof sendOrUpdateMessage>> {
   const messageKey = createGameMessageKey(gameId, 'progress');
   
   const payload: SendPayload = {
@@ -131,8 +132,8 @@ export async function updateGameProgress(ctx: Context, gameId: string, round: nu
       parse_mode: 'HTML',
       reply_markup: {
         inline_keyboard: [
-          [{ text: 'View Game', callback_data: `game_view_${gameId}` }],
-          [{ text: 'Spectate', callback_data: `game_spectate_${gameId}` }]
+          [{ text: (ctx as any)?.t ? (ctx as any).t('bot.buttons.viewGame') : 'View Game', callback_data: `game_view_${gameId}` }],
+          [{ text: (ctx as any)?.t ? (ctx as any).t('bot.buttons.spectate') : 'Spectate', callback_data: `game_spectate_${gameId}` }]
         ]
       }
     }
@@ -147,7 +148,7 @@ export async function updateGameProgress(ctx: Context, gameId: string, round: nu
 }
 
 // Example 6: Error Handling with Fallback
-export async function sendMessageWithFallback(ctx: Context, chatId: number, message: string, messageKey: string) {
+export async function sendMessageWithFallback(ctx: Context, chatId: number, message: string, messageKey: string): Promise<ReturnType<typeof sendOrUpdateMessage>> {
   const payload: SendPayload = {
     text: message,
     extra: {
@@ -164,7 +165,7 @@ export async function sendMessageWithFallback(ctx: Context, chatId: number, mess
   
   if (!result.success) {
     // Fallback: try sending as a new message
-    console.log(`Edit failed, trying new message: ${result.error}`);
+    logError('example.sendMessageWithFallback', new Error(result.error || 'unknown'), { chatId, messageKey });
     
     const fallbackOptions: SendOptions = {
       messageKey: `${messageKey}_fallback`,
@@ -178,8 +179,8 @@ export async function sendMessageWithFallback(ctx: Context, chatId: number, mess
 }
 
 // Example 7: Batch User Notifications
-export async function sendBatchNotifications(ctx: Context, notifications: Array<{ userId: number; message: string }>) {
-  const results = [];
+export async function sendBatchNotifications(ctx: Context, notifications: Array<{ userId: number; message: string }>): Promise<Array<{ userId: number; success: boolean; error?: string; messageId?: number }>> {
+  const results: Array<{ userId: number; success: boolean; error?: string; messageId?: number }> = [];
   
   for (const notification of notifications) {
     const result = await sendUserNotification(ctx, notification.userId, notification.message);
@@ -194,7 +195,7 @@ export async function sendBatchNotifications(ctx: Context, notifications: Array<
 }
 
 // Example 8: Game Result Announcement
-export async function announceGameResult(ctx: Context, gameId: string, winner: string, chatId: number) {
+export async function announceGameResult(ctx: Context, gameId: string, winner: string, chatId: number): Promise<ReturnType<typeof sendOrUpdateMessage>> {
   const messageKey = createGameMessageKey(gameId, 'result');
   
   const payload: SendPayload = {
@@ -203,8 +204,8 @@ export async function announceGameResult(ctx: Context, gameId: string, winner: s
       parse_mode: 'HTML',
       reply_markup: {
         inline_keyboard: [
-          [{ text: 'Play Again', callback_data: `game_new_${gameId}` }],
-          [{ text: 'View Stats', callback_data: `game_stats_${gameId}` }]
+          [{ text: (ctx as any)?.t ? (ctx as any).t('bot.buttons.playAgain') : 'Play Again', callback_data: `game_new_${gameId}` }],
+          [{ text: (ctx as any)?.t ? (ctx as any).t('bot.buttons.viewStats') : 'View Stats', callback_data: `game_stats_${gameId}` }]
         ]
       }
     }
@@ -219,15 +220,15 @@ export async function announceGameResult(ctx: Context, gameId: string, winner: s
 }
 
 // Example 9: Room Invitation
-export async function sendRoomInvitation(ctx: Context, roomId: string, inviterName: string, inviteeIds: number[]) {
+export async function sendRoomInvitation(ctx: Context, roomId: string, inviterName: string, inviteeIds: number[]): Promise<Awaited<ReturnType<typeof sendOrUpdateMessageToUsers>>> {
   const payload: SendPayload = {
     text: `🎮 ${inviterName} invited you to join Room ${roomId}!\n\nClick below to join the game.`,
     extra: {
       parse_mode: 'HTML',
       reply_markup: {
         inline_keyboard: [
-          [{ text: 'Join Room', callback_data: `room_join_${roomId}` }],
-          [{ text: 'Decline', callback_data: `room_decline_${roomId}` }]
+          [{ text: (ctx as any)?.t ? (ctx as any).t('bot.buttons.joinRoom') : 'Join Room', callback_data: `room_join_${roomId}` }],
+          [{ text: (ctx as any)?.t ? (ctx as any).t('bot.buttons.decline') : 'Decline', callback_data: `room_decline_${roomId}` }]
         ]
       }
     }
@@ -242,7 +243,7 @@ export async function sendRoomInvitation(ctx: Context, roomId: string, inviterNa
 }
 
 // Example 10: System Maintenance Notification
-export async function sendMaintenanceNotification(ctx: Context, userIds: number[], maintenanceTime: string) {
+export async function sendMaintenanceNotification(ctx: Context, userIds: number[], maintenanceTime: string): Promise<Awaited<ReturnType<typeof sendOrUpdateMessageToUsers>>> {
   const payload: SendPayload = {
     text: `🔧 System Maintenance\n\n⏰ Scheduled: ${maintenanceTime}\n\nWe'll be back shortly!`,
     extra: {
