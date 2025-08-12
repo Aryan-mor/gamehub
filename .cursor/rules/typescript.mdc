@@ -1,3 +1,6 @@
+---
+alwaysApply: false
+---
 # TypeScript Best Practices
 
 ## 🔧 Type Safety Requirements
@@ -85,7 +88,3 @@ export function isValidGameId(id: string): id is GameId {
 - [ ] Type guards implemented where needed
 - [ ] All functions have explicit return types
 - [ ] All parameters are properly typed
-description:
-globs:
-alwaysApply: false
----

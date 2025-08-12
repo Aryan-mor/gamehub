@@ -1,3 +1,7 @@
+---
+globs:
+alwaysApply: false
+---
 # Development Workflow Rules
 
 ## 🚫 Code Push Policy
@@ -71,7 +75,3 @@ pnpm dev
 - [ ] Type guards for custom IDs
 - [ ] Export default pattern for handlers
 - [ ] Proper import paths with `@/` alias
-description:
-globs:
-alwaysApply: false
----

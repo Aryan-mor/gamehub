@@ -1,4 +1,7 @@
 ---
+globs: src/actions/**/*.ts
+alwaysApply: false
+---
 # Test Automation Rules
 
 ## 🧪 Test Execution Guidelines
@@ -30,6 +33,3 @@ pnpm test
 
 ### User Preference
 The user prefers that the assistant writes complete test scenarios to cover the full game flow and automates running and closing tests with 'q' without waiting for user input. The assistant should keep the chat open and not end the session until the user has tested logs and the issues have been resolved.
-globs: *.test.ts
-alwaysApply: false
----

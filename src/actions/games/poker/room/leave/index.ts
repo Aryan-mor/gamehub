@@ -13,12 +13,12 @@ async function handleLeaveRoom(context: HandlerContext, query: Record<string, st
   const { user, ctx } = context;
   
   // Resolve roomId from query parameters using the same pattern as other handlers
-  let roomIdParam = context._query?.roomId || query.roomId || query.r;
+  let roomIdParam: string = context._query?.roomId || query.roomId || query.r || '';
   
   // Try to get from active room state if not in query
   if (!roomIdParam) {
     const { getActiveRoomId } = await import('@/modules/core/userRoomState');
-    roomIdParam = getActiveRoomId(String(user.id));
+    roomIdParam = getActiveRoomId(String(user.id)) || '';
   }
   
   // Try to get from form state as fallback
