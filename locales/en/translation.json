@@ -350,6 +350,7 @@
   "bot.balance.tips.playPoker": "Win more coins by playing poker",
   "bot.balance.tips.stake": "Stake coins to increase your winnings"
   ,
+  "Action expired. Please use the latest message.": "Action expired. Please use the latest message.",
   "bot.freecoin.tip.playMore": "💡 <b>Tip:</b> Play poker to earn more coins!",
   "poker.room.leave.deleted": "🚪 <b>Room deleted!</b>\n\n✅ You left the room and since you were the creator, the room was deleted.\n\n📊 <b>Next steps:</b>\n• Create a new room\n• Join other rooms\n• Go back to main menu",
   "poker.room.leave.creator": "🚪 <b>Room left!</b>\n\n✅ You left the room.\n\n📊 <b>Next steps:</b>\n• Create a new room\n• Join other rooms\n• Go back to main menu",

@@ -3,6 +3,7 @@ import { GameHubContext } from '@/plugins';
 import { HandlerContext } from '@/modules/core/handler';
 import { UserId } from '@/utils/types';
 import { logFunctionStart, logFunctionEnd, logError } from '@/modules/core/logger';
+import { usersMessageHistory } from '@/plugins/smart-reply';
 
 function parseActionAndParams(raw: string): { action?: string; params: Record<string, string> } {
   // Try JSON first
@@ -64,6 +65,29 @@ export function registerCallbackDispatcher(bot: Bot<GameHubContext>): void {
         action,
         params
       });
+
+      // Security: Guard against actions from stale (non-latest) messages
+      const fromUserId = String(ctx.from?.id ?? '');
+      const history = fromUserId ? usersMessageHistory[fromUserId] : undefined;
+      const cbMessageId = ctx.callbackQuery.message?.message_id;
+      const cbChatId = ctx.callbackQuery.message?.chat?.id !== undefined ? String(ctx.callbackQuery.message.chat.id) : undefined;
+
+      if (history && cbMessageId !== undefined && cbChatId !== undefined) {
+        const isLatestForUser = history.messageId === cbMessageId && String(history.chatId) === cbChatId;
+        if (!isLatestForUser) {
+          logFunctionStart('callback_dispatch.stale_guard.block', {
+            userId: fromUserId,
+            cbMessageId,
+            cbChatId,
+            latestMessageId: history.messageId,
+            latestChatId: history.chatId
+          });
+          // Answer the callback to avoid spinner; inform user action expired
+          await ctx.api.answerCallbackQuery(ctx.callbackQuery.id, { text: ctx.t('Action expired. Please use the latest message.') });
+          logFunctionEnd('callback_dispatch.stale_guard.block', {}, { userId: fromUserId });
+          return;
+        }
+      }
 
       await ctx.api.answerCallbackQuery(ctx.callbackQuery.id);
 
