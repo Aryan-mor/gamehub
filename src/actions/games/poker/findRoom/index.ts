@@ -11,7 +11,13 @@ async function handleFindRoom(context: HandlerContext): Promise<void> {
   const room = await getRoom(roomId);
   const users = await import('@/api/users');
   const dbUser = await users.getByTelegramId(user.id);
-  const dbUserId = (dbUser && (dbUser as any).id) as string | undefined;
+  const dbUserId: string | undefined = ((): string | undefined => {
+    if (typeof dbUser === 'object' && dbUser !== null && 'id' in dbUser) {
+      const v = (dbUser as Record<string, unknown>).id;
+      return typeof v === 'string' ? v : undefined;
+    }
+    return undefined;
+  })();
   const isReady = !!(dbUserId && room?.readyPlayers?.includes(dbUserId));
   const s = context._query?.s;
 

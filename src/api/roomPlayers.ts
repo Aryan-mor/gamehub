@@ -31,7 +31,7 @@ export async function listByRoom(room_id: string): Promise<Array<{ user_id: stri
     .select('user_id, is_ready')
     .eq('room_id', room_id);
   if (error) throw error;
-  return (data || []).map((row: any) => ({ user_id: row.user_id, ready: !!row.is_ready }));
+  return (data || []).map((row: { user_id: string; is_ready?: boolean }) => ({ user_id: row.user_id, ready: !!row.is_ready }));
 }
 
 export async function listActiveRoomsByUser(user_id: string): Promise<Array<{ room_id: string }>> {
@@ -49,7 +49,7 @@ export async function listOpenRoomsByUser(
 ): Promise<Array<{ room_id: string; status: string; joined_at: string }>> {
   const { data, error } = await supabase
     .from('room_players')
-    .select('room_id, joined_at, rooms!inner(status)')
+    .select('room_id, joined_at, rooms:rooms(status)')
     .eq('user_id', user_id)
     // Filter by room status on the joined rooms table
     .filter('rooms.status', 'in', '("waiting","playing")')
@@ -57,11 +57,14 @@ export async function listOpenRoomsByUser(
 
   if (error) throw error;
 
-  return (data || []).map((row: any) => ({
-    room_id: row.room_id as string,
-    status: (row as { rooms?: { status?: string } }).rooms?.status || 'unknown',
-    joined_at: row.joined_at as string,
-  }));
+  return (data || []).map((row: { room_id: string; joined_at: string; rooms?: { status?: string } | { status?: string }[] }) => {
+    const rooms = Array.isArray(row.rooms) ? row.rooms[0] : row.rooms;
+    return {
+      room_id: row.room_id,
+      status: rooms?.status || 'unknown',
+      joined_at: row.joined_at,
+    };
+  });
 }
 
 

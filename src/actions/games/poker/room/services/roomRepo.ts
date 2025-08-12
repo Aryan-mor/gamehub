@@ -15,7 +15,10 @@ export async function ensureUserUuid(telegramIdRaw: string): Promise<string> {
   const users = await import('@/api/users');
   const telegramId = normalizeTelegramId(telegramIdRaw);
   const existing = await users.getByTelegramId(telegramId);
-  if (existing && (existing as any).id) return (existing as any).id as string;
+  if (existing && typeof existing === 'object' && existing !== null && 'id' in existing) {
+    const idVal = (existing as Record<string, unknown>).id;
+    if (typeof idVal === 'string') return idVal;
+  }
   const created = await users.upsert({ telegram_id: Number(telegramId) });
   return created.id;
 }
@@ -52,7 +55,12 @@ export async function getRoom(roomId: string): Promise<PokerRoom | undefined> {
       logFunctionEnd('roomRepo.getRoom', { found: false, roomId });
       return undefined;
     }
-    const players = await roomPlayers.listByRoom((db as any).id as string);
+    const dbId = ((): string => {
+      const maybe = db as unknown as { id?: unknown };
+      const v = maybe?.id;
+      return typeof v === 'string' ? v : String(v ?? '');
+    })();
+    const players = await roomPlayers.listByRoom(dbId);
     const mapped = mapDbRoom(db, players);
     logFunctionEnd('roomRepo.getRoom', { found: true, roomId });
     return mapped;
@@ -88,7 +96,11 @@ export async function createRoom(params: Omit<PokerRoom, 'players' | 'readyPlaye
       settings: { turnTimeoutSec: params.turnTimeoutSec ?? 240 },
       is_private: params.isPrivate,
     }), 5000, 'rooms.create');
-    const roomUuid = (db as any).id as string;
+    const roomUuid = ((): string => {
+      const maybe = db as unknown as { id?: unknown };
+      const v = maybe?.id;
+      return typeof v === 'string' ? v : String(v ?? '');
+    })();
     await withTimeout(roomPlayers.add(roomUuid, creatorUuid, false), 4000, 'roomPlayers.add');
     const mapped = mapDbRoom(db, [{ user_id: creatorUuid, ready: false }]);
     logFunctionEnd('roomRepo.createRoom', { ok: true, roomId: params.id });
@@ -109,7 +121,11 @@ export async function addPlayer(roomId: string, userId: string): Promise<void> {
     if (!db) {
       throw new Error('Room not found');
     }
-    const roomUuid = (db as any).id as string;
+    const roomUuid = ((): string => {
+      const maybe = db as unknown as { id?: unknown };
+      const v = maybe?.id;
+      return typeof v === 'string' ? v : String(v ?? '');
+    })();
     const userUuid = await ensureUserUuid(userId);
     await roomPlayers.add(roomUuid, userUuid, false);
     logFunctionEnd('roomRepo.addPlayer', { ok: true, roomId, userId });
@@ -128,7 +144,11 @@ export async function removePlayer(roomId: string, userId: string): Promise<void
     if (!db) {
       throw new Error('Room not found');
     }
-    const roomUuid = (db as any).id as string;
+    const roomUuid = ((): string => {
+      const maybe = db as unknown as { id?: unknown };
+      const v = maybe?.id;
+      return typeof v === 'string' ? v : String(v ?? '');
+    })();
     const userUuid = await ensureUserUuid(userId);
     await roomPlayers.remove(roomUuid, userUuid);
     logFunctionEnd('roomRepo.removePlayer', { ok: true, roomId, userId });

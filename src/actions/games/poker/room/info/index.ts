@@ -56,7 +56,7 @@ async function handleRoomInfo(context: HandlerContext): Promise<void> {
     }
   }
   // Use any to satisfy grammy types union at runtime while keeping payload small
-  const rows: any[] = [];
+  const rows: Array<Array<{ text: string; callback_data: string }>> = [];
   const ROUTES = (await import('@/modules/core/routes.generated')).ROUTES;
 
   // Inline share subview within the same route

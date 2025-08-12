@@ -28,9 +28,9 @@ async function handleJoin(context: HandlerContext, query: Record<string, string>
         const usersApi = await import('@/api/users');
         await usersApi.upsert({
           telegram_id: Number(user.id),
-          username: (ctx as any)?.from?.username,
-          first_name: (ctx as any)?.from?.first_name,
-          last_name: (ctx as any)?.from?.last_name,
+          username: ctx.from?.username,
+          first_name: ctx.from?.first_name,
+          last_name: ctx.from?.last_name,
         });
       } catch {
         // ignore profile update errors
