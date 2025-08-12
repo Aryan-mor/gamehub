@@ -103,7 +103,7 @@ async function handleLeaveRoom(context: HandlerContext, query: Record<string, st
       parse_mode: 'HTML',
       reply_markup: {
         inline_keyboard: [[
-          { text: ctx.t('bot.buttons.back'), callback_data: ctx.keyboard.buildCallbackData(ROUTES.games.start) }
+          { text: ctx.t('poker.room.buttons.back'), callback_data: ctx.keyboard.buildCallbackData(ROUTES.games.start) }
         ]]
       }
     });
