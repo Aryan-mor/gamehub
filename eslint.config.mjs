@@ -120,16 +120,11 @@ const eslintConfig = [
     },
     rules: {
       ...tseslint.configs.recommended.rules,
-      "@typescript-eslint/no-unused-vars": [
-        "warn",
-        {
-          argsIgnorePattern: "^_",
-          varsIgnorePattern: "^_",
-        },
-      ],
-      "@typescript-eslint/no-explicit-any": "warn",
-      "@typescript-eslint/explicit-function-return-type": "warn",
-      "@typescript-eslint/no-non-null-assertion": "warn",
+      // Tests: relax strict typing rules to reduce noisy warnings
+      "@typescript-eslint/no-unused-vars": "off",
+      "@typescript-eslint/no-explicit-any": "off",
+      "@typescript-eslint/explicit-function-return-type": "off",
+      "@typescript-eslint/no-non-null-assertion": "off",
       "prefer-const": "error",
       "no-var": "error",
       // Disable i18n checks for test files
@@ -139,6 +134,13 @@ const eslintConfig = [
       "routes/expect-route-constant": "error",
       // Allow require() style imports in tests
       "@typescript-eslint/no-require-imports": "off",
+    },
+  },
+  // API layer: allow omitting explicit return types (cleaner DX), keep other rules
+  {
+    files: ["src/api/**/*.ts"],
+    rules: {
+      "@typescript-eslint/explicit-function-return-type": "off",
     },
   },
   {
@@ -250,6 +252,17 @@ const eslintConfig = [
     files: ["src/plugins/smart-reply.ts"],
     rules: {
       "no-restricted-syntax": "off",
+      // Smart-reply uses dynamic runtime shapes; relax strictness here
+      "@typescript-eslint/no-explicit-any": "off",
+      "@typescript-eslint/no-non-null-assertion": "off",
+      "@typescript-eslint/explicit-function-return-type": "off",
+    },
+  },
+  {
+    files: ["src/plugins/context.ts"],
+    rules: {
+      // Context plugin integrates with grammy Context typing; allow any for adapters
+      "@typescript-eslint/no-explicit-any": "off",
     },
   },
 ];
