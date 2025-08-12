@@ -11,10 +11,28 @@ export const key = 'games.poker.room.leave';
  */
 async function handleLeaveRoom(context: HandlerContext, query: Record<string, string> = {}): Promise<void> {
   const { user, ctx } = context;
-  const { roomId, r } = query;
-  const roomIdParam = roomId || r;
+  
+  // Resolve roomId from query parameters using the same pattern as other handlers
+  let roomIdParam = context._query?.roomId || query.roomId || query.r;
+  
+  // Try to get from active room state if not in query
+  if (!roomIdParam) {
+    const { getActiveRoomId } = await import('@/modules/core/userRoomState');
+    roomIdParam = getActiveRoomId(String(user.id));
+  }
+  
+  // Try to get from form state as fallback
+  if (!roomIdParam) {
+    const saved = ctx.formState?.get<{ roomId?: string }>('poker.info', user.id);
+    roomIdParam = saved?.roomId || '';
+  }
 
-  ctx.log.info('Poker leave room handler called', { userId: user.id, roomId: roomIdParam });
+  ctx.log.info('Poker leave room handler called', { 
+    userId: user.id, 
+    roomId: roomIdParam,
+    queryRoomId: context._query?.roomId,
+    fallbackUsed: !context._query?.roomId
+  });
 
   // Validate user ID
   if (!isValidUserId(user.id)) {
@@ -26,20 +44,37 @@ async function handleLeaveRoom(context: HandlerContext, query: Record<string, st
   }
 
   try {
+    ctx.log.info('Starting leave room process', { userId: user.id, roomId: roomIdParam });
+
     // Check if room exists and user is in it
     const room = await getRoom(roomIdParam);
+    ctx.log.info('Room lookup result', { roomFound: !!room, roomId: roomIdParam });
+    
     if (!room) {
       throw new Error('Room not found');
     }
 
-    const userId = user.id.toString();
-    if (!room.players.includes(userId)) {
+    const telegramUserId = user.id.toString();
+    
+    // Convert Telegram ID to UUID to match the format used in the database
+    const { ensureUserUuid } = await import('../services/roomRepo');
+    const userUuid = await ensureUserUuid(telegramUserId);
+    
+    ctx.log.info('Checking if user is in room', { 
+      telegramUserId, 
+      userUuid, 
+      playersInRoom: room.players, 
+      userInRoom: room.players.includes(userUuid) 
+    });
+    
+    if (!room.players.includes(userUuid)) {
       throw new Error('You are not in this room');
     }
 
-    // Remove player from room
-    await removePlayer(roomIdParam, userId);
-    ctx.log.info('Player removed from room', { userId, roomId: roomIdParam });
+    // Remove player from room (pass Telegram ID, the function will convert it)
+    ctx.log.info('Attempting to remove player from room', { telegramUserId, userUuid, roomId: roomIdParam });
+    await removePlayer(roomIdParam, telegramUserId);
+    ctx.log.info('Player removed from room successfully', { telegramUserId, userUuid, roomId: roomIdParam });
 
     // Get updated room state
     const updatedRoom = await getRoom(roomIdParam);
@@ -65,7 +100,7 @@ async function handleLeaveRoom(context: HandlerContext, query: Record<string, st
       reply_markup: keyboard
     });
 
-    ctx.log.info('Leave room action completed successfully', { userId, roomId: roomIdParam });
+    ctx.log.info('Leave room action completed successfully', { telegramUserId, userUuid, roomId: roomIdParam });
 
   } catch (error) {
     ctx.log.error('Leave room error', { 
