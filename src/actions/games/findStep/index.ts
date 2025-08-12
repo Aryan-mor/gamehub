@@ -5,9 +5,25 @@ export const key = 'games.findStep';
 async function handleFindStep(context: HandlerContext, query: Record<string, string> = {}): Promise<void> {
   const roomId = query.roomId || context._query?.roomId || '';
 
-  // For now, only poker exists → delegate to poker findRoom
   const { dispatch } = await import('@/modules/core/smart-router');
-  await dispatch('games.poker.findRoom', { ...context, _query: { roomId } });
+  // If we have a roomId, choose route by room status
+  if (roomId) {
+    const { getRoom } = await import('@/actions/games/poker/services/roomService');
+    const room = await getRoom(roomId);
+    if (room) {
+      // If room is waiting (lobby state): show info; otherwise go to in-game state (start)
+      const roomsApi = await import('@/api/rooms');
+      const dbRoom = await roomsApi.getById(roomId);
+      const status: string = (dbRoom as any)?.status || 'waiting';
+      if (status === 'waiting') {
+        await dispatch('games.poker.room.info', { ...context, _query: { roomId } });
+        return;
+      }
+      await dispatch('games.poker.room.start', { ...context, _query: { roomId } });
+      return;
+    }
+  }
+  await dispatch('games.poker.start', context);
 }
 
 export default createHandler(handleFindStep);

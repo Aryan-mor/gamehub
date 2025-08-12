@@ -35,6 +35,41 @@ describe('start command join payload', () => {
     expect(route).toBe('games.join');
     expect(context?._query?.roomId).toBe('ROOM42');
   });
+
+  it('redirects /start to games.findStep when user has an open room membership', async () => {
+    // Arrange: mock active-room DB resolvers to return an open room for current user
+    const roomId = 'room-abc';
+    vi.doMock('@/api/users', () => ({
+      getByTelegramId: async (_tid: string) => ({ id: 'db-u1' }),
+    }));
+    vi.doMock('@/api/roomPlayers', () => ({
+      listOpenRoomsByUser: async (_uid: string) => [{ room_id: roomId, status: 'playing', joined_at: new Date().toISOString() }],
+      listActiveRoomsByUser: async () => [],
+    }));
+
+    // Capture middleware registered on bot.use
+    let capturedMw: any;
+    const mockBot: any = { use: (fn: any) => { capturedMw = fn; } };
+    const { registerActiveRoomRedirect } = await import('@/bot/middleware/active-room');
+    registerActiveRoomRedirect(mockBot);
+
+    // Fake grammY ctx
+    const fakeCtx: any = {
+      update: { message: {} },
+      from: { id: 'u1', username: 'tester' },
+      message: { text: '/start', entities: [{ type: 'bot_command', offset: 0, length: 6 }] },
+      chat: { id: 123, type: 'private' },
+    };
+
+    // Act: run captured middleware
+    await capturedMw(fakeCtx, async () => {});
+
+    // Assert via top-level dispatchSpy
+    expect(dispatchSpy).toHaveBeenCalled();
+    const [route, ctxArg] = dispatchSpy.mock.calls[0];
+    expect(route).toBe('games.findStep');
+    expect(ctxArg?._query?.roomId).toBe(roomId);
+  });
 });
 
 

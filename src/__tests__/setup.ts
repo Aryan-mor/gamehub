@@ -165,6 +165,22 @@ vi.mock('@/api/roomPlayers', async () => {
       }
       return res;
     },
+    listOpenRoomsByUser: async (user_id: string) => {
+      // Filter memberships where the corresponding room status is waiting/playing
+      const result: Array<{ room_id: string; status: string; joined_at: string }> = [];
+      for (const [rid, rp] of roomPlayers.entries()) {
+        if (!rp.has(user_id)) continue;
+        const room = rooms.get(rid);
+        if (!room) continue;
+        if (room.status === 'waiting' || room.status === 'playing') {
+          const joined_at = rp.get(user_id)!.joined_at;
+          result.push({ room_id: rid, status: room.status, joined_at });
+        }
+      }
+      // Sort by joined_at descending
+      result.sort((a, b) => (a.joined_at < b.joined_at ? 1 : -1));
+      return result;
+    },
   };
 });
 

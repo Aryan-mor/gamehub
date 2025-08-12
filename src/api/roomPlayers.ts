@@ -43,4 +43,25 @@ export async function listActiveRoomsByUser(user_id: string): Promise<Array<{ ro
   return data || [];
 }
 
+// Only rooms that are not finished/cancelled. Assumes FK room_players.room_id → rooms.id exists.
+export async function listOpenRoomsByUser(
+  user_id: string
+): Promise<Array<{ room_id: string; status: string; joined_at: string }>> {
+  const { data, error } = await supabase
+    .from('room_players')
+    .select('room_id, joined_at, rooms!inner(status)')
+    .eq('user_id', user_id)
+    // Filter by room status on the joined rooms table
+    .filter('rooms.status', 'in', '("waiting","playing")')
+    .order('joined_at', { ascending: false });
+
+  if (error) throw error;
+
+  return (data || []).map((row: any) => ({
+    room_id: row.room_id as string,
+    status: (row as { rooms?: { status?: string } }).rooms?.status || 'unknown',
+    joined_at: row.joined_at as string,
+  }));
+}
+
 

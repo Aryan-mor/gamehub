@@ -235,9 +235,9 @@ describe('games.poker.findRoom e2e', () => {
 
       expect(shareButton).toBeDefined();
       
-      // Verify the share button generates the correct message format
+      // Verify the share button contains action and s=share; roomId is no longer embedded to avoid BUTTON_DATA_INVALID
       const shareData = JSON.parse(shareButton.callback_data);
-      expect(shareData).toHaveProperty('roomId', roomId);
+      expect(shareData).toMatchObject({ action: 'g.pk.find', s: 'share' });
     });
 
     it('should validate that inline query handler can process share messages', async () => {

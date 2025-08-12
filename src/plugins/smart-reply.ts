@@ -55,11 +55,18 @@ export class SmartReplyPlugin implements GameHubPlugin {
           allUsersMessageHistory: Object.keys(usersMessageHistory)
         });
         
-        // Only edit if we have a previous message for this user AND it's in the same chat
-        // AND we're not forcing a new message
-        const canEdit = !forceNewMessage && 
-                       previousMessage && 
-                       previousMessage.chatId === chatIdString;
+        // Determine if current update references the same (latest) bot message
+        const callbackMessage = (ctx as any)?.callbackQuery?.message as { message_id?: number; chat?: { id?: number | string } } | undefined;
+        const callbackChatId = callbackMessage?.chat?.id !== undefined ? String(callbackMessage.chat.id) : undefined;
+        const callbackMessageId = callbackMessage?.message_id;
+
+        const isFromCallbackAndSameChat = Boolean(callbackMessageId && callbackChatId === chatIdString);
+        const isEditingCurrentMessage = Boolean(
+          isFromCallbackAndSameChat && previousMessage && previousMessage.messageId === callbackMessageId
+        );
+
+        // Only edit when user interacted with the same message via callback (so it's the last visible message)
+        const canEdit = !forceNewMessage && isEditingCurrentMessage;
 
         // Enhanced logging for edit decision
         (ctx as any)?.log?.debug?.('smart-reply.replySmart: edit decision', {
@@ -126,7 +133,7 @@ export class SmartReplyPlugin implements GameHubPlugin {
               }
             }
           }
-        } else if (forceNewMessage && previousMessage) {
+        } else if ((forceNewMessage || (previousMessage && !isEditingCurrentMessage)) && previousMessage) {
           // If forcing new message and we have a previous message, try to delete it
           try {
             await ctx.api.deleteMessage(previousMessage.chatId, previousMessage.messageId);
@@ -203,77 +210,68 @@ export class SmartReplyPlugin implements GameHubPlugin {
           try {
             const userChatId = String(userId);
             const previousMessage = usersMessageHistory[userChatId];
-            
-            if (previousMessage && previousMessage.chatId === userChatId) {
-              // Try to edit existing message
+
+            // Determine if it's safe to edit: only when the initiator interacted with the same message via callback
+            const callbackMessage = (ctx as any)?.callbackQuery?.message as { message_id?: number; chat?: { id?: number | string } } | undefined;
+            const callbackChatId = callbackMessage?.chat?.id !== undefined ? String(callbackMessage.chat.id) : undefined;
+            const callbackMessageId = callbackMessage?.message_id;
+            const isInitiator = String((ctx as any)?.from?.id ?? '') === String(userId);
+            const isFromCallbackAndSameChat = Boolean(callbackMessageId && callbackChatId === userChatId);
+            const isEditingCurrentMessage = Boolean(
+              isInitiator && isFromCallbackAndSameChat && previousMessage && previousMessage.messageId === callbackMessageId
+            );
+            const forceNew = Boolean((broadcastOptions as any)?.forceNewMessage);
+
+            if (!forceNew && isEditingCurrentMessage) {
               try {
                 await ctx.api.editMessageText(
-                  userId, 
-                  previousMessage.messageId, 
-                  text, 
+                  userId,
+                  previousMessage!.messageId,
+                  text,
                   { reply_markup: messageOptions.reply_markup as InlineKeyboardMarkup }
                 );
-                
                 (ctx as any)?.log?.debug?.('smart-reply.sendOrEditMessageToUsers: edited message for user', {
                   userId,
-                  messageId: previousMessage.messageId
+                  messageId: previousMessage!.messageId
                 });
-                
                 results.push({ userId, success: true });
+                continue;
               } catch (editError) {
-                (ctx as any)?.log?.warn?.('smart-reply.sendOrEditMessageToUsers: edit failed, sending new message', {
+                (ctx as any)?.log?.warn?.('smart-reply.sendOrEditMessageToUsers: edit failed, will replace with new', {
                   userId,
-                  messageId: previousMessage.messageId,
+                  messageId: previousMessage!.messageId,
                   error: editError instanceof Error ? editError.message : 'Unknown error'
                 });
-                
-                // Send new message if edit failed
-                const newMessage = await ctx.api.sendMessage(
-                  userId, 
-                  text, 
-                  { reply_markup: messageOptions.reply_markup as InlineKeyboardMarkup }
-                );
-                
-                // Update message history
-                usersMessageHistory[userChatId] = {
-                  chatId: userChatId,
-                  messageId: newMessage.message_id,
-                  timestamp: Date.now(),
-                  userId: userChatId,
-                  messageType: 'room_info'
-                };
-                
-                (ctx as any)?.log?.debug?.('smart-reply.sendOrEditMessageToUsers: sent new message to user', {
-                  userId,
-                  newMessageId: newMessage.message_id
-                });
-                
-                results.push({ userId, success: true });
+                // if edit fails, fall through to delete -> send new
               }
-            } else {
-              // No previous message, send new one
-              const newMessage = await ctx.api.sendMessage(
-                userId, 
-                text, 
-                { reply_markup: messageOptions.reply_markup as InlineKeyboardMarkup }
-              );
-              
-              // Update message history
-              usersMessageHistory[userChatId] = {
-                chatId: userChatId,
-                messageId: newMessage.message_id,
-                timestamp: Date.now(),
-                userId: userChatId,
-                messageType: 'room_info'
-              };
-              
-              (ctx as any)?.log?.debug?.('smart-reply.sendOrEditMessageToUsers: sent new message to user', {
-                userId,
-                newMessageId: newMessage.message_id
-              });
-              
-              results.push({ userId, success: true });
             }
+
+            // Not safe to edit, or edit failed: delete previous (if any), then send new
+            if (previousMessage) {
+              try {
+                await ctx.api.deleteMessage(previousMessage.chatId, previousMessage.messageId);
+              } catch (deleteErr) {
+                logError('smart-reply.sendOrEditMessageToUsers.deleteMessage', deleteErr as Error, { chatId: previousMessage.chatId, messageId: previousMessage.messageId });
+              }
+            }
+
+            const newMessage = await ctx.api.sendMessage(
+              userId,
+              text,
+              { reply_markup: messageOptions.reply_markup as InlineKeyboardMarkup }
+            );
+            usersMessageHistory[userChatId] = {
+              chatId: userChatId,
+              messageId: newMessage.message_id,
+              timestamp: Date.now(),
+              userId: userChatId,
+              messageType: 'room_info'
+            };
+            (ctx as any)?.log?.debug?.('smart-reply.sendOrEditMessageToUsers: sent new message to user', {
+              userId,
+              newMessageId: newMessage.message_id
+            });
+            results.push({ userId, success: true });
           } catch (err) {
             const errorMessage = err instanceof Error ? err.message : 'Unknown error';
             (ctx as any)?.log?.error?.('smart-reply.sendOrEditMessageToUsers: failed for user', {

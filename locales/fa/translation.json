@@ -14,6 +14,8 @@
   "bot.buttons.freeCoin": "🪙 سکه رایگان",
   "bot.buttons.help": "❓ راهنما",
   "bot.buttons.joinRoom": "🚪 پیوستن به روم",
+  "bot.buttons.refresh": "🔄 بروزرسانی",
+  "bot.buttons.share": "📤 اشتراک‌گذاری",
   "bot.common.success": "en",
   "bot.error.generic": "❌ خطایی رخ داد. لطفاً دوباره تلاش کنید.",
   "bot.freecoin.error": "❌ دریافت سکه رایگان ناموفق بود.",

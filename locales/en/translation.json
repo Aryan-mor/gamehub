@@ -14,6 +14,8 @@
   "bot.buttons.freeCoin": "🪙 Free Coin",
   "bot.buttons.help": "❓ Help",
   "bot.buttons.joinRoom": "🚪 Join Room",
+  "bot.buttons.refresh": "🔄 Refresh",
+  "bot.buttons.share": "📤 Share",
   "bot.common.success": "en",
   "bot.error.generic": "❌ An error occurred. Please try again.",
   "bot.freecoin.error": "❌ Failed to claim free coins.",

@@ -130,10 +130,10 @@ describe('SmartReplyPlugin', () => {
       const userIds = [111, 222, 333];
       const results = await sendOrEditMessageToUsers(userIds, 'Broadcast message');
 
-      // Note: All messages succeed because the mock is not properly set up to fail
+      // Second user send fails and should be reported as such
       expect(results).toHaveLength(3);
       expect(results[0].success).toBe(true);
-      expect(results[1].success).toBe(true); // Mock doesn't actually fail
+      expect(results[1].success).toBe(false);
       expect(results[2].success).toBe(true);
     });
   });

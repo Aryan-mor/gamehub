@@ -44,6 +44,9 @@ export async function markNotReady(roomId: string, userId: string): Promise<void
   await repo.setReady(roomId, userId, false);
 }
 
+// Build findRoom view (text + inline keyboard) centralized here for reuse
+// (No-op placeholder) – findRoom view is composed directly in handler for now
+
 // Central function to broadcast room info to all players
 export async function broadcastRoomInfo(
   ctx: any, 
