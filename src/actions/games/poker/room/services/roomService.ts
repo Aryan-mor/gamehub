@@ -84,7 +84,7 @@ export async function broadcastRoomInfo(
     
     rows.push([{ text: refreshText, callback_data: 'g.pk.r.in' }]);
     rows.push([{ text: shareText, switch_inline_query: `poker ${roomId}` }]);
-    rows.push([{ text: leaveText, callback_data: `g.pk.r.le?roomId=${roomId}` }]);
+    rows.push([{ text: leaveText, callback_data: `g.pk.r.lv?roomId=${roomId}` }]);
     
     const message = `🏠 Poker Room Info\n\n📋 Room Details:\n• ID: ${roomId}\n• Status: ⏳ Waiting for players\n• Type: 🌐 Public\n\n⚙️ Game Settings:\n• Small Blind: ${smallBlind}\n• Big Blind: ${bigBlind}\n• Max Players: ${maxPlayers}\n• Turn Timeout: ${timeout}\n\n👥 Players (${playerCount}/${maxPlayers}):\n${playerNames}\n\nLast update: ${lastUpdate}`;
     
