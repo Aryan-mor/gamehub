@@ -1,10 +1,11 @@
 import type { HandlerContext } from '@/modules/core/handler';
 import { logFunctionStart, logFunctionEnd } from '@/modules/core/logger';
 import { createHand } from './handRepo';
-import { bulkCreateSeats, postBlind } from './seatsRepo';
+import { bulkCreateSeats, postBlind, dealHoleCards } from './seatsRepo';
 import { createAction } from './actionsRepo';
 import { createMainPot } from './potsRepo';
 import { getRoom } from './roomRepo';
+import { createDeck, dealCards, cardsToString } from './cardUtils';
 
 export async function startHandForRoom(context: HandlerContext, roomId: string): Promise<void> {
   logFunctionStart('gameFlow.startHandForRoom', { roomId, userId: context.user.id });
@@ -43,6 +44,17 @@ export async function startHandForRoom(context: HandlerContext, roomId: string):
 
   // Create main pot with all active seats
   await createMainPot(hand.id, players.map((_, idx) => idx));
+
+  // Deal hole cards to each player
+  const deck = createDeck(hand.deck_seed);
+  let remainingDeck = deck;
+  
+  for (let i = 0; i < players.length; i++) {
+    const { cards, remainingDeck: newDeck } = dealCards(remainingDeck, 2);
+    remainingDeck = newDeck;
+    const cardStrings = cards.map(card => cardsToString([card]));
+    await dealHoleCards(hand.id, i, cardStrings);
+  }
 
   // Post blinds and record actions
   await postBlind(hand.id, sbPos, sb);

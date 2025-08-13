@@ -98,4 +98,22 @@ export async function listSeatsByHand(handId: string): Promise<SeatRecord[]> {
   }
 }
 
+export async function dealHoleCards(handId: string, seatPos: number, cards: string[]): Promise<void> {
+  logFunctionStart('seatsRepo.dealHoleCards', { handId, seatPos, cards });
+  try {
+    const { supabaseFor } = await import('@/lib/supabase');
+    const poker = supabaseFor('poker');
+    const { error } = await poker
+      .from('seats')
+      .update({ hole: cards })
+      .eq('hand_id', handId)
+      .eq('seat_pos', seatPos);
+    if (error) throw error;
+    logFunctionEnd('seatsRepo.dealHoleCards', { ok: true });
+  } catch (err) {
+    logError('seatsRepo.dealHoleCards', err as Error, { handId, seatPos, cards });
+    throw err;
+  }
+}
+
 
