@@ -4,6 +4,19 @@ export interface EngineConfig {
     maxPlayers: number;
     rngSeed?: string;
 }
+export interface Card {
+    rank: string;
+    suit: string;
+    value: number;
+}
+export declare const RANKS: readonly ["2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A"];
+export declare const SUITS: readonly ["hearts", "diamonds", "clubs", "spades"];
+export declare function createDeck(seed?: string): Card[];
+export declare function dealCards(deck: Card[], count: number): {
+    cards: Card[];
+    remainingDeck: Card[];
+};
+export declare function cardToString(card: Card): string;
 export type Street = 'preflop' | 'flop' | 'turn' | 'river' | 'showdown';
 export interface Seat {
     seatPos: number;
