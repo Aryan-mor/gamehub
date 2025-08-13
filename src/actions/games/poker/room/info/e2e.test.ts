@@ -357,7 +357,37 @@ describe('Poker Room Info E2E', () => {
     });
   });
 
+  describe('Accordion Functionality', () => {
+    it('should call broadcastRoomInfo with correct detailed parameter', async () => {
+      // Arrange
+      const { default: handleRoomInfo } = await import('./index');
+      const { broadcastRoomInfo } = await import('@/actions/games/poker/room/services/roomService');
+      const mockBroadcast = vi.fn();
+      vi.doMock('@/actions/games/poker/room/services/roomService', () => ({
+        ...vi.importActual('@/actions/games/poker/room/services/roomService'),
+        broadcastRoomInfo: mockBroadcast
+      }));
 
+      const roomId = 'accordion-room-id';
+      context._query = { roomId };
+
+      // Act - Default view (compact)
+      await handleRoomInfo(context);
+
+      // Assert - Should call broadcastRoomInfo with isDetailed = false (default)
+      expect(mockBroadcast).toHaveBeenCalledWith(expect.any(Object), roomId, [String(context.user.id)], false);
+
+      // Reset mock
+      vi.clearAllMocks();
+
+      // Act - Detailed view
+      context._query = { roomId, detailed: 'true' };
+      await handleRoomInfo(context);
+
+      // Assert - Should call broadcastRoomInfo with isDetailed = true
+      expect(mockBroadcast).toHaveBeenCalledWith(expect.any(Object), roomId, [String(context.user.id)], true);
+    });
+  });
 
   describe('Error Handling', () => {
     it('should handle room not found gracefully', async () => {

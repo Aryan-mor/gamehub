@@ -85,7 +85,8 @@ async function handleRoomInfo(context: HandlerContext): Promise<void> {
 
   // Use the central roomService to broadcast room info to current user
   const { broadcastRoomInfo } = await import('@/actions/games/poker/room/services/roomService');
-  await broadcastRoomInfo(ctx, roomId, [String(user.id)]);
+  const isDetailed = context._query?.detailed === 'true';
+  await broadcastRoomInfo(ctx, roomId, [String(user.id)], isDetailed);
 
   // Persist last viewed roomId for reliable refresh without params
   if (roomId) {

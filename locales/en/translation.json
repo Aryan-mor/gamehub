@@ -156,6 +156,8 @@
   "poker.room.buttons.stake50": "🪙 Stake 50",
   "poker.room.buttons.startGame": "🎮 Start Game",
   "poker.room.buttons.update": "🔄 Update",
+  "poker.room.buttons.showDetails": "📋 Show Details",
+  "poker.room.buttons.showSummary": "📝 Show Summary",
   "poker.room.created.success": "🏠 <b>Room Created Successfully!</b>\\n\\n✅ New poker room is ready!\\n\\n🎯 <b>Room Details:</b>\\n• Name: {{roomName}}\\n• Type: {{roomType}}\\n• Players: {{playerCount}}/{{maxPlayers}}\\n• Small Blind: {{smallBlind}} coins\\n• Timeout: {{turnTimeoutSec}} seconds\\n\\n📊 <b>Next Steps:</b>\\n• Invite your friends\\n• Wait for players to join\\n• Start the game",
   "poker.room.creation.error": "❌ <b>Room Creation Error</b>\\n\\nUnfortunately, there was an issue creating the room.\\nPlease try again.",
   "poker.room.error.joinFailed": "❌ Failed to join room: {{error}}",

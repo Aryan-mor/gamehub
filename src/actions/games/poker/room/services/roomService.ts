@@ -52,7 +52,8 @@ import type { HandlerContext } from '@/modules/core/handler';
 export async function broadcastRoomInfo(
   ctx: GameHubContext | HandlerContext,
   roomId: string,
-  targetUserIds?: string[]
+  targetUserIds?: string[],
+  isDetailed?: boolean
 ): Promise<void> {
   logFunctionStart('roomService.broadcastRoomInfo', { roomId, targetUserIds });
   
@@ -164,7 +165,7 @@ export async function broadcastRoomInfo(
       hasAtLeastTwoPlayers,
       t: gctx.t.bind(gctx),
       // per-user extras filled when sending to each user below
-    });
+    }, isDetailed);
     
     // Resolve recipient chat IDs:
     // - If explicit targetUserIds provided (Telegram IDs as strings), use them
