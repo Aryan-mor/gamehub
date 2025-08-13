@@ -130,20 +130,20 @@ async function handleJoinCarousel(context: HandlerContext, query: Record<string,
         // Delegate to central join handler
         const { dispatch } = await import('@/modules/core/smart-router');
         (context as unknown as { _query?: Record<string, string> })._query = { roomId: currentRoomId };
-        await dispatch('games.join', context);
+        await dispatch('games.join' as const, context);
         logFunctionEnd('poker.join.carousel.join', { roomId: currentRoomId }, { userId: user.id });
         return;
       }
     } else if (step === 'back') {
       const { dispatch } = await import('@/modules/core/smart-router');
-      await dispatch('games.poker.start', context);
+      await dispatch('games.poker.start' as const, context);
       return;
     }
 
     // If no rooms available
     if (!state.roomIds || state.roomIds.length === 0) {
       const noRoomsMsg = tr('poker.join.noRooms', '😕 No public rooms available right now.');
-      const backBtn = [{ text: tr('poker.room.buttons.back', '🔙 Back'), callback_data: ctx.keyboard.buildCallbackData('games.poker.start') }];
+      const backBtn = [{ text: tr('poker.room.buttons.back', '🔙 Back'), callback_data: ctx.keyboard.buildCallbackData('games.poker.start' as const) }];
       await ctx.replySmart(noRoomsMsg, { reply_markup: { inline_keyboard: [backBtn] } });
       logFunctionEnd('poker.join.carousel.empty', {});
       return;
@@ -164,9 +164,9 @@ async function handleJoinCarousel(context: HandlerContext, query: Record<string,
     const backText = tr('poker.room.buttons.back', '🔙 Back');
 
     const rows = [
-      [{ text: joinText, callback_data: ctx.keyboard.buildCallbackData('games.poker.room.join', { s: 'join' }) }],
-      [{ text: anotherText, callback_data: ctx.keyboard.buildCallbackData('games.poker.room.join', { s: 'next' }) }],
-      [{ text: backText, callback_data: ctx.keyboard.buildCallbackData('games.poker.start') }],
+      [{ text: joinText, callback_data: ctx.keyboard.buildCallbackData('games.poker.room.join' as const, { s: 'join' }) }],
+      [{ text: anotherText, callback_data: ctx.keyboard.buildCallbackData('games.poker.room.join' as const, { s: 'next' }) }],
+      [{ text: backText, callback_data: ctx.keyboard.buildCallbackData('games.poker.start' as const) }],
     ];
 
     await ctx.replySmart(message, { parse_mode: 'HTML', reply_markup: { inline_keyboard: rows } });
