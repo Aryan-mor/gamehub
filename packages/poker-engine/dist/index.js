@@ -6,6 +6,7 @@ exports.dealCards = dealCards;
 exports.cardToString = cardToString;
 exports.startHand = startHand;
 exports.applyAction = applyAction;
+const poker_ts_1 = require("poker-ts");
 exports.RANKS = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
 exports.SUITS = ['hearts', 'diamonds', 'clubs', 'spades'];
 function createDeck(seed) {
@@ -53,35 +54,62 @@ function cardToString(card) {
     return `${card.rank}${suitSymbols[card.suit]}`;
 }
 function startHand(config, seats) {
-    const deck = createDeck(config.rngSeed);
-    const dealerPos = 0;
-    const sbPos = 1 % seats.length;
-    const bbPos = 2 % seats.length;
-    const state = {
+    const table = new poker_ts_1.Table({ smallBlind: config.smallBlind, bigBlind: config.bigBlind, ante: 0 }, seats.length);
+    for (const seat of seats) {
+        table.sitDown(seat.seatPos, seat.stack);
+    }
+    table.startHand();
+    const seatIsOccupied = table.seats().map((p) => p !== null);
+    const occupiedSeats = seatIsOccupied
+        .map((occupied, idx) => (occupied ? idx : -1))
+        .filter((idx) => idx >= 0);
+    const buttonPos = table.button();
+    const nextOccupiedFrom = (from) => {
+        if (occupiedSeats.length === 0)
+            return from;
+        let i = (from + 1) % seats.length;
+        while (!seatIsOccupied[i]) {
+            i = (i + 1) % seats.length;
+        }
+        return i;
+    };
+    let sbPos;
+    let bbPos;
+    if (occupiedSeats.length === 2) {
+        sbPos = buttonPos;
+        bbPos = occupiedSeats.find((i) => i !== sbPos);
+    }
+    else {
+        sbPos = nextOccupiedFrom(buttonPos);
+        bbPos = nextOccupiedFrom(sbPos);
+    }
+    const events = [];
+    events.push({ type: 'BLINDS_POSTED', sbPos, bbPos, sb: config.smallBlind, bb: config.bigBlind });
+    const suitSymbols = { hearts: '♥', diamonds: '♦', clubs: '♣', spades: '♠' };
+    const holes = table.holeCards();
+    holes.forEach((cards, seatIndex) => {
+        if (cards && cards.length === 2) {
+            const c1 = `${cards[0].rank}${suitSymbols[cards[0].suit]}`;
+            const c2 = `${cards[1].rank}${suitSymbols[cards[1].suit]}`;
+            events.push({ type: 'CARDS_DEALT', privateTo: seatIndex, cards: [c1, c2] });
+        }
+    });
+    events.push({ type: 'BETTING_ROUND_STARTED', street: 'preflop' });
+    const actingPos = table.playerToAct();
+    const nextState = {
         handId: 'hand-temp',
         street: 'preflop',
-        dealerPos,
+        dealerPos: buttonPos,
         smallBlindPos: sbPos,
         bigBlindPos: bbPos,
-        actingPos: (bbPos + 1) % seats.length,
+        actingPos,
         minRaise: config.bigBlind,
         currentBet: config.bigBlind,
-        pots: [{ amount: 0, eligible: seats.map((s) => s.seatPos) }],
+        pots: [{ amount: 0, eligible: occupiedSeats }],
         board: [],
         seats: seats.map((s) => ({ ...s }))
     };
-    const events = [
-        { type: 'BLINDS_POSTED', sbPos, bbPos, sb: config.smallBlind, bb: config.bigBlind }
-    ];
-    let remainingDeck = deck;
-    for (let i = 0; i < seats.length; i++) {
-        const { cards, remainingDeck: newDeck } = dealCards(remainingDeck, 2);
-        remainingDeck = newDeck;
-        const cardStrings = cards.map(card => cardToString(card));
-        events.push({ type: 'CARDS_DEALT', privateTo: i, cards: [cardStrings[0], cardStrings[1]] });
-    }
-    events.push({ type: 'BETTING_ROUND_STARTED', street: 'preflop' });
-    return { nextState: state, events };
+    return { nextState, events };
 }
 function applyAction(state, _pos, _action) {
     return { nextState: state, events: [] };

@@ -60,7 +60,8 @@ function buildCompactMessage(ctx: BuildContext, statusText: string): string {
   
   // Add private cards if available (only in playing state)
   if (ctx.yourCards && statusText.includes('Playing')) {
-    message += `ِYour cards:\n${ctx.yourCards}\n\n`;
+    const yourCardsLabel = ctx.t('poker.game.section.yourCards');
+    message += `${yourCardsLabel}\n${ctx.yourCards}\n\n`;
   }
   
   message += `• Status: ${statusText}\n\n${sectionPlayers}\n${ctx.playerNames}\n\n${fieldLastUpdate}: ${ctx.lastUpdateIso}`;
@@ -110,12 +111,14 @@ export function buildPlayingView(ctx: BuildContext, isDetailed = false): ViewPay
   const header = isDetailed 
     ? buildDetailedMessage(ctx, ctx.t('poker.room.status.playing'))
     : buildCompactMessage(ctx, ctx.t('poker.room.status.playing'));
-  // Append minimal per-user status line (placeholder until engine integration)
+  // Append minimal per-user status line
   const extras: string[] = [];
-  if (typeof ctx.yourStack === 'number') extras.push(`Your stack: ${ctx.yourStack}`);
-  if (typeof ctx.yourBet === 'number') extras.push(`Your bet: ${ctx.yourBet}`);
-  if (typeof ctx.potTotal === 'number') extras.push(`Pot: ${ctx.potTotal}`);
-  if (typeof ctx.youAreActing === 'boolean') extras.push(ctx.youAreActing ? 'Your turn' : 'Waiting for others');
+  const yourStackLabel = ctx.t('poker.game.field.yourStack') || 'Your stack';
+  const yourBetLabel = ctx.t('poker.game.field.yourBet') || 'Your bet';
+  const potLabel = ctx.t('poker.game.field.potLabel') || 'Pot';
+  if (typeof ctx.yourStack === 'number') extras.push(`${yourStackLabel}: ${ctx.yourStack}`);
+  if (typeof ctx.yourBet === 'number') extras.push(`${yourBetLabel}: ${ctx.yourBet}`);
+  if (typeof ctx.potTotal === 'number') extras.push(`${potLabel}: ${ctx.potTotal}`);
   const message = extras.length > 0 ? `${header}\n\n${extras.join(' | ')}` : header;
   return { message, keyboardForAdmin: inGameRows, keyboardForPlayer: inGameRows, isDetailed };
 }

@@ -225,23 +225,25 @@ export async function broadcastRoomInfo(
 
     if (adminRecipients.length > 0) {
       const send = (ctx as any).sendOrEditMessageToUsers ?? (gctx as any).sendOrEditMessageToUsers;
-      const adminExtras = isPlaying ? {
-        message: ((): string => {
+          const adminExtras = isPlaying ? {
+          message: ((): string => {
           const base = view.message;
           const info = seatInfoByUser[adminId] || {} as any;
-          const extraParts: string[] = [];
-          
-          // Add private cards if available
-          if (info?.hole && Array.isArray(info.hole) && info.hole.length > 0) {
-            const cardsText = info.hole.join(' ');
-            extraParts.push(`Your cards: ${cardsText}`);
-          }
-          
-          if (typeof info.stack === 'number') extraParts.push(`Your stack: ${info.stack}`);
-          if (typeof info.bet === 'number') extraParts.push(`Your bet: ${info.bet}`);
-          if (typeof potTotal === 'number') extraParts.push(`Pot: ${potTotal}`);
-          const extra = extraParts.join(' | ');
-          return extra ? `${base}\n\n${extra}` : base;
+            const extraParts: string[] = [];
+            const yourStackLabel = gctx.t('poker.game.field.yourStack') || 'Your stack';
+            const yourBetLabel = gctx.t('poker.game.field.yourBet') || 'Your bet';
+            const potLabel = gctx.t('poker.game.field.potLabel') || 'Pot';
+            if (typeof info.stack === 'number') extraParts.push(`${yourStackLabel}: ${info.stack}`);
+            if (typeof info.bet === 'number') extraParts.push(`${yourBetLabel}: ${info.bet}`);
+            if (typeof potTotal === 'number') extraParts.push(`${potLabel}: ${potTotal}`);
+            const extrasLine = extraParts.join(' | ');
+            let cardsBlock = '';
+            if (info?.hole && Array.isArray(info.hole) && info.hole.length > 0) {
+              const cardsText = info.hole.join(' ');
+              cardsBlock = `${gctx.t('poker.game.section.yourCards')}: ${cardsText}\n\n`;
+            }
+            const suffix = [cardsBlock, extrasLine].filter(Boolean).join('');
+            return suffix ? `${base}\n\n${suffix}` : base;
         })(),
       } : undefined;
       // Keyboard selection: acting gets action buttons, others get waiting minimal
@@ -294,16 +296,21 @@ export async function broadcastRoomInfo(
             chatId, uuid, info, seatInfoByUser: Object.keys(seatInfoByUser) 
           });
           
-          // Add private cards if available
+          const yourStackLabel = gctx.t('poker.game.field.yourStack') || 'Your stack';
+          const yourBetLabel = gctx.t('poker.game.field.yourBet') || 'Your bet';
+          const potLabel = gctx.t('poker.game.field.potLabel') || 'Pot';
+          if (info && typeof info.stack === 'number') extraParts.push(`${yourStackLabel}: ${info.stack}`);
+          if (info && typeof info.bet === 'number') extraParts.push(`${yourBetLabel}: ${info.bet}`);
+          if (typeof potTotal === 'number') extraParts.push(`${potLabel}: ${potTotal}`);
+          const extrasLine = extraParts.join(' | ');
+          let cardsBlock = '';
           if (info?.hole && Array.isArray(info.hole) && info.hole.length > 0) {
             const cardsText = info.hole.join(' ');
-            extraParts.push(`Your cards: ${cardsText}`);
+            cardsBlock = `${gctx.t('poker.game.section.yourCards')}: ${cardsText}\n\n`;
           }
-          
-          if (info && typeof info.stack === 'number') extraParts.push(`Your stack: ${info.stack}`);
-          if (info && typeof info.bet === 'number') extraParts.push(`Your bet: ${info.bet}`);
-          if (typeof potTotal === 'number') extraParts.push(`Pot: ${potTotal}`);
-          const message = extraParts.length > 0 ? `${base}\n\n${extraParts.join(' | ')}` : base;
+          const message = [cardsBlock, extrasLine].filter(Boolean).length > 0
+            ? `${base}\n\n${[cardsBlock, extrasLine].filter(Boolean).join('')}`
+            : base;
           const isActing = actingUuid && uuid === actingUuid;
           const userInfo = info;
           const canCheck = typeof userInfo?.stack === 'number' && typeof userInfo?.bet === 'number'
