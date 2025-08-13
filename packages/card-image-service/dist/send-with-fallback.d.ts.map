@@ -1,1 +1,0 @@
-{"version":3,"file":"send-with-fallback.d.ts","sourceRoot":"","sources":["../src/send-with-fallback.ts"],"names":[],"mappings":"AAIA,iBAAe,oBAAoB,CACjC,KAAK,EAAE,MAAM,EAAE,EACf,KAAK,GAAE,MAAkB,EACzB,IAAI,GAAE,MAAkB,EACxB,QAAQ,CAAC,EAAE,MAAM,GAChB,OAAO,CAAC,MAAM,CAAC,CA0CjB;AAGD,iBAAe,wBAAwB,IAAI,OAAO,CAAC,IAAI,CAAC,CA0BvD;AAGD,OAAO,EAAE,oBAAoB,EAAE,wBAAwB,EAAE,CAAC"}

@@ -17,27 +17,39 @@ const TOTAL_HEIGHT = 400;
 async function generateImageBuffer(options) {
     (0, logger_1.logFunctionStart)('generateImageBuffer', options);
     try {
-        const { cards, style = 'general', area = 'general' } = options;
+        const { cards, style = 'general', area = 'general', format = 'png', transparent = false } = options;
         if (!cards || cards.length === 0) {
             throw new Error('No cards provided for image generation');
         }
         const totalWidth = TOTAL_WIDTH;
         const totalHeight = TOTAL_HEIGHT;
-        const backgroundPath = path_1.default.join(__dirname, '../../assets/card_area', `${area}.png`);
         let background;
-        if (fs_1.default.existsSync(backgroundPath)) {
-            const backgroundBuffer = fs_1.default.readFileSync(backgroundPath);
-            background = (0, sharp_1.default)(backgroundBuffer).resize(totalWidth, totalHeight, { fit: 'cover' });
-        }
-        else {
+        if (transparent) {
             background = (0, sharp_1.default)({
                 create: {
                     width: totalWidth,
                     height: totalHeight,
                     channels: 4,
-                    background: { r: 34, g: 139, b: 34, alpha: 1 }
+                    background: { r: 0, g: 0, b: 0, alpha: 0 }
                 }
             });
+        }
+        else {
+            const backgroundPath = path_1.default.join(__dirname, '../../assets/card_area', `${area}.png`);
+            if (fs_1.default.existsSync(backgroundPath)) {
+                const backgroundBuffer = fs_1.default.readFileSync(backgroundPath);
+                background = (0, sharp_1.default)(backgroundBuffer).resize(totalWidth, totalHeight, { fit: 'cover' });
+            }
+            else {
+                background = (0, sharp_1.default)({
+                    create: {
+                        width: totalWidth,
+                        height: totalHeight,
+                        channels: 4,
+                        background: { r: 34, g: 139, b: 34, alpha: 1 }
+                    }
+                });
+            }
         }
         const cardImages = [];
         for (const card of cards) {
@@ -73,10 +85,21 @@ async function generateImageBuffer(options) {
                 top: Math.round(y),
             });
         }
-        const result = await background.composite(cardCompositions).png().toBuffer();
+        let result;
+        if (format === 'webp') {
+            result = await background.composite(cardCompositions).webp({
+                quality: 90,
+                lossless: transparent
+            }).toBuffer();
+        }
+        else {
+            result = await background.composite(cardCompositions).png().toBuffer();
+        }
         (0, logger_1.logFunctionEnd)('generateImageBuffer', {
             cardCount: cards.length,
             imageSize: result.length,
+            format,
+            transparent,
             dimensions: { width: totalWidth, height: totalHeight }
         });
         return result;
@@ -87,12 +110,15 @@ async function generateImageBuffer(options) {
     }
 }
 function generateRequestHash(options) {
-    const { cards, style = 'general', area = 'general', debugTag } = options;
+    const { cards, style = 'general', area = 'general', debugTag, format = 'png', transparent = false, asDocument = false } = options;
     const hashData = {
         cards: cards.sort(),
         style,
         area,
-        debugTag
+        debugTag,
+        format,
+        transparent,
+        asDocument
     };
     return Buffer.from(JSON.stringify(hashData)).toString('base64');
 }

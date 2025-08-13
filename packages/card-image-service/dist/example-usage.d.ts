@@ -1,10 +1,3 @@
-import { InlineKeyboard } from 'grammy';
-import { I18nContext } from './i18n';
-export declare function createExampleKeyboard(ctx: I18nContext): InlineKeyboard;
-export declare function sendExampleMessage(ctx: I18nContext): void;
-export declare function sendCacheStats(ctx: I18nContext, stats: {
-    totalEntries: number;
-    expiredEntries: number;
-}): void;
-export declare function sendError(ctx: I18nContext, errorType: 'stats' | 'clear'): void;
+export declare function generatePokerTableImage(tableCards: string[], playerCards: string[], debugTag?: string): Promise<string>;
+export declare function generatePlayerHandImage(playerCards: string[], debugTag?: string): Promise<string>;
 //# sourceMappingURL=example-usage.d.ts.map

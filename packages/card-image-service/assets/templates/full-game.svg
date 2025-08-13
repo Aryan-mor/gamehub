@@ -1,0 +1,24 @@
+<svg width="1400" height="1800" xmlns="http://www.w3.org/2000/svg">
+  <!-- پس‌زمینه شفاف -->
+  <rect width="1400" height="1800" fill="none"/>
+  
+  <!-- مکان‌های کارت روی میز (دو ردیف) -->
+  <g id="table-cards">
+    <!-- ردیف اول (3 کارت) -->
+    <rect x="200" y="200" width="300" height="420" fill="none" stroke="#fff" stroke-width="3" opacity="0.3" rx="10"/>
+    <rect x="550" y="200" width="300" height="420" fill="none" stroke="#fff" stroke-width="3" opacity="0.3" rx="10"/>
+    <rect x="900" y="200" width="300" height="420" fill="none" stroke="#fff" stroke-width="3" opacity="0.3" rx="10"/>
+    
+    <!-- ردیف دوم (2 کارت) -->
+    <rect x="375" y="700" width="300" height="420" fill="none" stroke="#fff" stroke-width="3" opacity="0.3" rx="10"/>
+    <rect x="725" y="700" width="300" height="420" fill="none" stroke="#fff" stroke-width="3" opacity="0.3" rx="10"/>
+  </g>
+  
+  <!-- مکان کارت‌های دست شخصی (پایین) -->
+  <g id="player-cards">
+    <!-- کارت دست 1 -->
+    <rect x="400" y="1400" width="300" height="420" fill="none" stroke="#ffd700" stroke-width="3" opacity="0.5" rx="10"/>
+    <!-- کارت دست 2 -->
+    <rect x="750" y="1400" width="300" height="420" fill="none" stroke="#ffd700" stroke-width="3" opacity="0.5" rx="10"/>
+  </g>
+</svg>

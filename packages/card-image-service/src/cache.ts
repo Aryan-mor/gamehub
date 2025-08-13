@@ -103,6 +103,20 @@ export class ImageCache {
     logFunctionEnd('set', { requestHash, messageId, fileId });
   }
 
+  public remove(requestHash: string): void {
+    if (!this.cacheLoaded) {
+      this.loadCache();
+    }
+
+    const removed = this.cache.delete(requestHash);
+    if (removed) {
+      this.saveCache();
+      logFunctionEnd('remove', { requestHash, message: 'Cache entry removed' });
+    } else {
+      logFunctionEnd('remove', { requestHash, message: 'Cache entry not found' });
+    }
+  }
+
   public clear(): void {
     this.cache.clear();
     if (fs.existsSync(CACHE_FILE)) {

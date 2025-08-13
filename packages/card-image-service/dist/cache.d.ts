@@ -7,6 +7,7 @@ export declare class ImageCache {
     private saveCache;
     get(requestHash: string): CachedImageData | null;
     set(requestHash: string, messageId: string, fileId?: string): void;
+    remove(requestHash: string): void;
     clear(): void;
     getStats(): {
         totalEntries: number;

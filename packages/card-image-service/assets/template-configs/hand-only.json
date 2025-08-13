@@ -1,0 +1,26 @@
+{
+  "id": "hand-only",
+  "name": "Hand Only",
+  "width": 800,
+  "height": 600,
+  "cardPositions": [
+    {
+      "id": "player-1",
+      "x": 100,
+      "y": 100,
+      "width": 280,
+      "height": 392,
+      "rotation": 0,
+      "zIndex": 1
+    },
+    {
+      "id": "player-2", 
+      "x": 420,
+      "y": 100,
+      "width": 280,
+      "height": 392,
+      "rotation": 0,
+      "zIndex": 1
+    }
+  ]
+}

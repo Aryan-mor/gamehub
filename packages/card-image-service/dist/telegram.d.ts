@@ -4,7 +4,11 @@ export declare class TelegramService {
     private bot;
     private config;
     constructor(config: CardImageConfig);
-    sendImage(imageBuffer: Buffer, caption?: string): Promise<{
+    sendImage(imageBuffer: Buffer, caption?: string, asDocument?: boolean, format?: 'png' | 'webp' | 'jpeg'): Promise<{
+        messageId: string;
+        fileId?: string;
+    }>;
+    sendDocument(imageBuffer: Buffer, caption?: string, fileName?: string, format?: 'png' | 'webp' | 'jpeg'): Promise<{
         messageId: string;
         fileId?: string;
     }>;

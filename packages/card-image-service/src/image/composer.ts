@@ -14,7 +14,7 @@ export async function generateImageBuffer(options: ImageGenerationOptions): Prom
   logFunctionStart('generateImageBuffer', options as unknown as Record<string, unknown>);
   
   try {
-    const { cards, style = 'general', area = 'general' } = options;
+    const { cards, style = 'general', area = 'general', format = 'png', transparent = false } = options;
     
     // Validate cards array
     if (!cards || cards.length === 0) {
@@ -26,22 +26,36 @@ export async function generateImageBuffer(options: ImageGenerationOptions): Prom
     const totalHeight = TOTAL_HEIGHT;
 
     // Create background
-    const backgroundPath = path.join(__dirname, '../../assets/card_area', `${area}.png`);
     let background: sharp.Sharp;
-
-    if (fs.existsSync(backgroundPath)) {
-      const backgroundBuffer = fs.readFileSync(backgroundPath);
-      background = sharp(backgroundBuffer).resize(totalWidth, totalHeight, { fit: 'cover' });
-    } else {
-      // Fallback to a simple colored background
+    
+    if (transparent) {
+      // Create transparent background
       background = sharp({
         create: {
           width: totalWidth,
           height: totalHeight,
           channels: 4,
-          background: { r: 34, g: 139, b: 34, alpha: 1 } // Green background
+          background: { r: 0, g: 0, b: 0, alpha: 0 } // Transparent background
         }
       });
+    } else {
+      // Use area background or fallback
+      const backgroundPath = path.join(__dirname, '../../assets/card_area', `${area}.png`);
+      
+      if (fs.existsSync(backgroundPath)) {
+        const backgroundBuffer = fs.readFileSync(backgroundPath);
+        background = sharp(backgroundBuffer).resize(totalWidth, totalHeight, { fit: 'cover' });
+      } else {
+        // Fallback to a simple colored background
+        background = sharp({
+          create: {
+            width: totalWidth,
+            height: totalHeight,
+            channels: 4,
+            background: { r: 34, g: 139, b: 34, alpha: 1 } // Green background
+          }
+        });
+      }
     }
 
     // Load and compose cards
@@ -95,14 +109,23 @@ export async function generateImageBuffer(options: ImageGenerationOptions): Prom
       });
     }
 
-    // Debug tag removed - no black rectangle at bottom
-
-    // Composite all elements
-    const result = await background.composite(cardCompositions).png().toBuffer();
+    // Composite all elements and output in specified format
+    let result: Buffer;
+    
+    if (format === 'webp') {
+      result = await background.composite(cardCompositions).webp({ 
+        quality: 90,
+        lossless: transparent // Use lossless for transparent images
+      }).toBuffer();
+    } else {
+      result = await background.composite(cardCompositions).png().toBuffer();
+    }
     
     logFunctionEnd('generateImageBuffer', { 
       cardCount: cards.length, 
       imageSize: result.length,
+      format,
+      transparent,
       dimensions: { width: totalWidth, height: totalHeight }
     });
     
@@ -115,12 +138,15 @@ export async function generateImageBuffer(options: ImageGenerationOptions): Prom
 }
 
 export function generateRequestHash(options: ImageGenerationOptions): string {
-  const { cards, style = 'general', area = 'general', debugTag } = options;
+  const { cards, style = 'general', area = 'general', debugTag, format = 'png', transparent = false, asDocument = false } = options;
   const hashData = {
     cards: cards.sort(), // Sort to ensure consistent hash
     style,
     area,
-    debugTag
+    debugTag,
+    format,
+    transparent,
+    asDocument
   };
   
   return Buffer.from(JSON.stringify(hashData)).toString('base64');

@@ -1,0 +1,53 @@
+{
+  "id": "table-wide",
+  "name": "Table Wide",
+  "width": 1400,
+  "height": 600,
+  "cardPositions": [
+    {
+      "id": "flop-1",
+      "x": 100,
+      "y": 150,
+      "width": 240,
+      "height": 336,
+      "rotation": 0,
+      "zIndex": 1
+    },
+    {
+      "id": "flop-2", 
+      "x": 360,
+      "y": 150,
+      "width": 240,
+      "height": 336,
+      "rotation": 0,
+      "zIndex": 1
+    },
+    {
+      "id": "flop-3",
+      "x": 620, 
+      "y": 150,
+      "width": 240,
+      "height": 336,
+      "rotation": 0,
+      "zIndex": 1
+    },
+    {
+      "id": "turn",
+      "x": 880,
+      "y": 150, 
+      "width": 240,
+      "height": 336,
+      "rotation": 0,
+      "zIndex": 1
+    },
+    {
+      "id": "river",
+      "x": 1140,
+      "y": 150,
+      "width": 240,
+      "height": 336,
+      "rotation": 0,
+      "zIndex": 1
+    }
+  ]
+}

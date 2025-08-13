@@ -87,6 +87,19 @@ class ImageCache {
         this.saveCache();
         (0, logger_1.logFunctionEnd)('set', { requestHash, messageId, fileId });
     }
+    remove(requestHash) {
+        if (!this.cacheLoaded) {
+            this.loadCache();
+        }
+        const removed = this.cache.delete(requestHash);
+        if (removed) {
+            this.saveCache();
+            (0, logger_1.logFunctionEnd)('remove', { requestHash, message: 'Cache entry removed' });
+        }
+        else {
+            (0, logger_1.logFunctionEnd)('remove', { requestHash, message: 'Cache entry not found' });
+        }
+    }
     clear() {
         this.cache.clear();
         if (fs_1.default.existsSync(CACHE_FILE)) {

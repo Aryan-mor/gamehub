@@ -1,0 +1,71 @@
+{
+  "id": "poker-table",
+  "name": "Poker Table",
+  "width": 1200,
+  "height": 800,
+  "cardPositions": [
+    {
+      "id": "flop-1",
+      "x": 200,
+      "y": 200,
+      "width": 120,
+      "height": 168,
+      "rotation": 0,
+      "zIndex": 1
+    },
+    {
+      "id": "flop-2", 
+      "x": 340,
+      "y": 200,
+      "width": 120,
+      "height": 168,
+      "rotation": 0,
+      "zIndex": 1
+    },
+    {
+      "id": "flop-3",
+      "x": 480, 
+      "y": 200,
+      "width": 120,
+      "height": 168,
+      "rotation": 0,
+      "zIndex": 1
+    },
+    {
+      "id": "turn",
+      "x": 620,
+      "y": 200, 
+      "width": 120,
+      "height": 168,
+      "rotation": 0,
+      "zIndex": 1
+    },
+    {
+      "id": "river",
+      "x": 760,
+      "y": 200,
+      "width": 120,
+      "height": 168,
+      "rotation": 0,
+      "zIndex": 1
+    },
+    {
+      "id": "player-1",
+      "x": 400,
+      "y": 500,
+      "width": 120,
+      "height": 168,
+      "rotation": 0,
+      "zIndex": 2
+    },
+    {
+      "id": "player-2", 
+      "x": 560,
+      "y": 500,
+      "width": 120,
+      "height": 168,
+      "rotation": 0,
+      "zIndex": 2
+    }
+  ]
+}

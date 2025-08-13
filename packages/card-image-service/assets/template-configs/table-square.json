@@ -1,0 +1,53 @@
+{
+  "id": "table-square",
+  "name": "Table Square",
+  "width": 1000,
+  "height": 1000,
+  "cardPositions": [
+    {
+      "id": "flop-1",
+      "x": 100,
+      "y": 300,
+      "width": 200,
+      "height": 280,
+      "rotation": 0,
+      "zIndex": 1
+    },
+    {
+      "id": "flop-2", 
+      "x": 350,
+      "y": 300,
+      "width": 200,
+      "height": 280,
+      "rotation": 0,
+      "zIndex": 1
+    },
+    {
+      "id": "flop-3",
+      "x": 600, 
+      "y": 300,
+      "width": 200,
+      "height": 280,
+      "rotation": 0,
+      "zIndex": 1
+    },
+    {
+      "id": "turn",
+      "x": 225,
+      "y": 650, 
+      "width": 200,
+      "height": 280,
+      "rotation": 0,
+      "zIndex": 1
+    },
+    {
+      "id": "river",
+      "x": 475,
+      "y": 650,
+      "width": 200,
+      "height": 280,
+      "rotation": 0,
+      "zIndex": 1
+    }
+  ]
+}

@@ -3,6 +3,9 @@ export interface CardImageRequest {
   style?: string;
   area?: string;
   debugTag?: string;
+  format?: 'png' | 'webp';
+  transparent?: boolean;
+  asDocument?: boolean;
 }
 
 export interface CardImageResponse {
@@ -24,6 +27,9 @@ export interface ImageGenerationOptions {
   area: string;
   cards: string[];
   debugTag?: string;
+  format?: 'png' | 'webp';
+  transparent?: boolean;
+  asDocument?: boolean;
 }
 
 export interface CardImageConfig {

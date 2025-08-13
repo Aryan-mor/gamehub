@@ -1,0 +1,53 @@
+{
+  "id": "table-circle",
+  "name": "Table Circle",
+  "width": 1200,
+  "height": 800,
+  "cardPositions": [
+    {
+      "id": "flop-1",
+      "x": 600,
+      "y": 200,
+      "width": 200,
+      "height": 280,
+      "rotation": 0,
+      "zIndex": 1
+    },
+    {
+      "id": "flop-2", 
+      "x": 800,
+      "y": 300,
+      "width": 200,
+      "height": 280,
+      "rotation": 0,
+      "zIndex": 1
+    },
+    {
+      "id": "flop-3",
+      "x": 700, 
+      "y": 500,
+      "width": 200,
+      "height": 280,
+      "rotation": 0,
+      "zIndex": 1
+    },
+    {
+      "id": "turn",
+      "x": 400,
+      "y": 500, 
+      "width": 200,
+      "height": 280,
+      "rotation": 0,
+      "zIndex": 1
+    },
+    {
+      "id": "river",
+      "x": 300,
+      "y": 300,
+      "width": 200,
+      "height": 280,
+      "rotation": 0,
+      "zIndex": 1
+    }
+  ]
+}

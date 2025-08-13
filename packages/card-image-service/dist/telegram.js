@@ -41,29 +41,84 @@ class TelegramService {
         this.config = config;
         this.bot = new grammy_1.Bot(config.botToken);
     }
-    async sendImage(imageBuffer, caption) {
+    async sendImage(imageBuffer, caption, asDocument = false, format = 'jpeg') {
         (0, logger_1.logFunctionStart)('sendImage', {
             imageSize: imageBuffer.length,
             hasCaption: !!caption,
+            asDocument,
+            format,
             targetChannel: this.config.targetChannelId
         });
         try {
             const { InputFile } = await Promise.resolve().then(() => __importStar(require('grammy')));
-            const inputFile = new InputFile(imageBuffer, `card_${Date.now()}.png`);
-            const result = await this.bot.api.sendPhoto(this.config.targetChannelId, inputFile, {
+            const fileExtension = format === 'webp' ? 'webp' : format === 'jpeg' ? 'jpg' : 'png';
+            const fileName = `card_${Date.now()}.${fileExtension}`;
+            if (asDocument) {
+                const inputFile = new InputFile(imageBuffer, fileName);
+                const result = await this.bot.api.sendDocument(this.config.targetChannelId, inputFile, {
+                    caption,
+                    parse_mode: 'HTML',
+                });
+                const response = {
+                    messageId: result.message_id.toString(),
+                    fileId: result.document?.file_id,
+                };
+                (0, logger_1.logFunctionEnd)('sendImage', { ...response, method: 'document', format });
+                return response;
+            }
+            else {
+                const inputFile = new InputFile(imageBuffer, fileName);
+                const result = await this.bot.api.sendPhoto(this.config.targetChannelId, inputFile, {
+                    caption,
+                    parse_mode: 'HTML',
+                });
+                const response = {
+                    messageId: result.message_id.toString(),
+                    fileId: result.photo?.[0]?.file_id,
+                };
+                (0, logger_1.logFunctionEnd)('sendImage', { ...response, method: 'photo', format });
+                return response;
+            }
+        }
+        catch (error) {
+            (0, logger_1.logError)('sendImage', error, {
+                imageSize: imageBuffer.length,
+                asDocument,
+                format,
+                targetChannel: this.config.targetChannelId
+            });
+            throw error;
+        }
+    }
+    async sendDocument(imageBuffer, caption, fileName, format = 'jpeg') {
+        (0, logger_1.logFunctionStart)('sendDocument', {
+            imageSize: imageBuffer.length,
+            hasCaption: !!caption,
+            fileName,
+            format,
+            targetChannel: this.config.targetChannelId
+        });
+        try {
+            const { InputFile } = await Promise.resolve().then(() => __importStar(require('grammy')));
+            const fileExtension = format === 'webp' ? 'webp' : format === 'jpeg' ? 'jpg' : 'png';
+            const finalFileName = fileName || `card_${Date.now()}.${fileExtension}`;
+            const inputFile = new InputFile(imageBuffer, finalFileName);
+            const result = await this.bot.api.sendDocument(this.config.targetChannelId, inputFile, {
                 caption,
                 parse_mode: 'HTML',
             });
             const response = {
                 messageId: result.message_id.toString(),
-                fileId: result.photo?.[0]?.file_id,
+                fileId: result.document?.file_id,
             };
-            (0, logger_1.logFunctionEnd)('sendImage', response);
+            (0, logger_1.logFunctionEnd)('sendDocument', { ...response, format });
             return response;
         }
         catch (error) {
-            (0, logger_1.logError)('sendImage', error, {
+            (0, logger_1.logError)('sendDocument', error, {
                 imageSize: imageBuffer.length,
+                fileName,
+                format,
                 targetChannel: this.config.targetChannelId
             });
             throw error;

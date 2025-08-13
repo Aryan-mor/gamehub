@@ -11,34 +11,100 @@ export class TelegramService {
     this.bot = new Bot(config.botToken);
   }
 
-  public async sendImage(imageBuffer: Buffer, caption?: string): Promise<{ messageId: string; fileId?: string }> {
+  public async sendImage(imageBuffer: Buffer, caption?: string, asDocument: boolean = false, format: 'png' | 'webp' | 'jpeg' = 'jpeg'): Promise<{ messageId: string; fileId?: string }> {
     logFunctionStart('sendImage', { 
       imageSize: imageBuffer.length,
       hasCaption: !!caption,
+      asDocument,
+      format,
       targetChannel: this.config.targetChannelId
     });
 
     try {
-      // Send the buffer directly using InputFile
       const { InputFile } = await import('grammy');
-      const inputFile = new InputFile(imageBuffer, `card_${Date.now()}.png`);
       
-      const result = await this.bot.api.sendPhoto(this.config.targetChannelId, inputFile, {
+      // Determine file extension based on format
+      const fileExtension = format === 'webp' ? 'webp' : format === 'jpeg' ? 'jpg' : 'png';
+      const fileName = `card_${Date.now()}.${fileExtension}`;
+      
+      if (asDocument) {
+        // Send as document (no compression)
+        const inputFile = new InputFile(imageBuffer, fileName);
+        
+        const result = await this.bot.api.sendDocument(this.config.targetChannelId, inputFile, {
+          caption,
+          parse_mode: 'HTML',
+        });
+
+        const response = {
+          messageId: result.message_id.toString(),
+          fileId: result.document?.file_id,
+        };
+
+        logFunctionEnd('sendImage', { ...response, method: 'document', format });
+        return response;
+      } else {
+        // Send as photo (with compression)
+        const inputFile = new InputFile(imageBuffer, fileName);
+        
+        const result = await this.bot.api.sendPhoto(this.config.targetChannelId, inputFile, {
+          caption,
+          parse_mode: 'HTML',
+        });
+
+        const response = {
+          messageId: result.message_id.toString(),
+          fileId: result.photo?.[0]?.file_id,
+        };
+
+        logFunctionEnd('sendImage', { ...response, method: 'photo', format });
+        return response;
+      }
+
+    } catch (error) {
+      logError('sendImage', error as Error, { 
+        imageSize: imageBuffer.length,
+        asDocument,
+        format,
+        targetChannel: this.config.targetChannelId
+      });
+      throw error;
+    }
+  }
+
+  public async sendDocument(imageBuffer: Buffer, caption?: string, fileName?: string, format: 'png' | 'webp' | 'jpeg' = 'jpeg'): Promise<{ messageId: string; fileId?: string }> {
+    logFunctionStart('sendDocument', { 
+      imageSize: imageBuffer.length,
+      hasCaption: !!caption,
+      fileName,
+      format,
+      targetChannel: this.config.targetChannelId
+    });
+
+    try {
+      const { InputFile } = await import('grammy');
+      const fileExtension = format === 'webp' ? 'webp' : format === 'jpeg' ? 'jpg' : 'png';
+      const finalFileName = fileName || `card_${Date.now()}.${fileExtension}`;
+      const inputFile = new InputFile(imageBuffer, finalFileName);
+      
+      const result = await this.bot.api.sendDocument(this.config.targetChannelId, inputFile, {
         caption,
         parse_mode: 'HTML',
       });
 
       const response = {
         messageId: result.message_id.toString(),
-        fileId: result.photo?.[0]?.file_id,
+        fileId: result.document?.file_id,
       };
 
-      logFunctionEnd('sendImage', response);
+      logFunctionEnd('sendDocument', { ...response, format });
       return response;
 
     } catch (error) {
-      logError('sendImage', error as Error, { 
+      logError('sendDocument', error as Error, { 
         imageSize: imageBuffer.length,
+        fileName,
+        format,
         targetChannel: this.config.targetChannelId
       });
       throw error;
@@ -79,4 +145,4 @@ export class TelegramService {
   public getBot(): Bot {
     return this.bot;
   }
-} 
+}

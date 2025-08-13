@@ -13,7 +13,7 @@ const compat = new FlatCompat({
 
 const eslintConfig = [
   {
-    files: ["src/**/*.test.ts", "src/**/*.spec.ts", "src/**/__tests__/**/*"],
+    files: ["src/**/*.ts"],
     languageOptions: {
       parser: tsparser,
       parserOptions: {

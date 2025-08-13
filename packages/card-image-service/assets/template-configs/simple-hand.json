@@ -1,0 +1,26 @@
+{
+  "id": "simple-hand",
+  "name": "Simple Hand",
+  "width": 600,
+  "height": 400,
+  "cardPositions": [
+    {
+      "id": "player-1",
+      "x": 150,
+      "y": 100,
+      "width": 120,
+      "height": 168,
+      "rotation": 0,
+      "zIndex": 1
+    },
+    {
+      "id": "player-2", 
+      "x": 330,
+      "y": 100,
+      "width": 120,
+      "height": 168,
+      "rotation": 0,
+      "zIndex": 1
+    }
+  ]
+}

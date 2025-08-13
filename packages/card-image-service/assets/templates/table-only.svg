@@ -1,0 +1,16 @@
+<svg width="1200" height="800" xmlns="http://www.w3.org/2000/svg">
+  <!-- پس‌زمینه شفاف -->
+  <rect width="1200" height="800" fill="none"/>
+  
+  <!-- مکان‌های کارت روی میز (دو ردیف) -->
+  <g id="table-cards">
+    <!-- ردیف اول (3 کارت) -->
+    <rect x="150" y="150" width="280" height="392" fill="none" stroke="#fff" stroke-width="3" opacity="0.3" rx="10"/>
+    <rect x="460" y="150" width="280" height="392" fill="none" stroke="#fff" stroke-width="3" opacity="0.3" rx="10"/>
+    <rect x="770" y="150" width="280" height="392" fill="none" stroke="#fff" stroke-width="3" opacity="0.3" rx="10"/>
+    
+    <!-- ردیف دوم (2 کارت) -->
+    <rect x="305" y="580" width="280" height="392" fill="none" stroke="#fff" stroke-width="3" opacity="0.3" rx="10"/>
+    <rect x="615" y="580" width="280" height="392" fill="none" stroke="#fff" stroke-width="3" opacity="0.3" rx="10"/>
+  </g>
+</svg>

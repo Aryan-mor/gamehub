@@ -1,0 +1,27 @@
+<svg width="1200" height="800" xmlns="http://www.w3.org/2000/svg">
+  <!-- پس‌زمینه میز پوکر -->
+  <rect width="1200" height="800" fill="#0d5c0d"/>
+  <ellipse cx="600" cy="400" rx="500" ry="300" fill="#1a8a1a" stroke="#0a3d0a" stroke-width="5"/>
+  
+  <!-- مکان‌های کارت روی میز (بزرگتر) -->
+  <g id="table-cards">
+    <!-- کارت 1 (Flop) -->
+    <rect x="200" y="200" width="120" height="168" fill="none" stroke="#fff" stroke-width="3" opacity="0.3"/>
+    <!-- کارت 2 (Flop) -->
+    <rect x="340" y="200" width="120" height="168" fill="none" stroke="#fff" stroke-width="3" opacity="0.3"/>
+    <!-- کارت 3 (Flop) -->
+    <rect x="480" y="200" width="120" height="168" fill="none" stroke="#fff" stroke-width="3" opacity="0.3"/>
+    <!-- کارت 4 (Turn) -->
+    <rect x="620" y="200" width="120" height="168" fill="none" stroke="#fff" stroke-width="3" opacity="0.3"/>
+    <!-- کارت 5 (River) -->
+    <rect x="760" y="200" width="120" height="168" fill="none" stroke="#fff" stroke-width="3" opacity="0.3"/>
+  </g>
+  
+  <!-- مکان کارت‌های دست شخصی (بزرگتر) -->
+  <g id="player-cards">
+    <!-- کارت دست 1 -->
+    <rect x="400" y="500" width="120" height="168" fill="none" stroke="#ffd700" stroke-width="3" opacity="0.5"/>
+    <!-- کارت دست 2 -->
+    <rect x="560" y="500" width="120" height="168" fill="none" stroke="#ffd700" stroke-width="3" opacity="0.5"/>
+  </g>
+</svg>
