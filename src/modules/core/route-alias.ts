@@ -50,6 +50,7 @@ function buildMaps(): SegmentMaps {
     ready: 'ry',
     notready: 'nry',
     refresh: 'rf',
+    switch: 'sw',
 
     // Gameplay actions
     call: 'cl',

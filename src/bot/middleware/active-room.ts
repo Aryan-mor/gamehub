@@ -13,6 +13,21 @@ export function registerActiveRoomRedirect(bot: Bot<GameHubContext>): void {
         return await next();
       }
 
+      // Allow deep-link join via /start gprj<roomId> to pass through to start handler
+      const messageText = ctx.message?.text || '';
+      if (messageText.startsWith('/start ')) {
+        const startPayload = messageText.split(' ')[1] || '';
+        const isJoinDeepLink = /^gprj(.+)$/i.test(startPayload);
+        if (isJoinDeepLink) {
+          return await next();
+        }
+      }
+
+      // Ignore inline queries and other non-message updates where chat may be absent
+      if (ctx.inlineQuery || ctx.chosenInlineResult) {
+        return await next();
+      }
+
       const userId = String(ctx.from?.id || '');
       if (!userId) return await next();
 
@@ -53,11 +68,7 @@ export function registerActiveRoomRedirect(bot: Bot<GameHubContext>): void {
       // Dispatch a generic games.findStep handler to resolve current game
       const { dispatch } = await import('@/modules/core/smart-router');
       
-      // Ensure ctx.chat is properly set for the context
-      if (!ctx.chat && ctx.from) {
-        // Create a new context with proper chat info
-        (ctx as any).chat = { id: ctx.from.id, type: 'private' };
-      }
+      // Do not attempt to mutate ctx.chat; rely on existing context
       
       const context: HandlerContext = {
         ctx,

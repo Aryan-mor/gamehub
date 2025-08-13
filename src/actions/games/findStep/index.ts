@@ -3,7 +3,7 @@ import { HandlerContext, createHandler } from '@/modules/core/handler';
 export const key = 'games.findStep';
 
 async function handleFindStep(context: HandlerContext, query: Record<string, string> = {}): Promise<void> {
-  const roomId = query.roomId || context._query?.roomId || '';
+  const roomId = (query.roomId || (query as any).r || context._query?.roomId || (context._query as any)?.r || '') as string;
 
   const { dispatch } = await import('@/modules/core/smart-router');
   // If we have a roomId, choose route by room status

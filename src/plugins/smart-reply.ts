@@ -180,11 +180,103 @@ export class SmartReplyPlugin implements GameHubPlugin {
             });
           }
         } catch (sendErr) {
+          const errMsg = sendErr instanceof Error ? sendErr.message : String(sendErr);
           (ctx as any)?.log?.error?.('smart-reply.replySmart: failed to send new message', {
             chatId: chatIdString,
             userId,
-            error: sendErr instanceof Error ? sendErr.message : 'Unknown error'
+            error: errMsg
           });
+
+          // Fallback: If Telegram rejects buttons (BUTTON_DATA_INVALID), provide recovery UI
+          if (errMsg.includes('BUTTON_DATA_INVALID')) {
+            try {
+              const { ROUTES } = await import('@/modules/core/routes.generated');
+              const { getActiveRoomId } = await import('@/modules/core/userRoomState');
+              const safeT = (key: string, fallback: string): string => {
+                const v = (ctx as any)?.t?.(key);
+                return !v || v === key ? fallback : String(v);
+              };
+
+              const activeRoomId: string | undefined = getActiveRoomId(String((ctx as any)?.from?.id ?? '')) || undefined;
+
+              // Try to extract target roomId from /start payload or callback params
+              let targetRoomId: string | undefined;
+              const messageText: string | undefined = (ctx as any)?.message?.text;
+              if (messageText && messageText.startsWith('/start ')) {
+                const payload = messageText.split(' ')[1] || '';
+                const m = payload.match(/^gprj(.+)$/i);
+                if (m) targetRoomId = m[1];
+              }
+              if (!targetRoomId && (ctx as any)?.callbackQuery?.data && (ctx as any)?.keyboard?.parseCallbackData) {
+                try {
+                  const parsed = (ctx as any).keyboard.parseCallbackData((ctx as any).callbackQuery.data) as Record<string, unknown>;
+                  const r = String((parsed.r ?? parsed.roomId) || '');
+                  if (r) targetRoomId = r;
+                } catch {
+                  // ignore parse failures
+                }
+              }
+
+              if (activeRoomId && targetRoomId && activeRoomId !== targetRoomId) {
+                const title = safeT('poker.join.conflictTitle', '⚠️ You already have an active room.');
+                const subtitle = safeT('poker.join.conflictSubtitle', 'Please choose one of the options below:');
+                const continueText = safeT('poker.join.continueActive', '▶️ Continue in current room');
+                const leaveAndJoinText = safeT('poker.join.leaveAndJoinNew', '↪️ Leave current and join new room');
+                const leaveOnlyText = safeT('poker.join.leaveActive', '🚪 Leave current room');
+
+                const { encodeAction } = await import('@/modules/core/route-alias');
+                const btnContinue = {
+                  text: continueText,
+                  callback_data: `${encodeAction(ROUTES.games.findStep)}?r=${activeRoomId}`
+                };
+                // eslint-disable-next-line routes/no-hardcoded-route-strings -- sub-action is not present in ROUTES map
+                const btnLeaveAndJoin = {
+                  text: leaveAndJoinText,
+                  callback_data: `${encodeAction('games.join.switch')}?r=${targetRoomId}`
+                };
+                const btnLeaveOnly = {
+                  text: leaveOnlyText,
+                  callback_data: `${encodeAction(ROUTES.games.start)}?s=lv&r=${activeRoomId}`
+                };
+
+                const replyMarkup = (ctx as any).keyboard.createInlineKeyboard([btnContinue, btnLeaveAndJoin, btnLeaveOnly]);
+                const text = `${title}\n\n${subtitle}`;
+                const sent = await ctx.api.sendMessage(chatIdString, text, { reply_markup: replyMarkup });
+                // Update latest message history so stale-guard does not block the next callback
+                usersMessageHistory[userId] = {
+                  chatId: chatIdString,
+                  messageId: sent.message_id,
+                  timestamp: Date.now(),
+                  userId,
+                  messageType: 'room_info'
+                };
+              } else {
+                // Simple resume to /start when no room context is available
+                const resumeText = safeT('bot.buttons.resume', '▶️ Resume');
+                const promptText = safeT('errors.buttonDataInvalid.resumePrompt', 'There was a temporary issue with the buttons. Tap Resume to continue.');
+                const { encodeAction } = await import('@/modules/core/route-alias');
+                const button = { text: resumeText, callback_data: encodeAction(ROUTES.start) };
+                const replyMarkup = { inline_keyboard: [[button]] };
+                const sent = await ctx.api.sendMessage(chatIdString, promptText, { reply_markup: replyMarkup });
+                // Update latest message history so stale-guard does not block the next callback
+                usersMessageHistory[userId] = {
+                  chatId: chatIdString,
+                  messageId: sent.message_id,
+                  timestamp: Date.now(),
+                  userId,
+                  messageType: 'room_info'
+                };
+              }
+              return;
+            } catch (fallbackErr) {
+              (ctx as any)?.log?.error?.('smart-reply.replySmart: fallback resume failed', {
+                chatId: chatIdString,
+                userId,
+                error: fallbackErr instanceof Error ? fallbackErr.message : String(fallbackErr)
+              });
+            }
+          }
+
           throw sendErr;
         }
       },

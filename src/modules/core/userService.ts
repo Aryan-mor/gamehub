@@ -197,21 +197,23 @@ export const setLastFreeCoinAt = async (userId: string): Promise<void> => {
 export const setUserProfile = async (
   userId: string,
   username?: string,
-  name?: string
+  firstName?: string,
+  lastName?: string
 ): Promise<void> => {
-  logFunctionStart('setUserProfile', { userId, username, name });
+  logFunctionStart('setUserProfile', { userId, username, firstName, lastName });
   
   try {
     const usersApi = await import('@/api/users');
     await usersApi.upsert({
       telegram_id: Number(userId),
       username,
-      first_name: name,
+      first_name: firstName,
+      last_name: lastName,
     });
     
-    logFunctionEnd('setUserProfile', {}, { userId, username, name });
+    logFunctionEnd('setUserProfile', {}, { userId, username, firstName, lastName });
   } catch (error) {
-    logError('setUserProfile', error as Error, { userId, username, name });
+    logError('setUserProfile', error as Error, { userId, username, firstName, lastName });
     throw error;
   }
-}; 
+};

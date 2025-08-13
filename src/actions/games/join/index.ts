@@ -6,7 +6,7 @@ export const key = 'games.join';
 
 async function handleJoin(context: HandlerContext, query: Record<string, string> = {}): Promise<void> {
   const { ctx, user } = context;
-  const targetRoomId = query.roomId || context._query?.roomId || '';
+  const targetRoomId = (query.roomId || (query as any).r || context._query?.roomId || (context._query as any)?.r || '') as string;
   const activeRoomId = getActiveRoomId(user.id);
 
   if (!activeRoomId) {
@@ -109,11 +109,12 @@ async function handleJoin(context: HandlerContext, query: Record<string, string>
     return;
   }
 
-  const R = (await import('@/modules/core/routes.generated')).ROUTES;
+  const { ROUTES } = await import('@/modules/core/routes.generated');
+  const { encodeAction } = await import('@/modules/core/route-alias');
   const rows = [
-    [{ text: ctx.t('poker.join.continueActive'), callback_data: ctx.keyboard.buildCallbackData(R.games.findStep, { roomId: activeRoomId }) }],
-    [{ text: ctx.t('poker.join.leaveAndJoinNew'), callback_data: ctx.keyboard.buildCallbackData(R.games.join, { s: 'switch', roomId: targetRoomId }) }],
-    [{ text: ctx.t('poker.join.leaveActive'), callback_data: ctx.keyboard.buildCallbackData(R.games.start, { s: 'leaveActive', roomId: activeRoomId }) }],
+    [{ text: ctx.t('poker.join.continueActive'), callback_data: `${encodeAction(ROUTES.games.findStep)}?r=${activeRoomId}` }],
+    [{ text: ctx.t('poker.join.leaveAndJoinNew'), callback_data: `${encodeAction(ROUTES.games.join.switch)}?r=${targetRoomId}` }],
+    [{ text: ctx.t('poker.join.leaveActive'), callback_data: `${encodeAction(ROUTES.games.start)}?s=lv&r=${activeRoomId}` }],
   ];
   await ctx.replySmart(ctx.t('poker.join.conflictTitle'), { reply_markup: { inline_keyboard: rows } });
 }

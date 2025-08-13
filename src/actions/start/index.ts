@@ -27,7 +27,12 @@ async function handleStart(context: HandlerContext): Promise<void> {
     // Legacy keys intentionally not used to keep minimal main menu
     
     // Save user profile in background to avoid blocking the reply
-    const saveProfilePromise = setUserProfile(user.id, user.username, user.username || 'Unknown').catch((err: unknown) => {
+    const saveProfilePromise = setUserProfile(
+      user.id,
+      user.username,
+      ctx.from?.first_name || undefined,
+      ctx.from?.last_name || undefined
+    ).catch((err: unknown) => {
       ctx.log?.warn?.('setUserProfile failed (non-blocking)', { error: err instanceof Error ? err.message : String(err) });
     });
     

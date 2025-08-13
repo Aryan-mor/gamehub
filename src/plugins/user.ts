@@ -66,7 +66,12 @@ export class UserPlugin implements GameHubPlugin {
           ctx.user.isNewUser = false;
         } catch {
           try {
-            await setUserProfile(userId, ctx.from?.username, ctx.from?.username || 'Unknown');
+            await setUserProfile(
+              userId,
+              ctx.from?.username,
+              ctx.from?.first_name || undefined,
+              ctx.from?.last_name || undefined
+            );
             await getUser(userId);
             ctx.user.isNewUser = true;
           } catch (innerError) {

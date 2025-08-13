@@ -42,9 +42,10 @@ describe('games.join e2e', () => {
     };
     await handler({ ctx, user: { id: 'u3', username: 't' }, _query: { roomId: newId } } as unknown as import('@/modules/core/handler').HandlerContext, { roomId: newId });
     const kb = sent[0] ?? { inline_keyboard: [] };
-    const acts = kb.inline_keyboard.flat().map((b: any) => JSON.parse(b.callback_data).action);
+    const acts = kb.inline_keyboard.flat().map((b: any) => String(b.callback_data).split('?')[0]);
     expect(acts).toContain('g.findStep');
-    expect(acts).toContain('g.jn');
+    // Accept either g.jn or nested g.jn.sw depending on optimization
+    expect(acts.some((a: string) => a === 'g.jn' || a.startsWith('g.jn.'))).toBe(true);
     expect(acts).toContain('g.st');
   });
 
