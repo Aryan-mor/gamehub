@@ -24,6 +24,7 @@ export interface BuildContext {
   yourStack?: number;
   yourBet?: number;
   potTotal?: number;
+  yourCards?: string; // Private cards for the current user
 }
 
 function buildDetailedMessage(ctx: BuildContext, statusText: string): string {
@@ -55,7 +56,16 @@ function buildCompactMessage(ctx: BuildContext, statusText: string): string {
     .replace('{{max}}', String(ctx.maxPlayers));
   const fieldLastUpdate = ctx.t('poker.room.info.field.lastUpdate');
 
-  return `${title}\n\n• Status: ${statusText}\n\n${sectionPlayers}\n${ctx.playerNames}\n\n${fieldLastUpdate}: ${ctx.lastUpdateIso}`;
+  let message = `${title}\n\n`;
+  
+  // Add private cards if available (only in playing state)
+  if (ctx.yourCards && statusText.includes('Playing')) {
+    message += `ِYour cards:\n${ctx.yourCards}\n\n`;
+  }
+  
+  message += `• Status: ${statusText}\n\n${sectionPlayers}\n${ctx.playerNames}\n\n${fieldLastUpdate}: ${ctx.lastUpdateIso}`;
+  
+  return message;
 }
 
 export function buildWaitingView(ctx: BuildContext, isDetailed = false): ViewPayload {

@@ -116,7 +116,7 @@ export async function broadcastRoomInfo(
     // If playing, enrich per-user context (light placeholder using seats/pots when available)
     const isPlaying = room.status === 'playing';
     let potTotal: number | undefined;
-    const seatInfoByUser: Record<string, { stack: number; bet: number }> = {};
+    const seatInfoByUser: Record<string, { stack: number; bet: number; hole?: string[] | null }> = {};
     let actingUuid: string | undefined;
     let currentBetGlobal: number = 0;
     if (isPlaying) {
@@ -130,7 +130,7 @@ export async function broadcastRoomInfo(
         if (handId) {
           const { listSeatsByHand } = await import('./seatsRepo');
           const seats = await listSeatsByHand(String(handId));
-          for (const s of seats) seatInfoByUser[s.user_id] = { stack: s.stack, bet: s.bet };
+          for (const s of seats) seatInfoByUser[s.user_id] = { stack: s.stack, bet: s.bet, hole: s.hole };
           if (typeof hand?.acting_pos === 'number') {
             const actingSeat = seats.find((s) => Number(s.seat_pos) === Number(hand.acting_pos));
             actingUuid = actingSeat?.user_id;
@@ -234,6 +234,13 @@ export async function broadcastRoomInfo(
           const base = view.message;
           const info = seatInfoByUser[adminId] || {} as any;
           const extraParts: string[] = [];
+          
+          // Add private cards if available
+          if (info?.hole && Array.isArray(info.hole) && info.hole.length > 0) {
+            const cardsText = info.hole.join(' ');
+            extraParts.push(`Your cards: ${cardsText}`);
+          }
+          
           if (typeof info.stack === 'number') extraParts.push(`Your stack: ${info.stack}`);
           if (typeof info.bet === 'number') extraParts.push(`Your bet: ${info.bet}`);
           if (typeof potTotal === 'number') extraParts.push(`Pot: ${potTotal}`);
@@ -285,6 +292,13 @@ export async function broadcastRoomInfo(
           const info = uuid ? seatInfoByUser[uuid] : undefined;
           const base = view.message;
           const extraParts: string[] = [];
+          
+          // Add private cards if available
+          if (info?.hole && Array.isArray(info.hole) && info.hole.length > 0) {
+            const cardsText = info.hole.join(' ');
+            extraParts.push(`Your cards: ${cardsText}`);
+          }
+          
           if (info && typeof info.stack === 'number') extraParts.push(`Your stack: ${info.stack}`);
           if (info && typeof info.bet === 'number') extraParts.push(`Your bet: ${info.bet}`);
           if (typeof potTotal === 'number') extraParts.push(`Pot: ${potTotal}`);
