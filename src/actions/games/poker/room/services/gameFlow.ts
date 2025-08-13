@@ -1,12 +1,29 @@
 import type { HandlerContext } from '@/modules/core/handler';
-import { logFunctionStart, logFunctionEnd } from '@/modules/core/logger';
+import { logFunctionStart, logFunctionEnd, logError } from '@/modules/core/logger';
 import { createHand } from './handRepo';
 import { bulkCreateSeats, postBlind } from './seatsRepo';
+
+async function updateSeatHoleCards(handId: string, seatPos: number, cards: [string, string]): Promise<void> {
+  logFunctionStart('gameFlow.updateSeatHoleCards', { handId, seatPos, cards });
+  try {
+    const { supabaseFor } = await import('@/lib/supabase');
+    const poker = supabaseFor('poker');
+    const { error } = await poker
+      .from('seats')
+      .update({ hole: cards })
+      .eq('hand_id', handId)
+      .eq('seat_pos', seatPos);
+    if (error) throw error;
+    logFunctionEnd('gameFlow.updateSeatHoleCards', { ok: true });
+  } catch (err) {
+    logError('gameFlow.updateSeatHoleCards', err as Error, { handId, seatPos, cards });
+    throw err;
+  }
+}
 import { createAction } from './actionsRepo';
 import { createMainPot } from './potsRepo';
 import { getRoom } from './roomRepo';
-// TODO: Import poker-engine properly
-// import { startHand, type EngineConfig, type Seat } from '@gamehub/poker-engine';
+import { startHand, type EngineConfig, type Seat } from '@gamehub/poker-engine';
 
 export async function startHandForRoom(context: HandlerContext, roomId: string): Promise<void> {
   logFunctionStart('gameFlow.startHandForRoom', { roomId, userId: context.user.id });
@@ -46,8 +63,33 @@ export async function startHandForRoom(context: HandlerContext, roomId: string):
   // Create main pot with all active seats
   await createMainPot(hand.id, players.map((_, idx) => idx));
 
-  // TODO: Use poker-engine to deal cards
-  // For now, skip card dealing until poker-engine is properly integrated
+  // Use poker-engine to start hand and deal cards
+  const engineConfig: EngineConfig = {
+    smallBlind: room.smallBlind,
+    bigBlind: room.smallBlind * 2, // Big blind is always 2x small blind
+    maxPlayers: room.maxPlayers,
+    rngSeed: hand.deck_seed
+  };
+
+  const engineSeats: Seat[] = players.map((player, index) => ({
+    seatPos: index,
+    userRef: player,
+    stack: 10000, // TODO: Get actual stack from database
+    inHand: true,
+    isAllIn: false,
+    bet: 0
+  }));
+
+  const { events } = startHand(engineConfig, engineSeats);
+
+  // Process events to deal cards and update database
+  for (const event of events) {
+    if (event.type === 'CARDS_DEALT') {
+      const { privateTo, cards } = event;
+      // Store cards in database
+      await updateSeatHoleCards(hand.id, privateTo, cards);
+    }
+  }
 
   // Post blinds and record actions
   await postBlind(hand.id, sbPos, sb);

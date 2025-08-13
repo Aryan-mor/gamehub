@@ -46,6 +46,7 @@
     "dev:with-db": "supabase start && DEBUG=true pnpm bot"
   },
   "dependencies": {
+    "@gamehub/poker-engine": "workspace:*",
     "@supabase/supabase-js": "^2.39.0",
     "dotenv": "^16.4.5",
     "grammy": "^1.37.0",

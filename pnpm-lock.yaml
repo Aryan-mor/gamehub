@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      '@gamehub/poker-engine':
+        specifier: workspace:*
+        version: link:packages/poker-engine
       '@supabase/supabase-js':
         specifier: ^2.39.0
         version: 2.53.0
