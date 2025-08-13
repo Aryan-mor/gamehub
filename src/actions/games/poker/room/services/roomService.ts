@@ -293,6 +293,11 @@ export async function broadcastRoomInfo(
           const base = view.message;
           const extraParts: string[] = [];
           
+          // Debug: log seat info
+          (gctx as any)?.log?.debug?.('roomService.broadcastRoomInfo:seatInfo', { 
+            chatId, uuid, info, seatInfoByUser: Object.keys(seatInfoByUser) 
+          });
+          
           // Add private cards if available
           if (info?.hole && Array.isArray(info.hole) && info.hole.length > 0) {
             const cardsText = info.hole.join(' ');
