@@ -186,12 +186,8 @@ export async function broadcastRoomInfo(
       recipientChatIds = room.players
         .map((uuid) => idToTelegramId[uuid])
         .filter((n): n is number => typeof n === 'number' && Number.isFinite(n));
-      // IMPORTANT: When playing and no explicit target provided, avoid broadcasting to all.
-      // Send only to initiator by default to prevent unsolicited updates.
-      if (isPlaying) {
-        const initiatorId = Number((gctx as any)?.from?.id);
-        recipientChatIds = Number.isFinite(initiatorId) ? [initiatorId] : recipientChatIds.slice(0, 1);
-      }
+      // When playing, send to all players by default for game state updates
+      // This ensures all players get notified when game starts or state changes
     }
 
     if (recipientChatIds.length === 0) {
