@@ -50,3 +50,17 @@ export async function checkSupabaseConnectivity(timeoutMs = 3000): Promise<void>
     throw error as Error;
   }
 }
+
+/**
+ * Create a Supabase client scoped to a specific Postgres schema.
+ * Useful for isolating domain tables (e.g., poker schema).
+ */
+export function supabaseFor(schemaName: string) {
+  return createClient(supabaseUrl, supabaseServiceKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
+    },
+    db: { schema: schemaName }
+  });
+}

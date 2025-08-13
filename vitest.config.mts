@@ -30,6 +30,7 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": resolve(__dirname, "./src"),
+      "@engine": resolve(__dirname, "./packages/poker-engine/src"),
     },
   },
   esbuild: {

@@ -30,6 +30,10 @@ function mapDbRoom(dbRoom: any, players: Array<{ user_id: string; ready?: boolea
   const isPrivate = Boolean(dbRoom.is_private ?? false);
   const createdBy = String(dbRoom.created_by ?? '');
   const turnTimeoutSec = Number(dbRoom.settings?.turnTimeoutSec ?? dbRoom.turn_timeout_sec ?? 240);
+  const status = ((): PokerRoom['status'] => {
+    const raw = String(dbRoom.status ?? 'waiting');
+    return raw === 'playing' ? 'playing' : raw === 'finished' ? 'finished' : 'waiting';
+  })();
   const playerIds = players.map(p => String(p.user_id));
   return {
     id,
@@ -42,6 +46,7 @@ function mapDbRoom(dbRoom: any, players: Array<{ user_id: string; ready?: boolea
     turnTimeoutSec,
     lastUpdate: Date.now(),
     playerNames: {},
+    status,
   };
 }
 

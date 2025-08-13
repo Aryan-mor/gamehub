@@ -35,7 +35,31 @@ export function extractPayloadsFromMarkup(markup: TestInlineKeyboard): Array<Rec
 
 export function createTestGameHubContext(overrides?: Partial<GameHubContext & { keyboard: TestKeyboard }>): GameHubContext {
   const base: Partial<GameHubContext & { keyboard: TestKeyboard }> = {
-    t: (k: string) => k,
+    t: (k: string) => {
+      const i18nMap: Record<string, string> = {
+        'poker.room.info.title': '🏠 Poker Room Info',
+        'poker.room.info.section.details': '📋 Room Details',
+        'poker.room.info.field.id': '• ID',
+        'poker.room.info.field.status': '• Status',
+        'poker.room.info.field.type': '• Type',
+        'poker.room.info.section.settings': '⚙️ Game Settings',
+        'poker.room.info.field.smallBlind': '• Small Blind',
+        'poker.room.info.field.maxPlayers': '• Max Players',
+        'poker.room.info.field.turnTimeout': '• Turn Timeout',
+        'poker.room.info.section.players': '👥 Players',
+        'poker.room.info.field.lastUpdate': 'Last update',
+        'poker.room.status.waiting': '⏳ Waiting for players',
+        'poker.room.status.playing': '🎮 Playing',
+        'bot.buttons.refresh': '🔄 Refresh',
+        'bot.buttons.share': '📤 Share',
+        'poker.room.buttons.leave': '🚪 Leave Room',
+        'poker.room.buttons.startGame': '🎮 Start Game',
+        'poker.game.buttons.check': '✅ Check',
+        'poker.game.buttons.call': '📞 Call',
+        'poker.game.buttons.fold': '🪙 Fold',
+      };
+      return i18nMap[k] ?? k;
+    },
     log: { info: vi.fn(), error: vi.fn(), debug: vi.fn(), warn: vi.fn() },
     replySmart: vi.fn(async () => {}),
     // Add proper chat and from for testing

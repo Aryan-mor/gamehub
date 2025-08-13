@@ -3,6 +3,6 @@ ignoredBuiltDependencies:
   - sharp
 
 packages:
-  - 'card-image-service'
+  - 'packages/*'
 
 

@@ -57,6 +57,7 @@
     "zod": "^4.0.15"
   },
   "devDependencies": {
+    "pokersolver": "^2.1.4",
     "@eslint/eslintrc": "^3",
     "@testing-library/jest-dom": "^6.6.3",
     "@types/node": "^20",

@@ -1,5 +1,6 @@
 import type { PokerRoom } from './types';
 import { logFunctionStart, logFunctionEnd, logError } from '@/modules/core/logger';
+import { buildPlayingView, buildWaitingView } from './views';
 
 export async function createRoom(params: Omit<PokerRoom, 'players' | 'readyPlayers' | 'playerNames'>): Promise<PokerRoom> {
   logFunctionStart('roomService.createRoom', { roomId: params.id, createdBy: params.createdBy });
@@ -92,62 +93,78 @@ export async function broadcastRoomInfo(
       idToDisplayName[String(u.id)] = escapeHtml(display);
       idToTelegramId[String(u.id)] = Number(u.telegram_id);
     }
-    const playerNames = room.players
+    let playerNames = room.players
       .map((uid) => {
         const name = idToDisplayName[uid] || 'Unknown';
         const isAdmin = uid === adminId;
-        return `${isAdmin ? '👑 ' : ''}${name}`;
+        return `${name} ${isAdmin ? '👑 ' : ''}`;
       })
       .join('\n');
     
-    // Generate inline keyboard buttons (base layout)
+    // Inline keyboard and message builders
     type Btn = { text: string } & ({ callback_data: string } | { switch_inline_query: string });
-    const baseRows: Btn[][] = [];
     const gctx: GameHubContext = (typeof (ctx as GameHubContext).t === 'function')
       ? (ctx as GameHubContext)
       : (ctx as HandlerContext).ctx as unknown as GameHubContext;
-    const tr = (key: string, fallback: string, options?: Record<string, unknown>): string => {
-      const v = gctx.t(key, options) as string;
-      // If i18n not wired in tests (t returns key), fallback to English
-      const looksLikeKey = v.includes('.') || v.includes('poker.') || v.includes('bot.');
-      const hasUnresolved = v.includes('{{');
-      return v && !looksLikeKey && !hasUnresolved ? v : fallback;
-    };
-    const refreshText = tr('bot.buttons.refresh', '🔄 Refresh');
-    const shareText = tr('bot.buttons.share', '📤 Share');
-    const leaveText = tr('poker.room.buttons.leave', '🚪 Leave Room');
-    
-    baseRows.push([{ text: refreshText, callback_data: 'g.pk.r.in' }]);
-    baseRows.push([{ text: shareText, switch_inline_query: `poker ${roomId}` }]);
-    baseRows.push([{ text: leaveText, callback_data: `g.pk.r.lv?roomId=${roomId}` }]);
-
-    // Prepare admin-specific layout if conditions met
     const adminTelegramId = idToTelegramId[adminId];
     const hasAtLeastTwoPlayers = (room.players?.length ?? 0) >= 2;
-    const startText = tr('poker.room.buttons.startGame', '🎮 Start Game');
-    const adminRows: Btn[][] = hasAtLeastTwoPlayers
-      ? [
-          [{ text: startText, callback_data: 'g.pk.r.st' }],
-          [{ text: refreshText, callback_data: 'g.pk.r.in' }],
-          [{ text: shareText, switch_inline_query: `poker ${roomId}` }],
-          [{ text: leaveText, callback_data: `g.pk.r.lv?roomId=${roomId}` }],
-        ]
-      : baseRows;
-    
-    const title = tr('poker.room.info.title', '🏠 Poker Room Info');
-    const sectionDetails = tr('poker.room.info.section.details', '📋 Room Details');
-    const fieldId = tr('poker.room.info.field.id', '• ID');
-    const fieldStatus = tr('poker.room.info.field.status', '• Status');
-    const fieldType = tr('poker.room.info.field.type', '• Type');
-    const sectionSettings = tr('poker.room.info.section.settings', '⚙️ Game Settings');
-    const fieldSmallBlind = tr('poker.room.info.field.smallBlind', '• Small Blind');
-    // const fieldRound = gctx.t('poker.room.info.field.round') || '• Round';
-    const fieldMaxPlayers = tr('poker.room.info.field.maxPlayers', '• Max Players');
-    const fieldTurnTimeout = tr('poker.room.info.field.turnTimeout', '• Turn Timeout');
-    const sectionPlayers = tr('poker.room.info.section.players', `👥 Players (${playerCount}/${maxPlayers}):`, { count: playerCount, max: maxPlayers });
-    const fieldLastUpdate = tr('poker.room.info.field.lastUpdate', 'Last update');
+    const telegramIdToUuid: Record<number, string> = Object.fromEntries(
+      Object.entries(idToTelegramId).map(([uuid, tg]) => [tg as number, uuid])
+    );
 
-    const message = `${title}\n\n${sectionDetails}\n${fieldId}: ${escapeHtml(roomId)}\n${fieldStatus}: ⏳ Waiting for players\n${fieldType}: 🌐 Public\n\n${sectionSettings}\n${fieldSmallBlind}: ${smallBlind}\n• Big Blind: ${bigBlind}\n${fieldMaxPlayers}: ${maxPlayers}\n${fieldTurnTimeout}: ${timeoutMinutes} min\n\n${sectionPlayers}\n${playerNames}\n\n${fieldLastUpdate}: ${escapeHtml(lastUpdate)}`;
+    // If playing, enrich per-user context (light placeholder using seats/pots when available)
+    const isPlaying = room.status === 'playing';
+    let potTotal: number | undefined;
+    const seatInfoByUser: Record<string, { stack: number; bet: number }> = {};
+    let actingUuid: string | undefined;
+    let currentBetGlobal: number = 0;
+    if (isPlaying) {
+      try {
+        const { supabaseFor } = await import('@/lib/supabase');
+        const poker = supabaseFor('poker');
+        // latest hand by room
+        const { data: hands } = await poker.from('hands').select('*').eq('room_id', roomId).order('created_at', { ascending: false }).limit(1);
+        const hand = hands && hands[0];
+        const handId = hand?.id;
+        if (handId) {
+          const { listSeatsByHand } = await import('./seatsRepo');
+          const seats = await listSeatsByHand(String(handId));
+          for (const s of seats) seatInfoByUser[s.user_id] = { stack: s.stack, bet: s.bet };
+          if (typeof hand?.acting_pos === 'number') {
+            const actingSeat = seats.find((s) => Number(s.seat_pos) === Number(hand.acting_pos));
+            actingUuid = actingSeat?.user_id;
+          }
+          const { data: pots } = await poker.from('pots').select('*').eq('hand_id', handId);
+          potTotal = (pots || []).reduce((sum: number, p: any) => sum + Number(p.amount || 0), 0);
+          currentBetGlobal = Number(hand?.current_bet || 0);
+        }
+      } catch {
+        // non-blocking
+      }
+    }
+
+    // Mark acting player with an icon in the list, if available
+    if (isPlaying && actingUuid) {
+      const lines = playerNames.split('\n');
+      playerNames = room.players.map((uid, idx) => {
+        const base = lines[idx] || '';
+        return uid === actingUuid ? `${base} 🎯` : base;
+      }).join('\n');
+    }
+
+    const view = (isPlaying ? buildPlayingView : buildWaitingView)({
+      roomId,
+      playerNames,
+      smallBlind,
+      bigBlind,
+      maxPlayers,
+      playerCount,
+      timeoutMinutes,
+      lastUpdateIso: escapeHtml(lastUpdate),
+      hasAtLeastTwoPlayers,
+      t: gctx.t.bind(gctx),
+      // per-user extras filled when sending to each user below
+    });
     
     // Resolve recipient chat IDs:
     // - If explicit targetUserIds provided (Telegram IDs as strings), use them
@@ -164,9 +181,16 @@ export async function broadcastRoomInfo(
           .filter((n): n is number => typeof n === 'number' && Number.isFinite(n));
       }
     } else {
+      // Default recipients
       recipientChatIds = room.players
         .map((uuid) => idToTelegramId[uuid])
         .filter((n): n is number => typeof n === 'number' && Number.isFinite(n));
+      // IMPORTANT: When playing and no explicit target provided, avoid broadcasting to all.
+      // Send only to initiator by default to prevent unsolicited updates.
+      if (isPlaying) {
+        const initiatorId = Number((gctx as any)?.from?.id);
+        recipientChatIds = Number.isFinite(initiatorId) ? [initiatorId] : recipientChatIds.slice(0, 1);
+      }
     }
 
     if (recipientChatIds.length === 0) {
@@ -183,53 +207,142 @@ export async function broadcastRoomInfo(
       const send = (ctx as any).sendOrEditMessageToUsers ?? (gctx as any).sendOrEditMessageToUsers;
       await send(
         fallback,
-        message,
+        view.message,
         {
           parse_mode: 'HTML',
-          reply_markup: { inline_keyboard: baseRows }
+          reply_markup: { inline_keyboard: view.keyboardForPlayer }
         }
       );
       logFunctionEnd('roomService.broadcastRoomInfo', {
         roomId,
         targetUserIds: fallback.length,
-        messageLength: message.length,
+        messageLength: view.message.length,
         note: 'fallback'
       });
       return;
     }
 
     // Split recipients into admin and non-admin for personalized keyboards
-    const adminRecipients = recipientChatIds.filter((id) => id === adminTelegramId);
-    const nonAdminRecipients = recipientChatIds.filter((id) => id !== adminTelegramId);
+    const adminRecipients = adminTelegramId ? recipientChatIds.filter((id) => id === adminTelegramId) : [];
+    const nonAdminRecipients = adminTelegramId ? recipientChatIds.filter((id) => id !== adminTelegramId) : recipientChatIds;
 
     if (adminRecipients.length > 0) {
       const send = (ctx as any).sendOrEditMessageToUsers ?? (gctx as any).sendOrEditMessageToUsers;
+      const adminExtras = isPlaying ? {
+        message: ((): string => {
+          const base = view.message;
+          const info = seatInfoByUser[adminId] || {} as any;
+          const extraParts: string[] = [];
+          if (typeof info.stack === 'number') extraParts.push(`Your stack: ${info.stack}`);
+          if (typeof info.bet === 'number') extraParts.push(`Your bet: ${info.bet}`);
+          if (typeof potTotal === 'number') extraParts.push(`Pot: ${potTotal}`);
+          const extra = extraParts.join(' | ');
+          return extra ? `${base}\n\n${extra}` : base;
+        })(),
+      } : undefined;
+      // Keyboard selection: acting gets action buttons, others get waiting minimal
+      const isAdminActing = actingUuid && adminId === actingUuid;
+      const adminInfo = seatInfoByUser[adminId];
+      const adminCanCheck = typeof adminInfo?.bet === 'number' ? adminInfo.bet >= currentBetGlobal : false;
+      const actingRows: Btn[][] = (
+        adminCanCheck
+          ? [
+              [{ text: gctx.t('poker.game.buttons.check'), callback_data: 'g.pk.r.ck' }],
+              [{ text: gctx.t('poker.actions.raise'), callback_data: 'g.pk.r.rs' }],
+              [{ text: gctx.t('poker.game.buttons.fold'), callback_data: 'g.pk.r.fd' }]
+            ]
+          : [
+              [{ text: gctx.t('poker.game.buttons.call'), callback_data: 'g.pk.r.cl' }],
+              [{ text: gctx.t('poker.actions.raise'), callback_data: 'g.pk.r.rs' }],
+              [{ text: gctx.t('poker.game.buttons.fold'), callback_data: 'g.pk.r.fd' }]
+            ]
+      );
+      const waitingRows: Btn[][] = [[{ text: gctx.t('bot.buttons.refresh'), callback_data: 'g.pk.r.in' }]];
       await send(
         adminRecipients,
-        message,
+        adminExtras?.message ?? view.message,
         {
           parse_mode: 'HTML',
-          reply_markup: { inline_keyboard: adminRows }
+          reply_markup: { inline_keyboard: isPlaying ? (isAdminActing ? actingRows : waitingRows) : view.keyboardForAdmin }
         }
       );
     }
 
     if (nonAdminRecipients.length > 0) {
       const send = (ctx as any).sendOrEditMessageToUsers ?? (gctx as any).sendOrEditMessageToUsers;
-      await send(
-        nonAdminRecipients,
-        message,
-        {
-          parse_mode: 'HTML',
-          reply_markup: { inline_keyboard: baseRows }
+      if (isPlaying) {
+        for (const chatId of nonAdminRecipients) {
+          const uuid = telegramIdToUuid[chatId];
+          const info = uuid ? seatInfoByUser[uuid] : undefined;
+          const base = view.message;
+          const extraParts: string[] = [];
+          if (info && typeof info.stack === 'number') extraParts.push(`Your stack: ${info.stack}`);
+          if (info && typeof info.bet === 'number') extraParts.push(`Your bet: ${info.bet}`);
+          if (typeof potTotal === 'number') extraParts.push(`Pot: ${potTotal}`);
+          const message = extraParts.length > 0 ? `${base}\n\n${extraParts.join(' | ')}` : base;
+          const isActing = actingUuid && uuid === actingUuid;
+          const userInfo = info;
+          const canCheck = typeof userInfo?.stack === 'number' && typeof userInfo?.bet === 'number'
+            ? userInfo.bet >= currentBetGlobal
+            : false;
+          const actingRows: Btn[][] = (
+            canCheck
+              ? [
+                  [{ text: gctx.t('poker.game.buttons.check'), callback_data: 'g.pk.r.ck' }],
+                  [{ text: gctx.t('poker.actions.raise'), callback_data: 'g.pk.r.rs' }],
+                  [{ text: gctx.t('poker.game.buttons.fold'), callback_data: 'g.pk.r.fd' }]
+                ]
+              : [
+                  [{ text: gctx.t('poker.game.buttons.call'), callback_data: 'g.pk.r.cl' }],
+                  [{ text: gctx.t('poker.actions.raise'), callback_data: 'g.pk.r.rs' }],
+                  [{ text: gctx.t('poker.game.buttons.fold'), callback_data: 'g.pk.r.fd' }]
+                ]
+          );
+          const waitingRows: Btn[][] = [[{ text: gctx.t('bot.buttons.refresh'), callback_data: 'g.pk.r.in' }]];
+          await send(
+            [chatId],
+            message,
+            {
+              parse_mode: 'HTML',
+              reply_markup: { inline_keyboard: isActing ? actingRows : waitingRows }
+            }
+          );
         }
-      );
+      } else {
+        await send(
+          nonAdminRecipients,
+          view.message,
+          {
+            parse_mode: 'HTML',
+            reply_markup: { inline_keyboard: view.keyboardForPlayer }
+          }
+        );
+      }
+    }
+
+    // Also update the group room message if possible (so all members in the group see the update)
+    try {
+      const roomsApi = await import('@/api/rooms');
+      const dbRoom: any = await roomsApi.getById(roomId);
+      const lastChatId = Number(dbRoom?.last_chat_id);
+      if (Number.isFinite(lastChatId) && (gctx as any)?.telegram?.sendMessage) {
+        // Skip group broadcast during playing to avoid leaking private context
+        if (!isPlaying) {
+          await (gctx as any).telegram.sendMessage(lastChatId, view.message, {
+            parseMode: 'HTML',
+            replyMarkup: { inline_keyboard: view.keyboardForPlayer }
+          });
+        }
+      }
+    } catch {
+      // Ignore group broadcast errors in environments/tests without telegram plugin
+      (gctx as unknown as { log?: { debug?: (msg: string, obj: unknown) => void } })?.log?.debug?.('roomService.broadcastRoomInfo:group-send:skipped', { roomId });
     }
     
     logFunctionEnd('roomService.broadcastRoomInfo', { 
       roomId, 
       targetUserIds: userIds.length,
-      messageLength: message.length 
+      messageLength: view.message.length 
     });
   } catch (err) {
     logError('roomService.broadcastRoomInfo', err as Error, { roomId, targetUserIds });

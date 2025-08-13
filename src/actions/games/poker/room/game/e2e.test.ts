@@ -24,6 +24,8 @@ describe('games.poker.room.start -> game state', () => {
         createInlineKeyboard: (buttons: Array<{ text: string; callback_data: string }>) => ({ inline_keyboard: buttons.map(b => [b]) })
       },
       replySmart: vi.fn(async (_: string, opts: SmartReplyOptions | undefined) => { sent.push(opts?.reply_markup); }),
+      // Capture broadcast outputs
+      sendOrEditMessageToUsers: vi.fn(async (_userIds: number[], _text: string, options: any) => { sent.push(options?.reply_markup); }),
       log: { info: vi.fn(), error: vi.fn(), debug: vi.fn() },
       formState: { get: vi.fn(), set: vi.fn() }
     };
@@ -38,8 +40,8 @@ describe('games.poker.room.start -> game state', () => {
     const startMod: { default: BaseHandler } = await import('../start');
     const startHandler = startMod.default;
     await startHandler({ ctx, user: { id: 'u1', username: 't' }, _query: { roomId } } as unknown as import('@/modules/core/handler').HandlerContext, { roomId });
-
     const kb2 = sent.pop();
+    expect(kb2).toBeDefined();
     const actions2 = kb2.inline_keyboard.flat().map((b: any) => JSON.parse(b.callback_data).action);
     // Expect initial in-game buttons (example: Check/Call/Fold/Raise not all must exist yet, just assert presence placeholder)
     expect(actions2).toContain('g.pk.r.ck'); // check

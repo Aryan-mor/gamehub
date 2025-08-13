@@ -10,6 +10,7 @@ export interface PokerRoom {
   turnTimeoutSec?: number;
   lastUpdate?: number;
   playerNames?: Record<string, string>;
+  status?: 'waiting' | 'playing' | 'finished';
 }
 
 

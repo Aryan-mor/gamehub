@@ -283,6 +283,109 @@ describe('Poker Room Service E2E', () => {
   });
 
   describe('broadcastRoomInfo', () => {
+    it('should show Check/Raise/Fold when player can check (bet >= current bet) and mark acting 🎯', async () => {
+      const { broadcastRoomInfo } = await import('./roomService');
+      const roomId = 'playing-room-id';
+      mockGetRoom.mockResolvedValue({
+        id: roomId,
+        isPrivate: false,
+        maxPlayers: 2,
+        smallBlind: 100,
+        turnTimeoutSec: 120,
+        players: ['u1', 'u2'],
+        readyPlayers: ['u1', 'u2'],
+        lastUpdate: Date.now(),
+        status: 'playing',
+        createdBy: 'u1'
+      });
+      mockGetByIds.mockResolvedValue([
+        { id: 'u1', first_name: 'A', last_name: 'A', username: 'a', telegram_id: 1001 },
+        { id: 'u2', first_name: 'B', last_name: 'B', username: 'b', telegram_id: 1002 }
+      ]);
+      // Mock supabaseFor to provide hands/seats/pots
+      vi.doMock('@/lib/supabase', () => ({
+        supabaseFor: (_schema: string) => ({
+          from: (table: string) => ({
+            select: () => ({ eq: () => ({ order: () => ({ limit: async () => ({ data: [{ id: 'h1', current_bet: 200, acting_pos: 0 }] }) }) }) }),
+            eq: () => ({ order: () => ({ limit: async () => ({ data: [{ id: 'h1', current_bet: 200, acting_pos: 0 }] }) }) }),
+          })
+        })
+      }));
+      // Mock seatsRepo.listSeatsByHand
+      vi.doMock('./seatsRepo', () => ({
+        listSeatsByHand: vi.fn(async () => ([
+          { user_id: 'u1', seat_pos: 0, stack: 10000, bet: 200 }, // acting, can check (bet == current_bet)
+          { user_id: 'u2', seat_pos: 1, stack: 10000, bet: 0 }
+        ]))
+      }));
+
+      const sent: any[] = [];
+      context.from = { id: 1001 } as any; // initiator
+      context.sendOrEditMessageToUsers = vi.fn().mockImplementation(async (_uids, _text, opts) => {
+        sent.push({ text: _text, kb: opts?.reply_markup });
+        return [{ userId: 1001, success: true }];
+      });
+
+      await broadcastRoomInfo(context, roomId);
+      const out = sent.pop();
+      const flat = out.kb.inline_keyboard.flat();
+      const callbacks = flat.map((b: any) => b.callback_data);
+      expect(callbacks).toContain('g.pk.r.ck');
+      expect(callbacks).toContain('g.pk.r.rs');
+      expect(callbacks).toContain('g.pk.r.fd');
+      expect(callbacks).not.toContain('g.pk.r.cl');
+      expect(out.text).toMatch(/🎯/);
+    });
+
+    it('should show Call/Raise/Fold when player cannot check (bet < current bet)', async () => {
+      const { broadcastRoomInfo } = await import('./roomService');
+      const roomId = 'playing-room-id-2';
+      mockGetRoom.mockResolvedValue({
+        id: roomId,
+        isPrivate: false,
+        maxPlayers: 2,
+        smallBlind: 100,
+        turnTimeoutSec: 120,
+        players: ['u1', 'u2'],
+        readyPlayers: ['u1', 'u2'],
+        lastUpdate: Date.now(),
+        status: 'playing',
+        createdBy: 'u1'
+      });
+      mockGetByIds.mockResolvedValue([
+        { id: 'u1', first_name: 'A', last_name: 'A', username: 'a', telegram_id: 1001 },
+        { id: 'u2', first_name: 'B', last_name: 'B', username: 'b', telegram_id: 1002 }
+      ]);
+      vi.doMock('@/lib/supabase', () => ({
+        supabaseFor: (_schema: string) => ({
+          from: (_table: string) => ({
+            select: () => ({ eq: () => ({ order: () => ({ limit: async () => ({ data: [{ id: 'h2', current_bet: 200, acting_pos: 0 }] }) }) }) })
+          })
+        })
+      }));
+      vi.doMock('./seatsRepo', () => ({
+        listSeatsByHand: vi.fn(async () => ([
+          { user_id: 'u1', seat_pos: 0, stack: 10000, bet: 0 }, // acting, must call
+          { user_id: 'u2', seat_pos: 1, stack: 10000, bet: 200 }
+        ]))
+      }));
+
+      const sent: any[] = [];
+      context.from = { id: 1001 } as any;
+      context.sendOrEditMessageToUsers = vi.fn().mockImplementation(async (_uids, _text, opts) => {
+        sent.push(opts?.reply_markup);
+        return [{ userId: 1001, success: true }];
+      });
+
+      await broadcastRoomInfo(context, roomId);
+      const kb = sent.pop();
+      const flat = kb.inline_keyboard.flat();
+      const callbacks = flat.map((b: any) => b.callback_data);
+      expect(callbacks).toContain('g.pk.r.cl');
+      expect(callbacks).toContain('g.pk.r.rs');
+      expect(callbacks).toContain('g.pk.r.fd');
+      expect(callbacks).not.toContain('g.pk.r.ck');
+    });
     it('should broadcast room info to all players successfully', async () => {
       // Arrange
       const { broadcastRoomInfo } = await import('./roomService');

@@ -6,7 +6,7 @@ project_id = "gamehub"
 [api]
 enabled = true
 port = 55431
-schemas = ["public", "graphql_public"]
+schemas = ["public", "graphql_public", "poker"]
 extra_search_path = ["public", "extensions"]
 max_rows = 1000
 

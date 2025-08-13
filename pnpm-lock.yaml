@@ -66,6 +66,9 @@ importers:
       i18next-parser:
         specifier: ^9.3.0
         version: 9.3.0
+      pokersolver:
+        specifier: ^2.1.4
+        version: 2.1.4
       ts-node:
         specifier: ^10.9.2
         version: 10.9.2(@types/node@20.19.9)(typescript@5.9.2)
@@ -79,7 +82,7 @@ importers:
         specifier: ^3.2.4
         version: 3.2.4(@types/node@20.19.9)(@vitest/ui@3.2.4)(tsx@4.20.3)
 
-  card-image-service:
+  packages/card-image-service:
     dependencies:
       dotenv:
         specifier: ^16.4.5
@@ -118,6 +121,19 @@ importers:
       tsx:
         specifier: ^4.19.2
         version: 4.20.3
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.2
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.4(@types/node@20.19.9)(@vitest/ui@3.2.4)(tsx@4.20.3)
+
+  packages/poker-engine:
+    dependencies:
+      pokersolver:
+        specifier: ^2.1.4
+        version: 2.1.4
+    devDependencies:
       typescript:
         specifier: ^5.9.2
         version: 5.9.2
@@ -1723,6 +1739,10 @@ packages:
   pino@9.7.0:
     resolution: {integrity: sha512-vnMCM6xZTb1WDmLvtG2lE/2p+t9hDEIvTWJsu6FejkE62vB7gDhvzrpFR4Cw2to+9JNQxVnkAKVPA1KPB98vWg==}
     hasBin: true
+
+  pokersolver@2.1.4:
+    resolution: {integrity: sha512-vmgZS+K8H8r1RePQykFM5YyvlKo1v3xVec8FMBjg9N6mR2Tj/n/X415w+lG67FWbrk71D/CADmKFinDgaQlAsw==}
+    engines: {'0': node >= 4.0.0}
 
   postcss@8.5.6:
     resolution: {integrity: sha512-3Ybi1tAuwAP9s0r1UQ2J4n5Y0G05bJkpUIO0/bI9MhwmD70S5aTWbXGBwxHrelT+XM1k6dM0pk+SwNkpTRN7Pg==}
@@ -3805,6 +3825,8 @@ snapshots:
       safe-stable-stringify: 2.5.0
       sonic-boom: 4.2.0
       thread-stream: 3.1.0
+
+  pokersolver@2.1.4: {}
 
   postcss@8.5.6:
     dependencies:
