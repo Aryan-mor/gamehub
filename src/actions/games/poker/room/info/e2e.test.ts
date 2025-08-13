@@ -188,7 +188,7 @@ describe('Poker Room Info E2E', () => {
       
       // Assert
       expect(context.ctx.replySmart).toHaveBeenCalledWith(
-        expect.stringContaining('title'),
+        '🏠 Poker Room Info',
         expect.objectContaining({
           parse_mode: 'HTML',
           reply_markup: expect.objectContaining({
@@ -207,7 +207,7 @@ describe('Poker Room Info E2E', () => {
               ]),
               expect.arrayContaining([
                 expect.objectContaining({
-                  text: expect.stringContaining('back'),
+                  text: 'poker.room.buttons.backToRoomInfo',
                   callback_data: expect.stringContaining('poker.room.info')
                 })
               ])

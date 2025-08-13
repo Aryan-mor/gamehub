@@ -175,6 +175,7 @@ describe('Poker Room Repository E2E', () => {
         createdBy: 'creator-uuid',
         players: ['player1-uuid', 'player2-uuid'],
         readyPlayers: ['player1-uuid'],
+        status: 'waiting',
         turnTimeoutSec: 240,
         lastUpdate: expect.any(Number),
         playerNames: {}
@@ -242,6 +243,7 @@ describe('Poker Room Repository E2E', () => {
         createdBy: 'creator-uuid',
         players: [],
         readyPlayers: [],
+        status: 'waiting',
         turnTimeoutSec: 240, // default
         lastUpdate: expect.any(Number),
         playerNames: {}
@@ -315,6 +317,7 @@ describe('Poker Room Repository E2E', () => {
         createdBy: creatorUuid,
         players: [creatorUuid],
         readyPlayers: [],
+        status: 'waiting',
         turnTimeoutSec: 240,
         lastUpdate: expect.any(Number),
         playerNames: {}

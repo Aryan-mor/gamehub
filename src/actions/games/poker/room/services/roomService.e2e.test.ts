@@ -318,6 +318,17 @@ describe('Poker Room Service E2E', () => {
           { user_id: 'u2', seat_pos: 1, stack: 10000, bet: 0 }
         ]))
       }));
+      // Mock the context.t function to return proper translations
+      context.t = vi.fn((key: string) => {
+        const translations: Record<string, string> = {
+          'poker.game.buttons.check': 'Check',
+          'poker.game.buttons.call': 'Call',
+          'poker.game.buttons.fold': 'Fold',
+          'poker.actions.raise': 'Raise',
+          'bot.buttons.refresh': 'Refresh'
+        };
+        return translations[key] || key;
+      });
 
       const sent: any[] = [];
       context.from = { id: 1001 } as any; // initiator
@@ -369,6 +380,17 @@ describe('Poker Room Service E2E', () => {
           { user_id: 'u2', seat_pos: 1, stack: 10000, bet: 200 }
         ]))
       }));
+      // Mock the context.t function to return proper translations
+      context.t = vi.fn((key: string) => {
+        const translations: Record<string, string> = {
+          'poker.game.buttons.check': 'Check',
+          'poker.game.buttons.call': 'Call',
+          'poker.game.buttons.fold': 'Fold',
+          'poker.actions.raise': 'Raise',
+          'bot.buttons.refresh': 'Refresh'
+        };
+        return translations[key] || key;
+      });
 
       const sent: any[] = [];
       context.from = { id: 1001 } as any;
