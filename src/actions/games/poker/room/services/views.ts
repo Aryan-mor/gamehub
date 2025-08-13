@@ -90,8 +90,12 @@ export function buildWaitingView(ctx: BuildContext, isDetailed = false): ViewPay
 
 export function buildPlayingView(ctx: BuildContext, isDetailed = false): ViewPayload {
   // Default layout is minimal; actual acting player's layout is computed in roomService based on current bet
+  const showDetailsText = ctx.t('poker.room.buttons.showDetails') || '📋 Show Details';
+  const showSummaryText = ctx.t('poker.room.buttons.showSummary') || '📝 Show Summary';
+  
   const inGameRows: Btn[][] = [
     [{ text: ctx.t('bot.buttons.refresh'), callback_data: 'g.pk.r.in' }],
+    [{ text: isDetailed ? showSummaryText : showDetailsText, callback_data: `g.pk.r.in?detailed=${!isDetailed}` }],
   ];
   const header = isDetailed 
     ? buildDetailedMessage(ctx, ctx.t('poker.room.status.playing'))

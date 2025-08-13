@@ -245,8 +245,11 @@ export async function broadcastRoomInfo(
       const isAdminActing = actingUuid && adminId === actingUuid;
       const adminInfo = seatInfoByUser[adminId];
       const adminCanCheck = typeof adminInfo?.bet === 'number' ? adminInfo.bet >= currentBetGlobal : false;
-      const actingRows: Btn[][] = (
-        adminCanCheck
+      const showDetailsText = gctx.t('poker.room.buttons.showDetails') || '📋 Show Details';
+      const showSummaryText = gctx.t('poker.room.buttons.showSummary') || '📝 Show Summary';
+      
+      const actingRows: Btn[][] = [
+        ...(adminCanCheck
           ? [
               [{ text: gctx.t('poker.game.buttons.check'), callback_data: 'g.pk.r.ck' }],
               [{ text: gctx.t('poker.actions.raise'), callback_data: 'g.pk.r.rs' }],
@@ -257,8 +260,13 @@ export async function broadcastRoomInfo(
               [{ text: gctx.t('poker.actions.raise'), callback_data: 'g.pk.r.rs' }],
               [{ text: gctx.t('poker.game.buttons.fold'), callback_data: 'g.pk.r.fd' }]
             ]
-      );
-      const waitingRows: Btn[][] = [[{ text: gctx.t('bot.buttons.refresh'), callback_data: 'g.pk.r.in' }]];
+        ),
+        [{ text: isDetailed ? showSummaryText : showDetailsText, callback_data: `g.pk.r.in?detailed=${!isDetailed}` }]
+      ];
+      const waitingRows: Btn[][] = [
+        [{ text: gctx.t('bot.buttons.refresh'), callback_data: 'g.pk.r.in' }],
+        [{ text: isDetailed ? showSummaryText : showDetailsText, callback_data: `g.pk.r.in?detailed=${!isDetailed}` }]
+      ];
       await send(
         adminRecipients,
         adminExtras?.message ?? view.message,
@@ -286,8 +294,11 @@ export async function broadcastRoomInfo(
           const canCheck = typeof userInfo?.stack === 'number' && typeof userInfo?.bet === 'number'
             ? userInfo.bet >= currentBetGlobal
             : false;
-          const actingRows: Btn[][] = (
-            canCheck
+          const showDetailsText = gctx.t('poker.room.buttons.showDetails') || '📋 Show Details';
+          const showSummaryText = gctx.t('poker.room.buttons.showSummary') || '📝 Show Summary';
+          
+          const actingRows: Btn[][] = [
+            ...(canCheck
               ? [
                   [{ text: gctx.t('poker.game.buttons.check'), callback_data: 'g.pk.r.ck' }],
                   [{ text: gctx.t('poker.actions.raise'), callback_data: 'g.pk.r.rs' }],
@@ -298,8 +309,13 @@ export async function broadcastRoomInfo(
                   [{ text: gctx.t('poker.actions.raise'), callback_data: 'g.pk.r.rs' }],
                   [{ text: gctx.t('poker.game.buttons.fold'), callback_data: 'g.pk.r.fd' }]
                 ]
-          );
-          const waitingRows: Btn[][] = [[{ text: gctx.t('bot.buttons.refresh'), callback_data: 'g.pk.r.in' }]];
+            ),
+            [{ text: isDetailed ? showSummaryText : showDetailsText, callback_data: `g.pk.r.in?detailed=${!isDetailed}` }]
+          ];
+          const waitingRows: Btn[][] = [
+            [{ text: gctx.t('bot.buttons.refresh'), callback_data: 'g.pk.r.in' }],
+            [{ text: isDetailed ? showSummaryText : showDetailsText, callback_data: `g.pk.r.in?detailed=${!isDetailed}` }]
+          ];
           await send(
             [chatId],
             message,
