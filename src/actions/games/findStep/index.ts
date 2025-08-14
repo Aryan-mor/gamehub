@@ -25,7 +25,8 @@ async function handleFindStep(context: HandlerContext, query: Record<string, str
         await dispatch('games.poker.room.info', { ...context, _query: { roomId } });
         return;
       }
-      await dispatch('games.poker.room.start', { ...context, _query: { roomId } });
+      // If room is already playing, show info instead of starting new hand
+      await dispatch('games.poker.room.info', { ...context, _query: { roomId } });
       return;
     }
   }

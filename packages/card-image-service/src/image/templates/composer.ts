@@ -77,6 +77,12 @@ export async function generateTemplateImageBuffer(options: TemplateImageOptions)
       const card = cards[i];
       const position = config.cardPositions[i];
       
+      // Support placeholder tokens to keep indices aligned (e.g., preflop without board cards)
+      if (typeof card === 'string' && card.toLowerCase() === 'blank') {
+        // Skip overlay for this slot
+        continue;
+      }
+
       const cardPath = path.join(__dirname, '../../../assets/card', style, `${card}.png`);
       
       if (!fs.existsSync(cardPath)) {

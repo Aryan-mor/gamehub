@@ -7,6 +7,10 @@
     "verify": "pnpm run routes:gen && pnpm run type-check && pnpm run lint && pnpm run test:run",
     "type-check:ci": "tsc --noEmit -p tsconfig.ci.json",
     "dev": "./scripts/dev.sh",
+    "dev:all": "concurrently \"pnpm dev\" \"pnpm run card-image:dev\"",
+    "dev:both": "./scripts/dev-all.sh",
+    "card-image:dev": "cd packages/card-image-service && pnpm dev",
+    "card-image:build": "cd packages/card-image-service && pnpm build",
     "routes:gen": "tsx scripts/generate-routes.ts",
     "build": "pnpm run routes:gen && tsc",
     "scaffold:action": "tsx scripts/scaffold-action.ts",
@@ -43,7 +47,7 @@
     "db:stop": "supabase stop",
     "db:status": "supabase status",
     "db:reset": "supabase stop && supabase start",
-    "dev:with-db": "supabase start && DEBUG=true pnpm bot"
+    "dev:with-db": "supabase start && DEBUG=true pnpm dev:all"
   },
   "dependencies": {
     "@gamehub/poker-engine": "workspace:*",
@@ -66,6 +70,7 @@
     "@typescript-eslint/parser": "^8.39.0",
     "@vitest/coverage-v8": "^3.2.4",
     "@vitest/ui": "^3.2.4",
+    "concurrently": "^9.1.0",
     "eslint": "^9",
     "form-data": "^4.0.4",
     "i18next-parser": "^9.3.0",

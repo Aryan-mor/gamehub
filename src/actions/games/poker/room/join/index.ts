@@ -18,13 +18,7 @@ async function handleJoinCarousel(context: HandlerContext, query: Record<string,
   logFunctionStart('poker.join.carousel', { userId: user.id, step });
 
   try {
-    // Helper: i18n with fallback
-    const tr = (key: string, fallback: string, options?: Record<string, unknown>): string => {
-      const v = ctx.t(key, options) as string;
-      const looksLikeKey = v.includes('.') || v.includes('poker.') || v.includes('bot.');
-      const hasUnresolved = v.includes('{{');
-      return v && !looksLikeKey && !hasUnresolved ? v : fallback;
-    };
+
 
     // Helper: fetch joinable public rooms for poker
     const loadJoinableRooms = async (): Promise<string[]> => {
@@ -64,7 +58,7 @@ async function handleJoinCarousel(context: HandlerContext, query: Record<string,
       const { users } = await import('@/api');
       const room = await getRoom(roomId);
       if (!room) {
-        return { message: tr('poker.room.error.notFound', '❌ Room not found'), playerCount: 0, maxPlayers: 0 };
+        return { message: ctx.t('poker.room.error.notFound'), playerCount: 0, maxPlayers: 0 };
       }
       const escapeHtml = (input: string): string => input.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
       const playerCount = room.players.length;
@@ -90,17 +84,17 @@ async function handleJoinCarousel(context: HandlerContext, query: Record<string,
         })
         .join('\n');
 
-      const title = tr('poker.room.info.title', '🏠 Poker Room Info');
-      const sectionDetails = tr('poker.room.info.section.details', '📋 Room Details');
-      const fieldId = tr('poker.room.info.field.id', '• ID');
-      const fieldStatus = tr('poker.room.info.field.status', '• Status');
-      const fieldType = tr('poker.room.info.field.type', '• Type');
-      const sectionSettings = tr('poker.room.info.section.settings', '⚙️ Game Settings');
-      const fieldSmallBlind = tr('poker.room.info.field.smallBlind', '• Small Blind');
-      const fieldMaxPlayers = tr('poker.room.info.field.maxPlayers', '• Max Players');
-      const fieldTurnTimeout = tr('poker.room.info.field.turnTimeout', '• Turn Timeout');
-      const sectionPlayers = tr('poker.room.info.section.players', `👥 Players (${playerCount}/${maxPlayers}):`, { count: playerCount, max: maxPlayers });
-      const fieldLastUpdate = tr('poker.room.info.field.lastUpdate', 'Last update');
+      const title = ctx.t('poker.room.info.title');
+      const sectionDetails = ctx.t('poker.room.info.section.details');
+      const fieldId = ctx.t('poker.room.info.field.id');
+      const fieldStatus = ctx.t('poker.room.info.field.status');
+      const fieldType = ctx.t('poker.room.info.field.type');
+      const sectionSettings = ctx.t('poker.room.info.section.settings');
+      const fieldSmallBlind = ctx.t('poker.room.info.field.smallBlind');
+      const fieldMaxPlayers = ctx.t('poker.room.info.field.maxPlayers');
+      const fieldTurnTimeout = ctx.t('poker.room.info.field.turnTimeout');
+      const sectionPlayers = ctx.t('poker.room.info.section.players', { count: playerCount, max: maxPlayers });
+      const fieldLastUpdate = ctx.t('poker.room.info.field.lastUpdate');
 
       const message = `${title}\n\n${sectionDetails}\n${fieldId}: ${escapeHtml(roomId)}\n${fieldStatus}: ⏳ Waiting for players\n${fieldType}: 🌐 Public\n\n${sectionSettings}\n${fieldSmallBlind}: ${smallBlind}\n• Big Blind: ${bigBlind}\n${fieldMaxPlayers}: ${maxPlayers}\n${fieldTurnTimeout}: ${timeoutMinutes} min\n\n${sectionPlayers}\n${playerNames}\n\n${fieldLastUpdate}: ${escapeHtml(lastUpdate)}`;
 
@@ -142,8 +136,8 @@ async function handleJoinCarousel(context: HandlerContext, query: Record<string,
 
     // If no rooms available
     if (!state.roomIds || state.roomIds.length === 0) {
-      const noRoomsMsg = tr('poker.join.noRooms', '😕 No public rooms available right now.');
-      const backBtn = [{ text: tr('poker.room.buttons.back', '🔙 Back'), callback_data: ctx.keyboard.buildCallbackData('games.poker.start' as const) }];
+      const noRoomsMsg = ctx.t('poker.join.noRooms');
+      const backBtn = [{ text: ctx.t('poker.room.buttons.back'), callback_data: ctx.keyboard.buildCallbackData('games.poker.start' as const) }];
       await ctx.replySmart(noRoomsMsg, { reply_markup: { inline_keyboard: [backBtn] } });
       logFunctionEnd('poker.join.carousel.empty', {});
       return;
@@ -159,9 +153,9 @@ async function handleJoinCarousel(context: HandlerContext, query: Record<string,
     const { message } = await buildRoomInfoMessage(currentRoomId);
 
     // Build buttons: Join, Another room, Back
-    const joinText = tr('poker.join.buttons.join', '✅ Join');
-    const anotherText = tr('poker.join.buttons.another', '➡️ Another room');
-    const backText = tr('poker.room.buttons.back', '🔙 Back');
+    const joinText = ctx.t('poker.join.buttons.join');
+    const anotherText = ctx.t('poker.join.buttons.another');
+    const backText = ctx.t('poker.room.buttons.back');
 
     const rows = [
       [{ text: joinText, callback_data: ctx.keyboard.buildCallbackData('games.poker.room.join' as const, { s: 'join' }) }],

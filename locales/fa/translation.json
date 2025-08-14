@@ -46,6 +46,8 @@
   "poker.actions.fold": "⬇️ فولد",
   "poker.actions.raise": "⬆️ رِیز",
   "poker.actions.raisePlus": "💰 +{{amount}}",
+  "poker.actions.playAgain": "🔄 بازی مجدد",
+  "poker.actions.cashOut": "💰 برداشت",
   "poker.active.redirect.gameState": "🎮 شما در حال حاضر در بازی \"{{roomName}}\" هستید.\n\nبرای مشاهده جزئیات بازی، از دکمه‌های زیر استفاده کنید.",
   "poker.active.redirect.roomInfo": "🏠 شما در \"{{roomName}}\" هستید.\n\nبرای مشاهده جزئیات روم، از دکمه‌های زیر استفاده کنید.",
   "poker.error.allin": "❌ خطا در آل‌این: {{error}}",
@@ -102,6 +104,9 @@
   "poker.join.leaveAndJoinNew": "↪️ خروج از روم فعلی و پیوستن به روم جدید",
   "poker.join.leaveActive": "🚪 خروج از روم فعال",
   "poker.join.switched": "🔄 به روم انتخابی منتقل شدید",
+  "poker.join.noRooms": "😕 در حال حاضر هیچ روم عمومی موجود نیست.",
+  "poker.join.buttons.join": "✅ پیوستن",
+  "poker.join.buttons.another": "➡️ روم دیگر",
   "poker.leave.done": "✅ از روم فعال خارج شدید",
   "poker.form.option.sb50": "💰 ۵۰",
   "poker.form.option.sb500": "💰 ۵۰۰",
@@ -174,6 +179,7 @@
   "poker.room.buttons.stake50": "🪙 شرط ۵۰",
   "poker.room.buttons.startGame": "🎮 شروع بازی",
   "poker.room.buttons.update": "🔄 بروزرسانی",
+  "poker.room.buttons.viewGame": "🎮 مشاهده بازی",
   "poker.room.buttons.showDetails": "📋 نمایش جزئیات",
   "poker.room.buttons.showSummary": "📝 نمایش خلاصه",
   "poker.room.created.success": "🏠 <b>روم با موفقیت ساخته شد!</b>\\n\\n✅ روم پوکر جدید آماده است!\\n\\n🎯 <b>مشخصات روم:</b>\\n• نام: {{roomName}}\\n• نوع: {{roomType}}\\n• تعداد بازیکنان: {{playerCount}}/{{maxPlayers}}\\n• Small Blind: {{smallBlind}} سکه\\n• تایم‌اوت: {{turnTimeoutSec}} ثانیه\\n\\n📊 <b>مراحل بعدی:</b>\\n• دوستان خود را دعوت کنید\\n• منتظر ورود بازیکنان باشید\\n• بازی را شروع کنید",
