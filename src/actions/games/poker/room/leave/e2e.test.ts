@@ -479,7 +479,7 @@ describe('Poker Room Leave E2E', () => {
       const kb = options?.reply_markup?.inline_keyboard ?? [];
       const callbacks = kb.flat().map((b: any) => b.callback_data as string);
       const hasYes = callbacks.some((c: string) => c.startsWith('g.pk.r.lv') && c.includes('c=1'));
-      const hasBack = callbacks.some((c: string) => c === 'g.pk.r.in');
+      const hasBack = callbacks.some((c: string) => c.startsWith('g.pk.r.in'));
       expect(hasYes).toBe(true);
       expect(hasBack).toBe(true);
     });

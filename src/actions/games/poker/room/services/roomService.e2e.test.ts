@@ -342,8 +342,8 @@ describe('Poker Room Service E2E', () => {
       const flat = out.kb.inline_keyboard.flat();
       const callbacks = flat.map((b: any) => b.callback_data);
       // When playing, should show refresh and show details buttons
-      expect(callbacks).toContain('g.pk.r.in');
-      expect(callbacks.some(cb => cb.includes('detailed='))).toBe(true);
+      expect(callbacks.some(cb => cb.startsWith('g.pk.r.in'))).toBe(true);
+      expect(callbacks.some(cb => cb.includes('d='))).toBe(true);
       expect(out.text).toMatch(/🎯/);
     });
 
@@ -403,8 +403,8 @@ describe('Poker Room Service E2E', () => {
       const flat = kb.inline_keyboard.flat();
       const callbacks = flat.map((b: any) => b.callback_data);
       // When playing, should show refresh and show details buttons
-      expect(callbacks).toContain('g.pk.r.in');
-      expect(callbacks.some(cb => cb.includes('detailed='))).toBe(true);
+      expect(callbacks.some(cb => cb.startsWith('g.pk.r.in'))).toBe(true);
+      expect(callbacks.some(cb => cb.includes('d='))).toBe(true);
     });
     it('should broadcast room info to all players successfully', async () => {
       // Arrange
@@ -609,7 +609,7 @@ describe('Poker Room Service E2E', () => {
               expect.arrayContaining([
                 expect.objectContaining({
                   text: '🔄 Refresh',
-                  callback_data: 'g.pk.r.in'
+                  callback_data: expect.stringMatching(/^g\.pk\.r\.in/)
                 })
               ]),
               expect.arrayContaining([

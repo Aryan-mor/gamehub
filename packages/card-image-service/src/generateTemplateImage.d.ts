@@ -1,0 +1,4 @@
+export declare function generateAndSendTemplateImage(templateId: string, cards: string[], style?: string, debugTag?: string, format?: 'png' | 'webp' | 'jpeg', transparent?: boolean, asDocument?: boolean): Promise<string>;
+export declare function regenerateTemplateImage(templateId: string, cards: string[], style?: string, debugTag?: string, format?: 'png' | 'webp' | 'jpeg', transparent?: boolean, asDocument?: boolean): Promise<string>;
+export declare function generateTemplateBufferOnly(templateId: string, cards: string[], style?: string, debugTag?: string, format?: 'png' | 'webp' | 'jpeg', transparent?: boolean): Promise<Buffer>;
+//# sourceMappingURL=generateTemplateImage.d.ts.map
