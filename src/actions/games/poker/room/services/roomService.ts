@@ -248,36 +248,45 @@ export async function broadcastRoomInfo(
     const nonAdminRecipients = adminTelegramId ? recipientChatIds.filter((id) => id !== adminTelegramId) : recipientChatIds;
 
     if (adminRecipients.length > 0) {
-      const adminInfo = seatInfoByUser[adminId];
-      const adminCanCheck = typeof adminInfo?.bet === 'number' ? adminInfo.bet >= currentBetGlobal : false;
-      const showDetailsText = gctx.t('poker.room.buttons.showDetails') || '📋 Show Details';
-      const showSummaryText = gctx.t('poker.room.buttons.showSummary') || '📝 Show Summary';
-      
-      const actingRows: Btn[][] = [
-        ...(adminCanCheck
-          ? [
-              [{ text: gctx.t('poker.game.buttons.check'), callback_data: 'g.pk.r.ck' }],
-              [{ text: gctx.t('poker.actions.raise'), callback_data: 'g.pk.r.rs' }],
-              [{ text: gctx.t('poker.game.buttons.fold'), callback_data: 'g.pk.r.fd' }]
-            ]
-          : [
-              [{ text: gctx.t('poker.game.buttons.call'), callback_data: 'g.pk.r.cl' }],
-              [{ text: gctx.t('poker.actions.raise'), callback_data: 'g.pk.r.rs' }],
-              [{ text: gctx.t('poker.game.buttons.fold'), callback_data: 'g.pk.r.fd' }]
-            ]
-        ),
-        [{ text: isDetailed ? showSummaryText : showDetailsText, callback_data: `g.pk.r.in?detailed=${!isDetailed}` }]
-      ];
-      const waitingRows: Btn[][] = [
-        [{ text: gctx.t('bot.buttons.refresh'), callback_data: 'g.pk.r.in' }],
-        [{ text: isDetailed ? showSummaryText : showDetailsText, callback_data: `g.pk.r.in?detailed=${!isDetailed}` }]
-      ];
+                      const adminInfo = seatInfoByUser[adminId];
+        const adminCanCheck = typeof adminInfo?.bet === 'number' ? adminInfo.bet >= currentBetGlobal : false;
+        const toggleDetailsText = isDetailed 
+            ? gctx.t('poker.room.buttons.toggleSummary')
+            : gctx.t('poker.room.buttons.toggleDetails');
+           
+          const actingRows: Btn[][] = [
+            ...(adminCanCheck
+              ? [
+                  [{ text: gctx.t('poker.game.buttons.check'), callback_data: 'g.pk.r.ck' }],
+                  [{ text: gctx.t('poker.actions.raise'), callback_data: 'g.pk.r.rs' }],
+                  [{ text: gctx.t('poker.game.buttons.fold'), callback_data: 'g.pk.r.fd' }]
+                ]
+              : [
+                  [{ text: gctx.t('poker.game.buttons.call'), callback_data: 'g.pk.r.cl' }],
+                  [{ text: gctx.t('poker.actions.raise'), callback_data: 'g.pk.r.rs' }],
+                  [{ text: gctx.t('poker.game.buttons.fold'), callback_data: 'g.pk.r.fd' }]
+                ]
+            ),
+            [{ text: toggleDetailsText, callback_data: `g.pk.r.in?r=${roomId}&d=${!isDetailed}` }]
+          ];
+          const waitingRows: Btn[][] = [
+            [{ text: gctx.t('bot.buttons.refresh'), callback_data: `g.pk.r.in?r=${roomId}` }],
+            [{ text: toggleDetailsText, callback_data: `g.pk.r.in?r=${roomId}&d=${!isDetailed}` }]
+          ];
 
       const isAdminActing = actingUuid && adminId === actingUuid;
       const keyboard = isPlaying ? (isAdminActing ? actingRows : waitingRows) : view.keyboardForAdmin;
 
       // Build personalized caption
       const base = view.message;
+      // Add cards and stack information before "Last update"
+      let cardsBlock = '';
+      if (adminInfo?.hole && Array.isArray(adminInfo.hole) && adminInfo.hole.length > 0) {
+        const cardsText = adminInfo.hole.join(' ');
+        cardsBlock = `\n\n${gctx.t('poker.game.section.yourCards')}: ${cardsText}`;
+      }
+      
+      let stackBlock = '';
       const extraParts: string[] = [];
       const yourStackLabel = gctx.t('poker.game.field.yourStack') || 'Your stack';
       const yourBetLabel = gctx.t('poker.game.field.yourBet') || 'Your bet';
@@ -285,13 +294,16 @@ export async function broadcastRoomInfo(
       if (typeof adminInfo?.stack === 'number') extraParts.push(`${yourStackLabel}: ${adminInfo.stack}`);
       if (typeof adminInfo?.bet === 'number') extraParts.push(`${yourBetLabel}: ${adminInfo.bet}`);
       if (typeof potTotal === 'number') extraParts.push(`${potLabel}: ${potTotal}`);
-      const extrasLine = extraParts.join(' | ');
-      let cardsBlock = '';
-      if (adminInfo?.hole && Array.isArray(adminInfo.hole) && adminInfo.hole.length > 0) {
-        const cardsText = adminInfo.hole.join(' ');
-        cardsBlock = `${gctx.t('poker.game.section.yourCards')}: ${cardsText}\n\n`;
+      if (extraParts.length > 0) {
+        stackBlock = `\n\n${extraParts.join(' | ')}`;
       }
-      const adminCaption = [base, [cardsBlock, extrasLine].filter(Boolean).join('')].filter(Boolean).join('\n\n');
+      
+      // Insert cards and stack before "Last update"
+      const lastUpdatePattern = `\n\nLast update:`;
+      const parts = base.split(lastUpdatePattern);
+      const adminCaption = parts.length > 1 
+        ? `${parts[0]}${cardsBlock}${stackBlock}${lastUpdatePattern}${parts[1]}`
+        : `${base}${cardsBlock}${stackBlock}`;
 
       if (usePhotoFlow) {
         await sendOrEditPhotoToUsers(gctx, roomId, adminRecipients, adminCaption, keyboard, {
@@ -324,33 +336,45 @@ export async function broadcastRoomInfo(
           const uuid = telegramIdToUuid[chatId];
           const info = uuid ? seatInfoByUser[uuid] : undefined;
           const base = view.message;
-          const extraParts: string[] = [];
           
           // Debug: log seat info
           (gctx as any)?.log?.debug?.('roomService.broadcastRoomInfo:seatInfo', { 
             chatId, uuid, info, seatInfoByUser: Object.keys(seatInfoByUser) 
           });
           
+          // Add cards and stack information before "Last update"
+          let cardsBlock = '';
+          if (info?.hole && Array.isArray(info.hole) && info.hole.length > 0) {
+            const cardsText = info.hole.join(' ');
+            cardsBlock = `\n\n${gctx.t('poker.game.section.yourCards')}: ${cardsText}`;
+          }
+          
+          let stackBlock = '';
+          const extraParts: string[] = [];
           const yourStackLabel = gctx.t('poker.game.field.yourStack') || 'Your stack';
           const yourBetLabel = gctx.t('poker.game.field.yourBet') || 'Your bet';
           const potLabel = gctx.t('poker.game.field.potLabel') || 'Pot';
           if (info && typeof info.stack === 'number') extraParts.push(`${yourStackLabel}: ${info.stack}`);
           if (info && typeof info.bet === 'number') extraParts.push(`${yourBetLabel}: ${info.bet}`);
           if (typeof potTotal === 'number') extraParts.push(`${potLabel}: ${potTotal}`);
-          const extrasLine = extraParts.join(' | ');
-          let cardsBlock = '';
-          if (info?.hole && Array.isArray(info.hole) && info.hole.length > 0) {
-            const cardsText = info.hole.join(' ');
-            cardsBlock = `${gctx.t('poker.game.section.yourCards')}: ${cardsText}\n\n`;
+          if (extraParts.length > 0) {
+            stackBlock = `\n\n${extraParts.join(' | ')}`;
           }
-          const message = [base, [cardsBlock, extrasLine].filter(Boolean).join('')].filter(Boolean).join('\n\n');
+          
+          // Insert cards and stack before "Last update"
+          const lastUpdatePattern = `\n\nLast update:`;
+          const parts = base.split(lastUpdatePattern);
+          const message = parts.length > 1 
+            ? `${parts[0]}${cardsBlock}${stackBlock}${lastUpdatePattern}${parts[1]}`
+            : `${base}${cardsBlock}${stackBlock}`;
           const isActing = actingUuid && uuid === actingUuid;
           const userInfo = info;
           const canCheck = typeof userInfo?.stack === 'number' && typeof userInfo?.bet === 'number'
             ? userInfo.bet >= currentBetGlobal
             : false;
-          const showDetailsText = gctx.t('poker.room.buttons.showDetails') || '📋 Show Details';
-          const showSummaryText = gctx.t('poker.room.buttons.showSummary') || '📝 Show Summary';
+          const toggleDetailsText = isDetailed 
+            ? gctx.t('poker.room.buttons.toggleSummary')
+            : gctx.t('poker.room.buttons.toggleDetails');
           
           const actingRows: Btn[][] = [
             ...(canCheck
@@ -365,11 +389,11 @@ export async function broadcastRoomInfo(
                   [{ text: gctx.t('poker.game.buttons.fold'), callback_data: 'g.pk.r.fd' }]
                 ]
             ),
-            [{ text: isDetailed ? showSummaryText : showDetailsText, callback_data: `g.pk.r.in?detailed=${!isDetailed}` }]
+            [{ text: toggleDetailsText, callback_data: `g.pk.r.in?r=${roomId}&d=${!isDetailed}` }]
           ];
           const waitingRows: Btn[][] = [
-            [{ text: gctx.t('bot.buttons.refresh'), callback_data: 'g.pk.r.in' }],
-            [{ text: isDetailed ? showSummaryText : showDetailsText, callback_data: `g.pk.r.in?detailed=${!isDetailed}` }]
+            [{ text: gctx.t('bot.buttons.refresh'), callback_data: `g.pk.r.in?r=${roomId}` }],
+            [{ text: toggleDetailsText, callback_data: `g.pk.r.in?r=${roomId}&d=${!isDetailed}` }]
           ];
 
           if (usePhotoFlow) {

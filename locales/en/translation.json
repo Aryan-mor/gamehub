@@ -164,6 +164,8 @@
   "poker.room.buttons.update": "🔄 Update",
   "poker.room.buttons.showDetails": "📋 Show Details",
   "poker.room.buttons.showSummary": "📝 Show Summary",
+  "poker.room.buttons.toggleDetails": "📋 Show Details",
+  "poker.room.buttons.toggleSummary": "📝 Show Summary",
   "poker.room.buttons.viewGame": "🎮 View Game",
   "poker.actions.playAgain": "🔄 Play Again",
   "poker.actions.cashOut": "💰 Cash Out",

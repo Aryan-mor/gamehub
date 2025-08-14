@@ -27,7 +27,7 @@ export interface BuildContext {
   yourCards?: string; // Private cards for the current user
 }
 
-function buildDetailedMessage(ctx: BuildContext, statusText: string): string {
+function buildDetailedMessage(ctx: BuildContext, statusText: string, skipLastUpdate = false): string {
   const title = ctx.t('poker.room.info.title');
   const sectionDetails = ctx.t('poker.room.info.section.details');
   const fieldId = ctx.t('poker.room.info.field.id');
@@ -44,10 +44,18 @@ function buildDetailedMessage(ctx: BuildContext, statusText: string): string {
     .replace('{{max}}', String(ctx.maxPlayers));
   const fieldLastUpdate = ctx.t('poker.room.info.field.lastUpdate');
 
-  return `${title}\n\n${sectionDetails}\n${fieldId}: ${ctx.roomId}\n${fieldStatus}: ${statusText}\n${fieldType}: 🌐 Public\n\n${sectionSettings}\n${fieldSmallBlind}: ${ctx.smallBlind}\n• Big Blind: ${ctx.bigBlind}\n${fieldMaxPlayers}: ${ctx.maxPlayers}\n${fieldTurnTimeout}: ${ctx.timeoutMinutes} min\n\n${sectionPlayers}\n${ctx.playerNames}\n\n${fieldLastUpdate}: ${ctx.lastUpdateIso}`;
+  // Build message without "Last update" when skipLastUpdate is true
+  const baseMessage = `${title}\n\n${sectionDetails}\n${fieldId}: ${ctx.roomId}\n${fieldStatus}: ${statusText}\n${fieldType}: 🌐 Public\n\n${sectionSettings}\n${fieldSmallBlind}: ${ctx.smallBlind}\n• Big Blind: ${ctx.bigBlind}\n${fieldMaxPlayers}: ${ctx.maxPlayers}\n${fieldTurnTimeout}: ${ctx.timeoutMinutes} min\n\n${sectionPlayers}\n${ctx.playerNames}`;
+  
+  // Add last update only if not skipped
+  if (!skipLastUpdate) {
+    return `${baseMessage}\n\n${fieldLastUpdate}: ${ctx.lastUpdateIso}`;
+  }
+  
+  return baseMessage;
 }
 
-function buildCompactMessage(ctx: BuildContext, statusText: string): string {
+function buildCompactMessage(ctx: BuildContext, statusText: string, skipLastUpdate = false): string {
   const title = ctx.t('poker.room.info.title');
   // Avoid i18n pluralization on 'count' to prevent key resolution issues; manually inject values
   const sectionPlayersRaw = ctx.t('poker.room.info.section.players');
@@ -58,13 +66,19 @@ function buildCompactMessage(ctx: BuildContext, statusText: string): string {
 
   let message = `${title}\n\n`;
   
+  // Add status and players
+  message += `• Status: ${statusText}\n\n${sectionPlayers}\n${ctx.playerNames}`;
+  
   // Add private cards if available (only in playing state)
   if (ctx.yourCards && statusText.includes('Playing')) {
     const yourCardsLabel = ctx.t('poker.game.section.yourCards');
-    message += `${yourCardsLabel}\n${ctx.yourCards}\n\n`;
+    message += `\n\n${yourCardsLabel}: ${ctx.yourCards}`;
   }
   
-  message += `• Status: ${statusText}\n\n${sectionPlayers}\n${ctx.playerNames}\n\n${fieldLastUpdate}: ${ctx.lastUpdateIso}`;
+  // Add last update only if not skipped
+  if (!skipLastUpdate) {
+    message += `\n\n${fieldLastUpdate}: ${ctx.lastUpdateIso}`;
+  }
   
   return message;
 }
@@ -74,22 +88,23 @@ export function buildWaitingView(ctx: BuildContext, isDetailed = false): ViewPay
   const shareText = ctx.t('bot.buttons.share');
   const leaveText = ctx.t('poker.room.buttons.leave');
   const startText = ctx.t('poker.room.buttons.startGame');
-  const showDetailsText = ctx.t('poker.room.buttons.showDetails') || '📋 Show Details';
-  const showSummaryText = ctx.t('poker.room.buttons.showSummary') || '📝 Show Summary';
+  const toggleDetailsText = isDetailed 
+    ? ctx.t('poker.room.buttons.toggleSummary')
+    : ctx.t('poker.room.buttons.toggleDetails');
 
   const baseRows: Btn[][] = [];
-  baseRows.push([{ text: refreshText, callback_data: 'g.pk.r.in' }]);
+  baseRows.push([{ text: refreshText, callback_data: `g.pk.r.in?r=${ctx.roomId}` }]);
   baseRows.push([{ text: shareText, switch_inline_query: `poker ${ctx.roomId}` }]);
-  baseRows.push([{ text: leaveText, callback_data: `g.pk.r.lv?roomId=${ctx.roomId}` }]);
-  baseRows.push([{ text: isDetailed ? showSummaryText : showDetailsText, callback_data: `g.pk.r.in?detailed=${!isDetailed}` }]);
+  baseRows.push([{ text: leaveText, callback_data: `g.pk.r.lv?r=${ctx.roomId}` }]);
+  baseRows.push([{ text: toggleDetailsText, callback_data: `g.pk.r.in?r=${ctx.roomId}&d=${!isDetailed}` }]);
 
   const adminRows: Btn[][] = ctx.hasAtLeastTwoPlayers
     ? [
         [{ text: startText, callback_data: 'g.pk.r.st' }],
-        [{ text: refreshText, callback_data: 'g.pk.r.in' }],
+        [{ text: refreshText, callback_data: `g.pk.r.in?r=${ctx.roomId}` }],
         [{ text: shareText, switch_inline_query: `poker ${ctx.roomId}` }],
-        [{ text: leaveText, callback_data: `g.pk.r.lv?roomId=${ctx.roomId}` }],
-        [{ text: isDetailed ? showSummaryText : showDetailsText, callback_data: `g.pk.r.in?detailed=${!isDetailed}` }],
+        [{ text: leaveText, callback_data: `g.pk.r.lv?r=${ctx.roomId}` }],
+        [{ text: toggleDetailsText, callback_data: `g.pk.r.in?r=${ctx.roomId}&d=${!isDetailed}` }],
       ]
     : baseRows;
 
@@ -101,16 +116,20 @@ export function buildWaitingView(ctx: BuildContext, isDetailed = false): ViewPay
 
 export function buildPlayingView(ctx: BuildContext, isDetailed = false): ViewPayload {
   // Default layout is minimal; actual acting player's layout is computed in roomService based on current bet
-  const showDetailsText = ctx.t('poker.room.buttons.showDetails') || '📋 Show Details';
-  const showSummaryText = ctx.t('poker.room.buttons.showSummary') || '📝 Show Summary';
+  const toggleDetailsText = isDetailed 
+    ? ctx.t('poker.room.buttons.toggleSummary')
+    : ctx.t('poker.room.buttons.toggleDetails');
   
   const inGameRows: Btn[][] = [
-    [{ text: ctx.t('bot.buttons.refresh'), callback_data: 'g.pk.r.in' }],
-    [{ text: isDetailed ? showSummaryText : showDetailsText, callback_data: `g.pk.r.in?detailed=${!isDetailed}` }],
+    [{ text: ctx.t('bot.buttons.refresh'), callback_data: `g.pk.r.in?r=${ctx.roomId}` }],
+    [{ text: toggleDetailsText, callback_data: `g.pk.r.in?r=${ctx.roomId}&d=${!isDetailed}` }],
   ];
-  const header = isDetailed 
-    ? buildDetailedMessage(ctx, ctx.t('poker.room.status.playing'))
-    : buildCompactMessage(ctx, ctx.t('poker.room.status.playing'));
+  
+  // Build the base message without "Last update"
+  const baseMessage = isDetailed 
+    ? buildDetailedMessage(ctx, ctx.t('poker.room.status.playing'), true) // Skip last update
+    : buildCompactMessage(ctx, ctx.t('poker.room.status.playing'), true); // Skip last update
+  
   // Append minimal per-user status line
   const extras: string[] = [];
   const yourStackLabel = ctx.t('poker.game.field.yourStack') || 'Your stack';
@@ -119,8 +138,16 @@ export function buildPlayingView(ctx: BuildContext, isDetailed = false): ViewPay
   if (typeof ctx.yourStack === 'number') extras.push(`${yourStackLabel}: ${ctx.yourStack}`);
   if (typeof ctx.yourBet === 'number') extras.push(`${yourBetLabel}: ${ctx.yourBet}`);
   if (typeof ctx.potTotal === 'number') extras.push(`${potLabel}: ${ctx.potTotal}`);
-  const message = extras.length > 0 ? `${header}\n\n${extras.join(' | ')}` : header;
-  return { message, keyboardForAdmin: inGameRows, keyboardForPlayer: inGameRows, isDetailed };
+  
+  // Build final message with extras and "Last update" at the end
+  const fieldLastUpdate = ctx.t('poker.room.info.field.lastUpdate');
+  let finalMessage = baseMessage;
+  
+  if (extras.length > 0) {
+    finalMessage += `\n\n${extras.join(' | ')}`;
+  }
+  
+  finalMessage += `\n\n${fieldLastUpdate}: ${ctx.lastUpdateIso}`;
+  
+  return { message: finalMessage, keyboardForAdmin: inGameRows, keyboardForPlayer: inGameRows, isDetailed };
 }
-
-

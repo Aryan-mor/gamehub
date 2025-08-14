@@ -47,8 +47,8 @@ async function handleLeaveRoom(context: HandlerContext, query: Record<string, st
     // Confirmation step: require c=1 to proceed
     const confirmed = context._query?.c === '1' || query.c === '1';
     if (!confirmed) {
-      const yesCb = `g.pk.r.lv?roomId=${roomIdParam}&c=1`;
-      const backCb = 'g.pk.r.in';
+      const yesCb = `g.pk.r.lv?r=${roomIdParam}&c=1`;
+      const backCb = `g.pk.r.in?r=${roomIdParam}`;
       await ctx.replySmart(ctx.t('poker.room.leave.confirm') || 'Are you sure you want to leave?', {
         parse_mode: 'HTML',
         reply_markup: {

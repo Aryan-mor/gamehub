@@ -8,7 +8,7 @@ async function handleRoomInfo(context: HandlerContext): Promise<void> {
   const { ctx, user } = context;
   const NS = 'poker.info';
   // Resolve roomId from query, active state, or last-viewed form state
-  let roomId = context._query?.roomId || getActiveRoomId(String(user.id)) || '';
+  let roomId = context._query?.r || context._query?.roomId || getActiveRoomId(String(user.id)) || '';
   if (!roomId) {
     const saved = ctx.formState?.get<{ roomId?: string }>(NS, user.id);
     roomId = saved?.roomId || '';
@@ -85,7 +85,7 @@ async function handleRoomInfo(context: HandlerContext): Promise<void> {
 
   // Use the central roomService to broadcast room info to current user
   const { broadcastRoomInfo } = await import('@/actions/games/poker/room/services/roomService');
-  const isDetailed = context._query?.detailed === 'true';
+  const isDetailed = context._query?.d === 'true' || context._query?.detailed === 'true';
   await broadcastRoomInfo(ctx, roomId, [String(user.id)], isDetailed);
 
   // Persist last viewed roomId for reliable refresh without params
