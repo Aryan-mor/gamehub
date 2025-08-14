@@ -499,8 +499,7 @@ async function getTemplateFileId(cardsAssets: string[], debugTag?: string): Prom
   const templateId: 'poker-table' | 'full-game' = 'poker-table';
   // Generate and send to card service channel to obtain a reusable fileId
   // Then read it from cache
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const cardImageService = require('../../../../../../packages/card-image-service/src');
+  const cardImageService = await import('../../../../../../packages/card-image-service/src/index.js');
   const { generateAndSendTemplateImage, generateTemplateRequestHash, ImageCache } = cardImageService as {
     generateAndSendTemplateImage: (
       templateId: string,
@@ -586,8 +585,7 @@ async function sendOrEditPhotoToUsers(
         usersMessageHistory[String(chatId)] = { chatId: String(chatId), messageId: sent.message_id, timestamp: Date.now(), userId: String(chatId), messageType: 'room_info' };
       } else {
         // Fallback to buffer generation
-        // eslint-disable-next-line @typescript-eslint/no-var-requires
-        const cardImageService = require('../../../../../../packages/card-image-service/src');
+        const cardImageService = await import('../../../../../../packages/card-image-service/src/index.js');
         const { generateTemplateBufferOnly } = cardImageService as { generateTemplateBufferOnly: (templateId: string, cards: string[], style?: string, debugTag?: string, format?: 'png' | 'webp' | 'jpeg', transparent?: boolean) => Promise<Buffer> };
         const { InputFile } = await import('grammy');
         const buffer = await generateTemplateBufferOnly('poker-table', cardsAssets, 'general', debugTag, 'jpeg', false);

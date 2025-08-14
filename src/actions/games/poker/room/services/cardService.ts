@@ -114,8 +114,11 @@ export async function sendCardImagesToUser(
 		
 		// Try to use card-image-service for buffer generation only
 		try {
-			// eslint-disable-next-line @typescript-eslint/no-var-requires
-			const cardImageService = require('../../../../../../packages/card-image-service/src');
+			// Dynamic import with fallback
+			const cardImageService = await import('../../../../../../packages/card-image-service/src/index.js').catch(() => null);
+			if (!cardImageService) {
+				throw new Error('Card image service not available');
+			}
 			const { generateTemplateBufferOnly } = cardImageService;
 			const { InputFile } = await import('grammy');
 			
