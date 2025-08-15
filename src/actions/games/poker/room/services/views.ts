@@ -132,10 +132,8 @@ export function buildPlayingView(ctx: BuildContext, isDetailed = false): ViewPay
   
   // Append minimal per-user status line
   const extras: string[] = [];
-  const yourStackLabel = ctx.t('poker.game.field.yourStack') || 'Your stack';
   const yourBetLabel = ctx.t('poker.game.field.yourBet') || 'Your bet';
   const potLabel = ctx.t('poker.game.field.potLabel') || 'Pot';
-  if (typeof ctx.yourStack === 'number') extras.push(`${yourStackLabel}: ${ctx.yourStack}`);
   if (typeof ctx.yourBet === 'number') extras.push(`${yourBetLabel}: ${ctx.yourBet}`);
   if (typeof ctx.potTotal === 'number') extras.push(`${potLabel}: ${ctx.potTotal}`);
   

@@ -128,6 +128,7 @@ export async function broadcastRoomInfo(
     // Engine-derived state for accurate per-user actions
     let engineState: any | undefined;
     let seatPosByUuid: Record<string, number> = {};
+    let showdownWinners: Array<{ uuid: string; display: string; amount: number; hand: string; combo?: string[] }> = [];
     if (isPlaying) {
       try {
         const { supabaseFor } = await import('@/lib/supabase');
@@ -201,6 +202,60 @@ export async function broadcastRoomInfo(
               board: engineState?.board,
               currentBet: engineState?.currentBet
             });
+
+            // If showdown, compute winners for display using pokersolver (main pot only)
+            if (engineState?.street === 'showdown') {
+              try {
+                const mod: any = await import('pokersolver');
+                const Hand = (mod && (mod.Hand || (mod.default && mod.default.Hand))) as { solve: (cards: string[]) => { descr?: string }; winners: (hands: Array<{ descr?: string }>) => Array<{ descr?: string }> };
+                if (!Hand || typeof Hand.solve !== 'function' || typeof Hand.winners !== 'function') {
+                  throw new Error('pokersolver.Hand not available');
+                }
+                const toSolver = (code: string): string => {
+                  const rankMap: Record<string, string> = { '10': 'T', T: 'T', J: 'J', Q: 'Q', K: 'K', A: 'A' };
+                  const suitMap: Record<string, string> = { '♠': 's', '♥': 'h', '♦': 'd', '♣': 'c' };
+                  const m = code.match(/^(10|[2-9TJQKA])([♠♥♦♣])$/);
+                  if (!m) return code;
+                  const r = rankMap[m[1]] || m[1];
+                  const s = suitMap[m[2]] || m[2];
+                  return `${r}${s}`;
+                };
+                const solverBoard = (Array.isArray(engineState.board) ? engineState.board : []).map(toSolver);
+                const activeSeats = (engineState.seats || []).filter((s: any) => s && s.inHand && Array.isArray(s.hole) && s.hole.length === 2);
+                const seatToHand: Array<{ uuid: string; display: string; hand: { descr?: string; cards?: Array<{ value?: string; suit?: string }> } } > = activeSeats.map((s: any) => {
+                  const uuid = String(s.userRef ?? s.user_id);
+                  const hole = (s.hole as string[]).map(toSolver);
+                  const cards = [...hole, ...solverBoard];
+                  const hand = Hand.solve(cards) as { descr?: string };
+                  const display = idToDisplayName[uuid] || 'Unknown';
+                  return { uuid, display, hand };
+                });
+                const winners = Hand.winners(seatToHand.map((x) => x.hand)) as Array<{ descr?: string; cards?: Array<{ value?: string; suit?: string }> }>;
+                const mainPot = typeof potTotal === 'number' ? potTotal : 0;
+                const perWinner = winners && winners.length > 0 ? Math.floor(mainPot / winners.length) : 0;
+                const toDisplay = (card: { value?: string; suit?: string } | undefined): string => {
+                  if (!card) return '';
+                  const r = String(card.value ?? '').toUpperCase();
+                  const s = String(card.suit ?? '').toLowerCase();
+                  const rank = r === 'T' ? '10' : r;
+                  const suitMap: Record<string, string> = { s: '♠', h: '♥', d: '♦', c: '♣' };
+                  const suit = suitMap[s] || '';
+                  return `${rank}${suit}`;
+                };
+                showdownWinners = seatToHand
+                  .filter((x) => winners.includes(x.hand))
+                  .map((x) => ({ 
+                    uuid: x.uuid, 
+                    display: x.display, 
+                    amount: perWinner, 
+                    hand: String(x.hand?.descr || ''),
+                    combo: Array.isArray(x.hand?.cards) ? (x.hand!.cards!.slice(0,5).map(toDisplay).filter(Boolean) as string[]) : undefined
+                  }));
+              } catch (e) {
+                (gctx as any)?.log?.warn?.('roomService.showdown:winners:failed', { err: (e as Error)?.message });
+                showdownWinners = [];
+              }
+            }
           } catch {
             // engine optional; fallback to simple logic already computed
           }
@@ -219,7 +274,28 @@ export async function broadcastRoomInfo(
       }).join('\n');
     }
 
-    const view = (isPlaying ? buildPlayingView : buildWaitingView)({
+    // Helper: resolve preferred language for a telegram chat id
+    const { getPreferredLanguageFromCache, getPreferredLanguage } = await import('@/modules/global/language');
+    const { i18next, i18nPluginInstance } = await import('@/plugins/i18n');
+    // Ensure i18next is initialized when broadcasting outside middleware
+    try { await i18nPluginInstance.initialize(); } catch {}
+    const SUPPORTED_LANGUAGES = ['en', 'fa'] as const;
+    type Lang = typeof SUPPORTED_LANGUAGES[number];
+
+    const resolveUserLanguage = async (chatId: number): Promise<Lang> => {
+      const cached = getPreferredLanguageFromCache(String(chatId));
+      const lang = cached || (await getPreferredLanguage(String(chatId))) || 'en';
+      return (SUPPORTED_LANGUAGES as readonly string[]).includes(lang) ? (lang as Lang) : 'en';
+    };
+
+    // Factory to create a translator bound to a specific language
+    const createTranslatorFor = (lang: Lang) => (key: string, options?: Record<string, unknown>): string => {
+      const out = i18next.t(key, { lng: lang, ...(options || {}) });
+      if (lang === 'en' && out === '') return key;
+      return typeof out === 'string' ? out : key;
+    };
+    // Default deterministic view (English) for logging/group fallbacks
+    const defaultView = (isPlaying ? buildPlayingView : buildWaitingView)({
       roomId,
       playerNames,
       smallBlind,
@@ -229,8 +305,7 @@ export async function broadcastRoomInfo(
       timeoutMinutes,
       lastUpdateIso: escapeHtml(lastUpdate),
       hasAtLeastTwoPlayers,
-      t: gctx.t.bind(gctx),
-      // per-user extras filled when sending to each user below
+      t: createTranslatorFor('en'),
     }, isDetailed);
     
     // Resolve recipient chat IDs:
@@ -271,34 +346,67 @@ export async function broadcastRoomInfo(
       }
       // Use fallback recipients
       if (usePhotoFlow) {
-        // Photo flow for fallback recipients (single message)
-        const { inline_keyboard } = { inline_keyboard: view.keyboardForPlayer } as { inline_keyboard: Array<Array<{ text: string; callback_data: string }>> };
-        await sendOrEditPhotoToUsers(gctx, roomId, fallback, view.message, inline_keyboard, {
-          isPlaying,
-          boardCards,
-          seatInfoByUser,
-          actingUuid,
-          currentBetGlobal,
-          isDetailed,
-          idToTelegramId,
-          telegramIdToUuid,
-          adminId
-        });
+        // Photo flow for fallback recipients (build per-user caption and keyboard)
+        for (const chatId of fallback) {
+          const lang = await resolveUserLanguage(Number(chatId));
+          const t = createTranslatorFor(lang);
+          const perUserView = (isPlaying ? buildPlayingView : buildWaitingView)({
+            roomId,
+            playerNames,
+            smallBlind,
+            bigBlind,
+            maxPlayers,
+            playerCount,
+            timeoutMinutes,
+            lastUpdateIso: escapeHtml(lastUpdate),
+            hasAtLeastTwoPlayers,
+            t,
+          }, isDetailed);
+          const inline_keyboard = perUserView.keyboardForPlayer as unknown as Array<Array<{ text: string; callback_data: string }>>;
+          await sendOrEditPhotoToUsers(gctx, roomId, [Number(chatId)], perUserView.message, inline_keyboard, {
+            isPlaying,
+            boardCards,
+            seatInfoByUser,
+            actingUuid,
+            currentBetGlobal,
+            isDetailed,
+            idToTelegramId,
+            telegramIdToUuid,
+            adminId
+          });
+        }
       } else {
+        // Text flow: send one-by-one to respect per-user language
         const send = (ctx as any).sendOrEditMessageToUsers ?? (gctx as any).sendOrEditMessageToUsers;
-        await send(
-          fallback,
-          view.message,
-          {
-            parse_mode: 'HTML',
-            reply_markup: { inline_keyboard: view.keyboardForPlayer }
-          }
-        );
+        for (const chatId of fallback) {
+          const lang = await resolveUserLanguage(Number(chatId));
+          const t = createTranslatorFor(lang);
+          const perUserView = (isPlaying ? buildPlayingView : buildWaitingView)({
+            roomId,
+            playerNames,
+            smallBlind,
+            bigBlind,
+            maxPlayers,
+            playerCount,
+            timeoutMinutes,
+            lastUpdateIso: escapeHtml(lastUpdate),
+            hasAtLeastTwoPlayers,
+            t,
+          }, isDetailed);
+          await send(
+            [Number(chatId)],
+            perUserView.message,
+            {
+              parse_mode: 'HTML',
+              reply_markup: { inline_keyboard: perUserView.keyboardForPlayer }
+            }
+          );
+        }
       }
       logFunctionEnd('roomService.broadcastRoomInfo', {
         roomId,
         targetUserIds: fallback.length,
-        messageLength: view.message.length,
+        messageLength: defaultView.message.length,
         note: 'fallback'
       });
       return;
@@ -310,35 +418,59 @@ export async function broadcastRoomInfo(
     (gctx as any)?.log?.debug?.('roomService.recipientGroups', { roomId, adminTelegramId, adminRecipients, nonAdminRecipients });
 
     if (adminRecipients.length > 0) {
-                      const adminInfo = seatInfoByUser[adminId];
+      // Build admin-specific translator and view
+      const adminLang = await resolveUserLanguage(Number(adminRecipients[0]));
+      const tAdmin = createTranslatorFor(adminLang);
+      const adminBaseView = (isPlaying ? buildPlayingView : buildWaitingView)({
+        roomId,
+        playerNames,
+        smallBlind,
+        bigBlind,
+        maxPlayers,
+        playerCount,
+        timeoutMinutes,
+        lastUpdateIso: escapeHtml(lastUpdate),
+        hasAtLeastTwoPlayers,
+        t: tAdmin,
+      }, isDetailed);
+
+      const adminInfo = seatInfoByUser[adminId];
         const adminCanCheck = typeof adminInfo?.bet === 'number' ? adminInfo.bet >= currentBetGlobal : false;
         const toggleDetailsText = isDetailed 
-            ? gctx.t('poker.room.buttons.toggleSummary')
-            : gctx.t('poker.room.buttons.toggleDetails');
+            ? tAdmin('poker.room.buttons.toggleSummary')
+            : tAdmin('poker.room.buttons.toggleDetails');
            
           const actingRows: Btn[][] = [
             ...(adminCanCheck
               ? [
-                  [{ text: gctx.t('poker.game.buttons.check'), callback_data: 'g.pk.r.ck' }],
-                  [{ text: gctx.t('poker.actions.raise'), callback_data: 'g.pk.r.rs' }],
-                  [{ text: gctx.t('poker.game.buttons.fold'), callback_data: 'g.pk.r.fd' }]
+                  [{ text: tAdmin('poker.game.buttons.check'), callback_data: 'g.pk.r.ck' }],
+                  [{ text: tAdmin('poker.actions.raise'), callback_data: 'g.pk.r.rs' }],
+                  [{ text: tAdmin('poker.game.buttons.fold'), callback_data: 'g.pk.r.fd' }]
                 ]
               : [
-                  [{ text: gctx.t('poker.game.buttons.call'), callback_data: 'g.pk.r.cl' }],
-                  [{ text: gctx.t('poker.actions.raise'), callback_data: 'g.pk.r.rs' }],
-                  [{ text: gctx.t('poker.game.buttons.fold'), callback_data: 'g.pk.r.fd' }]
+                  [{ text: tAdmin('poker.game.buttons.call'), callback_data: 'g.pk.r.cl' }],
+                  [{ text: tAdmin('poker.actions.raise'), callback_data: 'g.pk.r.rs' }],
+                  [{ text: tAdmin('poker.game.buttons.fold'), callback_data: 'g.pk.r.fd' }]
                 ]
             ),
             [{ text: toggleDetailsText, callback_data: `g.pk.r.in?r=${roomId}&d=${!isDetailed}` }]
           ];
           const waitingRows: Btn[][] = [
-            [{ text: gctx.t('bot.buttons.refresh'), callback_data: `g.pk.r.in?r=${roomId}` }],
+            [{ text: tAdmin('bot.buttons.refresh'), callback_data: `g.pk.r.in?r=${roomId}` }],
             [{ text: toggleDetailsText, callback_data: `g.pk.r.in?r=${roomId}&d=${!isDetailed}` }]
           ];
 
       const isAdminActing = actingUuid && adminId === actingUuid;
-      let keyboard = isPlaying ? (isAdminActing ? actingRows : waitingRows) : view.keyboardForAdmin;
+      const postRoundRows: Btn[][] = [
+        [{ text: tAdmin('poker.room.buttons.startGame') || '▶️ Start Game', callback_data: 'g.pk.r.st' }],
+        [{ text: tAdmin('bot.buttons.refresh') || '🔄 Refresh', callback_data: `g.pk.r.in?r=${roomId}` }],
+        [{ text: (isDetailed ? tAdmin('poker.room.buttons.toggleSummary') : tAdmin('poker.room.buttons.toggleDetails')), callback_data: `g.pk.r.in?r=${roomId}&d=${!isDetailed}` }]
+      ];
+      let keyboard = isPlaying ? (isAdminActing ? actingRows : waitingRows) : adminBaseView.keyboardForAdmin;
       if (isPlaying && engineState) {
+        if (engineState.street === 'showdown') {
+          keyboard = postRoundRows;
+        } else {
         const engine = await import('@gamehub/poker-engine');
         const pos = seatPosByUuid[adminId];
         const allowed = typeof pos === 'number' ? engine.computeAllowedActions(engineState, pos) : [];
@@ -355,42 +487,56 @@ export async function broadcastRoomInfo(
         });
         const actionRows: Btn[][] = [
           [
-            canCheck ? { text: gctx.t('poker.game.buttons.check'), callback_data: 'g.pk.r.ck' } : { text: gctx.t('poker.game.buttons.call'), callback_data: 'g.pk.r.cl' }
+            canCheck ? { text: tAdmin('poker.game.buttons.check'), callback_data: 'g.pk.r.ck' } : { text: tAdmin('poker.game.buttons.call'), callback_data: 'g.pk.r.cl' }
           ],
-          ...(canRaise ? [[{ text: gctx.t('poker.actions.raise'), callback_data: 'g.pk.r.rs' }]] : []),
-          [{ text: gctx.t('poker.game.buttons.fold'), callback_data: 'g.pk.r.fd' }],
+          ...(canRaise ? [[{ text: tAdmin('poker.actions.raise'), callback_data: 'g.pk.r.rs' }]] : []),
+          [{ text: tAdmin('poker.game.buttons.fold'), callback_data: 'g.pk.r.fd' }],
           [{ text: toggleDetailsText, callback_data: `g.pk.r.in?r=${roomId}&d=${!isDetailed}` }]
         ];
         keyboard = acting && allowed.length > 0 ? actionRows : waitingRows;
+        }
       }
 
       // Build personalized caption
-      const base = view.message;
-      // Add cards and stack information before "Last update"
+      const base = adminBaseView.message;
+      // Add board and cards and stack information before "Last update"
       let cardsBlock = '';
+      let boardBlock = '';
+      if (Array.isArray(boardCards) && boardCards.length > 0) {
+        const boardLabel = tAdmin('poker.game.section.communityCards') || 'Community Cards';
+        boardBlock = `\n\n${boardLabel}:\n${boardCards.join(' ')}`;
+      }
       if (adminInfo?.hole && Array.isArray(adminInfo.hole) && adminInfo.hole.length > 0) {
         const cardsText = adminInfo.hole.join(' ');
-        cardsBlock = `\n\n${gctx.t('poker.game.section.yourCards')}: ${cardsText}`;
+        cardsBlock = `\n\n${tAdmin('poker.game.section.yourCards')}:\n${cardsText}`;
       }
       
       let stackBlock = '';
       const extraParts: string[] = [];
-      const yourStackLabel = gctx.t('poker.game.field.yourStack') || 'Your stack';
-      const yourBetLabel = gctx.t('poker.game.field.yourBet') || 'Your bet';
-      const potLabel = gctx.t('poker.game.field.potLabel') || 'Pot';
+      const yourStackLabel = tAdmin('poker.game.field.yourStack') || 'Your stack';
+      const yourBetLabel = tAdmin('poker.game.field.yourBet') || 'Your bet';
+      const potLabel = tAdmin('poker.game.field.potLabel') || 'Pot';
       if (typeof adminInfo?.stack === 'number') extraParts.push(`${yourStackLabel}: ${adminInfo.stack}`);
       if (typeof adminInfo?.bet === 'number') extraParts.push(`${yourBetLabel}: ${adminInfo.bet}`);
       if (typeof potTotal === 'number') extraParts.push(`${potLabel}: ${potTotal}`);
       if (extraParts.length > 0) {
         stackBlock = `\n\n${extraParts.join(' | ')}`;
       }
+
+      // Results block for showdown
+      let resultsBlock = '';
+      if (engineState?.street === 'showdown' && showdownWinners.length > 0) {
+        const lines = showdownWinners.map((w) => `• ${w.display}: +${w.amount}${w.hand ? ` (${w.hand})` : ''}${w.combo && w.combo.length ? `\n  ⮑ ${w.combo.join(' ')}` : ''}`);
+        resultsBlock = `\n\n🏁 Results:\n${lines.join('\n')}`;
+      }
+
       
       // Insert cards and stack before "Last update"
       const lastUpdatePattern = `\n\nLast update:`;
       const parts = base.split(lastUpdatePattern);
       const adminCaption = parts.length > 1 
-        ? `${parts[0]}${cardsBlock}${stackBlock}${lastUpdatePattern}${parts[1]}`
-        : `${base}${cardsBlock}${stackBlock}`;
+        ? `${parts[0]}${boardBlock}${cardsBlock}${stackBlock}${resultsBlock}${lastUpdatePattern}${parts[1]}`
+        : `${base}${boardBlock}${cardsBlock}${stackBlock}${resultsBlock}`;
 
       if (usePhotoFlow) {
         await sendOrEditPhotoToUsers(gctx, roomId, adminRecipients, adminCaption, keyboard, {
@@ -420,27 +566,46 @@ export async function broadcastRoomInfo(
     if (nonAdminRecipients.length > 0) {
       if (isPlaying) {
         for (const chatId of nonAdminRecipients) {
+          const lang = await resolveUserLanguage(Number(chatId));
+          const tUser = createTranslatorFor(lang);
+          const perUserView = buildPlayingView({
+            roomId,
+            playerNames,
+            smallBlind,
+            bigBlind,
+            maxPlayers,
+            playerCount,
+            timeoutMinutes,
+            lastUpdateIso: escapeHtml(lastUpdate),
+            hasAtLeastTwoPlayers,
+            t: tUser,
+          }, isDetailed);
           const uuid = telegramIdToUuid[chatId];
           const info = uuid ? seatInfoByUser[uuid] : undefined;
-          const base = view.message;
+          const base = perUserView.message;
           
           // Debug: log seat info
           (gctx as any)?.log?.debug?.('roomService.broadcastRoomInfo:seatInfo', { 
             chatId, uuid, info, seatInfoByUser: Object.keys(seatInfoByUser) 
           });
           
-          // Add cards and stack information before "Last update"
+          // Add board and cards and stack information before "Last update"
           let cardsBlock = '';
+          let boardBlock = '';
+          if (Array.isArray(boardCards) && boardCards.length > 0) {
+            const boardLabel = tUser('poker.game.section.communityCards') || 'Community Cards';
+            boardBlock = `\n\n${boardLabel}:\n${boardCards.join(' ')}`;
+          }
           if (info?.hole && Array.isArray(info.hole) && info.hole.length > 0) {
             const cardsText = info.hole.join(' ');
-            cardsBlock = `\n\n${gctx.t('poker.game.section.yourCards')}: ${cardsText}`;
+            cardsBlock = `\n\n${tUser('poker.game.section.yourCards')}:\n${cardsText}`;
           }
           
           let stackBlock = '';
           const extraParts: string[] = [];
-          const yourStackLabel = gctx.t('poker.game.field.yourStack') || 'Your stack';
-          const yourBetLabel = gctx.t('poker.game.field.yourBet') || 'Your bet';
-          const potLabel = gctx.t('poker.game.field.potLabel') || 'Pot';
+          const yourStackLabel = tUser('poker.game.field.yourStack') || 'Your stack';
+          const yourBetLabel = tUser('poker.game.field.yourBet') || 'Your bet';
+          const potLabel = tUser('poker.game.field.potLabel') || 'Pot';
           if (info && typeof info.stack === 'number') extraParts.push(`${yourStackLabel}: ${info.stack}`);
           if (info && typeof info.bet === 'number') extraParts.push(`${yourBetLabel}: ${info.bet}`);
           if (typeof potTotal === 'number') extraParts.push(`${potLabel}: ${potTotal}`);
@@ -448,12 +613,20 @@ export async function broadcastRoomInfo(
             stackBlock = `\n\n${extraParts.join(' | ')}`;
           }
           
+          // Results block for showdown
+          let resultsBlock = '';
+          if (engineState?.street === 'showdown' && showdownWinners.length > 0) {
+            const lines = showdownWinners.map((w) => `• ${w.display}: +${w.amount}${w.hand ? ` (${w.hand})` : ''}${w.combo && w.combo.length ? `\n  ⮑ ${w.combo.join(' ')}` : ''}`);
+            resultsBlock = `\n\n🏁 Results:\n${lines.join('\n')}`;
+          }
+
+
           // Insert cards and stack before "Last update"
           const lastUpdatePattern = `\n\nLast update:`;
           const parts = base.split(lastUpdatePattern);
           const message = parts.length > 1 
-            ? `${parts[0]}${cardsBlock}${stackBlock}${lastUpdatePattern}${parts[1]}`
-            : `${base}${cardsBlock}${stackBlock}`;
+            ? `${parts[0]}${boardBlock}${cardsBlock}${stackBlock}${resultsBlock}${lastUpdatePattern}${parts[1]}`
+            : `${base}${boardBlock}${cardsBlock}${stackBlock}${resultsBlock}`;
           const isActing = actingUuid && uuid === actingUuid;
           let canCheck = false;
           let canRaise = false;
@@ -475,22 +648,24 @@ export async function broadcastRoomInfo(
             canCheck = typeof userInfo?.stack === 'number' && typeof userInfo?.bet === 'number' ? userInfo.bet >= currentBetGlobal : false;
           }
           const toggleDetailsText = isDetailed 
-            ? gctx.t('poker.room.buttons.toggleSummary')
-            : gctx.t('poker.room.buttons.toggleDetails');
+            ? tUser('poker.room.buttons.toggleSummary')
+            : tUser('poker.room.buttons.toggleDetails');
           
           const actingRows: Btn[][] = [
-            [canCheck ? { text: gctx.t('poker.game.buttons.check'), callback_data: 'g.pk.r.ck' } : { text: gctx.t('poker.game.buttons.call'), callback_data: 'g.pk.r.cl' }],
-            ...(canRaise ? [[{ text: gctx.t('poker.actions.raise'), callback_data: 'g.pk.r.rs' }]] : []),
-            [{ text: gctx.t('poker.game.buttons.fold'), callback_data: 'g.pk.r.fd' }],
+            [canCheck ? { text: tUser('poker.game.buttons.check'), callback_data: 'g.pk.r.ck' } : { text: tUser('poker.game.buttons.call'), callback_data: 'g.pk.r.cl' }],
+            ...(canRaise ? [[{ text: tUser('poker.actions.raise'), callback_data: 'g.pk.r.rs' }]] : []),
+            [{ text: tUser('poker.game.buttons.fold'), callback_data: 'g.pk.r.fd' }],
             [{ text: toggleDetailsText, callback_data: `g.pk.r.in?r=${roomId}&d=${!isDetailed}` }]
           ];
           const waitingRows: Btn[][] = [
-            [{ text: gctx.t('bot.buttons.refresh'), callback_data: `g.pk.r.in?r=${roomId}` }],
+            [{ text: tUser('bot.buttons.refresh'), callback_data: `g.pk.r.in?r=${roomId}` }],
             [{ text: toggleDetailsText, callback_data: `g.pk.r.in?r=${roomId}&d=${!isDetailed}` }]
           ];
 
           let rowsToUse = waitingRows;
-          if (isActing) {
+          if (engineState?.street === 'showdown') {
+            rowsToUse = waitingRows;
+          } else if (isActing) {
             if (engineState && typeof seatPosByUuid[uuid] === 'number') {
               const engine = await import('@gamehub/poker-engine');
               const al = engine.computeAllowedActions(engineState, seatPosByUuid[uuid]);
@@ -525,26 +700,29 @@ export async function broadcastRoomInfo(
           }
         }
       } else {
-        if (usePhotoFlow) {
-          await sendOrEditPhotoToUsers(gctx, roomId, nonAdminRecipients, view.message, view.keyboardForPlayer, {
-            isPlaying,
-            boardCards,
-            seatInfoByUser,
-            actingUuid,
-            currentBetGlobal,
-            isDetailed,
-            idToTelegramId,
-            telegramIdToUuid,
-            adminId
-          });
-        } else {
-          const send = (ctx as any).sendOrEditMessageToUsers ?? (gctx as any).sendOrEditMessageToUsers;
+        // Waiting state: send text per user with per-user language
+        const send = (ctx as any).sendOrEditMessageToUsers ?? (gctx as any).sendOrEditMessageToUsers;
+        for (const chatId of nonAdminRecipients) {
+          const lang = await resolveUserLanguage(Number(chatId));
+          const tUser = createTranslatorFor(lang);
+          const perUserView = buildWaitingView({
+            roomId,
+            playerNames,
+            smallBlind,
+            bigBlind,
+            maxPlayers,
+            playerCount,
+            timeoutMinutes,
+            lastUpdateIso: escapeHtml(lastUpdate),
+            hasAtLeastTwoPlayers,
+            t: tUser,
+          }, isDetailed);
           await send(
-            nonAdminRecipients,
-            view.message,
+            [chatId],
+            perUserView.message,
             {
               parse_mode: 'HTML',
-              reply_markup: { inline_keyboard: view.keyboardForPlayer }
+              reply_markup: { inline_keyboard: perUserView.keyboardForPlayer }
             }
           );
         }
@@ -559,9 +737,9 @@ export async function broadcastRoomInfo(
       if (Number.isFinite(lastChatId) && (gctx as any)?.telegram?.sendMessage) {
         // Skip group broadcast during playing to avoid leaking private context
         if (!isPlaying) {
-          await (gctx as any).telegram.sendMessage(lastChatId, view.message, {
+          await (gctx as any).telegram.sendMessage(lastChatId, defaultView.message, {
             parseMode: 'HTML',
-            replyMarkup: { inline_keyboard: view.keyboardForPlayer }
+            replyMarkup: { inline_keyboard: defaultView.keyboardForPlayer }
           });
         }
       }
@@ -573,7 +751,7 @@ export async function broadcastRoomInfo(
     logFunctionEnd('roomService.broadcastRoomInfo', { 
       roomId, 
       targetUserIds: userIds.length,
-      messageLength: view.message.length 
+      messageLength: defaultView.message.length 
     });
   } catch (err) {
     logError('roomService.broadcastRoomInfo', err as Error, { roomId, targetUserIds });

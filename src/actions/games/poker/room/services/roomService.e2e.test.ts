@@ -635,7 +635,7 @@ describe('Poker Room Service E2E', () => {
       // Note: smart-reply plugin converts user IDs to numbers, so we expect the actual behavior
       expect(context.sendOrEditMessageToUsers).toHaveBeenCalledWith(
         expect.any(Array), // User IDs (may be converted to numbers by smart-reply)
-        expect.stringMatching(/🏠 Poker Room Info/),
+        expect.stringMatching(/🏠 (?:<b>)?Poker Room Info/),
         expect.objectContaining({
           reply_markup: expect.objectContaining({
             inline_keyboard: expect.arrayContaining([

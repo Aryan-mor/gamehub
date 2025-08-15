@@ -34,4 +34,14 @@ declare module '../../../../../../packages/card-image-service/src/index.js' {
 }
 
 
+declare module 'pokersolver' {
+  export class Hand {
+    static solve(cards: string[]): Hand;
+    static winners(hands: Hand[]): Hand[];
+    descr?: string;
+  }
+}
+
+
+
 
