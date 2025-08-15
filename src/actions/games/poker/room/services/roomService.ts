@@ -58,7 +58,8 @@ export async function broadcastRoomInfo(
   ctx: GameHubContext | HandlerContext,
   roomId: string,
   targetUserIds?: string[],
-  isDetailed?: boolean
+  isDetailed?: boolean,
+  overrideActingPos?: number
 ): Promise<void> {
   logFunctionStart('roomService.broadcastRoomInfo', { roomId, targetUserIds });
   
@@ -124,6 +125,9 @@ export async function broadcastRoomInfo(
     let actingUuid: string | undefined;
     let currentBetGlobal: number = 0;
     let boardCards: string[] = [];
+    // Engine-derived state for accurate per-user actions
+    let engineState: any | undefined;
+    let seatPosByUuid: Record<string, number> = {};
     if (isPlaying) {
       try {
         const { supabaseFor } = await import('@/lib/supabase');
@@ -132,18 +136,74 @@ export async function broadcastRoomInfo(
         const { data: hands } = await poker.from('hands').select('*').eq('room_id', roomId).order('created_at', { ascending: false }).limit(1);
         const hand = hands && hands[0];
         const handId = hand?.id;
+        (gctx as any)?.log?.debug?.('roomService.handFromDb', {
+          roomId,
+          handId,
+          acting_pos: hand?.acting_pos,
+          street: hand?.street,
+          current_bet: hand?.current_bet,
+          version: hand?.version
+        });
         boardCards = Array.isArray(hand?.board) ? (hand?.board as string[]) : [];
         if (handId) {
           const { listSeatsByHand } = await import('./seatsRepo');
           const seats = await listSeatsByHand(String(handId));
           for (const s of seats) seatInfoByUser[s.user_id] = { stack: s.stack, bet: s.bet, hole: s.hole };
-          if (typeof hand?.acting_pos === 'number') {
-            const actingSeat = seats.find((s) => Number(s.seat_pos) === Number(hand.acting_pos));
+          const actingPos = overrideActingPos !== undefined ? overrideActingPos : Number(hand?.acting_pos || 0);
+          if (typeof actingPos === 'number') {
+            const actingSeat = seats.find((s) => Number(s.seat_pos) === actingPos);
             actingUuid = actingSeat?.user_id;
           }
           const { data: pots } = await poker.from('pots').select('*').eq('hand_id', handId);
           potTotal = (pots || []).reduce((sum: number, p: any) => sum + Number(p.amount || 0), 0);
           currentBetGlobal = Number(hand?.current_bet || 0);
+          // Build engine state
+          seatPosByUuid = Object.fromEntries(seats.map((s: any) => [String(s.user_id), Number(s.seat_pos)]));
+          try {
+            const engine = await import('@gamehub/poker-engine');
+            const handForEngine = {
+              id: String(handId),
+              street: String(hand?.street || 'preflop') as any,
+              button_pos: Number(hand?.button_pos || 0),
+              acting_pos: overrideActingPos !== undefined ? overrideActingPos : Number(hand?.acting_pos || 0),
+              min_raise: Number(hand?.min_raise || Number(room.smallBlind || 100) * 2),
+              current_bet: Number(hand?.current_bet || 0),
+              deck_seed: String(hand?.deck_seed || ''),
+              board: Array.isArray(hand?.board) ? (hand?.board as string[]) : [],
+            };
+            (gctx as any)?.log?.debug?.('roomService.handForEngine', {
+              roomId,
+              handId,
+              acting_pos: handForEngine.acting_pos,
+              street: handForEngine.street,
+              current_bet: handForEngine.current_bet
+            });
+            engineState = engine.reconstructStateFromDb({
+              config: { smallBlind: Number(room.smallBlind || 100), bigBlind: Number(room.smallBlind || 100) * 2, maxPlayers: Number(room.maxPlayers || seats.length || 2) },
+              hand: handForEngine,
+              seats: seats.map((s: any) => ({
+                hand_id: String(handId),
+                seat_pos: Number(s.seat_pos),
+                user_id: String(s.user_id),
+                stack: Number(s.stack || 0),
+                bet: Number(s.bet || 0),
+                in_hand: Boolean(s.in_hand !== false),
+                is_all_in: Boolean(s.is_all_in === true),
+                hole: (s.hole as string[] | null) as any,
+              })),
+              pots: (pots as any[])?.map((p: any) => ({ hand_id: String(handId), amount: Number(p.amount || 0), eligible_seats: Array.isArray(p.eligible_seats) ? p.eligible_seats : [] })) || [],
+            });
+            (gctx as any)?.log?.debug?.('roomService.engineState', {
+              roomId,
+              street: engineState?.street,
+              actingPos: engineState?.actingPos,
+              actingUuid,
+              board: engineState?.board,
+              currentBet: engineState?.currentBet
+            });
+          } catch {
+            // engine optional; fallback to simple logic already computed
+          }
         }
       } catch {
         // non-blocking
@@ -196,8 +256,9 @@ export async function broadcastRoomInfo(
       // This ensures all players get notified when game starts or state changes
     }
 
-    const usePhotoFlow = Boolean((gctx as any)?.api?.sendPhoto) && process.env.POKER_SINGLE_PHOTO_FLOW !== 'false';
+    const usePhotoFlow = Boolean((gctx as any)?.api?.sendPhoto) && process.env.POKER_SINGLE_PHOTO_FLOW !== 'false' && isPlaying === true;
 
+    (gctx as any)?.log?.debug?.('roomService.recipients', { roomId, targetUserIds, recipientChatIds });
     if (recipientChatIds.length === 0) {
       // Fallback: try explicit targetUserIds if any; otherwise use initiator chat id
       const initiatorId = Number((gctx as any)?.from?.id);
@@ -246,6 +307,7 @@ export async function broadcastRoomInfo(
     // Split recipients into admin and non-admin for personalized keyboards
     const adminRecipients = adminTelegramId ? recipientChatIds.filter((id) => id === adminTelegramId) : [];
     const nonAdminRecipients = adminTelegramId ? recipientChatIds.filter((id) => id !== adminTelegramId) : recipientChatIds;
+    (gctx as any)?.log?.debug?.('roomService.recipientGroups', { roomId, adminTelegramId, adminRecipients, nonAdminRecipients });
 
     if (adminRecipients.length > 0) {
                       const adminInfo = seatInfoByUser[adminId];
@@ -275,7 +337,32 @@ export async function broadcastRoomInfo(
           ];
 
       const isAdminActing = actingUuid && adminId === actingUuid;
-      const keyboard = isPlaying ? (isAdminActing ? actingRows : waitingRows) : view.keyboardForAdmin;
+      let keyboard = isPlaying ? (isAdminActing ? actingRows : waitingRows) : view.keyboardForAdmin;
+      if (isPlaying && engineState) {
+        const engine = await import('@gamehub/poker-engine');
+        const pos = seatPosByUuid[adminId];
+        const allowed = typeof pos === 'number' ? engine.computeAllowedActions(engineState, pos) : [];
+        const canCheck = allowed.includes('CHECK');
+        const canRaise = allowed.includes('RAISE');
+        const acting = typeof pos === 'number' && pos === Number(engineState.actingPos);
+        (gctx as any)?.log?.debug?.('roomService.keyboardForAdmin', {
+          roomId,
+          adminTelegramId,
+          adminUuid: adminId,
+          pos,
+          allowed,
+          acting
+        });
+        const actionRows: Btn[][] = [
+          [
+            canCheck ? { text: gctx.t('poker.game.buttons.check'), callback_data: 'g.pk.r.ck' } : { text: gctx.t('poker.game.buttons.call'), callback_data: 'g.pk.r.cl' }
+          ],
+          ...(canRaise ? [[{ text: gctx.t('poker.actions.raise'), callback_data: 'g.pk.r.rs' }]] : []),
+          [{ text: gctx.t('poker.game.buttons.fold'), callback_data: 'g.pk.r.fd' }],
+          [{ text: toggleDetailsText, callback_data: `g.pk.r.in?r=${roomId}&d=${!isDetailed}` }]
+        ];
+        keyboard = acting && allowed.length > 0 ? actionRows : waitingRows;
+      }
 
       // Build personalized caption
       const base = view.message;
@@ -368,27 +455,33 @@ export async function broadcastRoomInfo(
             ? `${parts[0]}${cardsBlock}${stackBlock}${lastUpdatePattern}${parts[1]}`
             : `${base}${cardsBlock}${stackBlock}`;
           const isActing = actingUuid && uuid === actingUuid;
-          const userInfo = info;
-          const canCheck = typeof userInfo?.stack === 'number' && typeof userInfo?.bet === 'number'
-            ? userInfo.bet >= currentBetGlobal
-            : false;
+          let canCheck = false;
+          let canRaise = false;
+          if (engineState && typeof seatPosByUuid[uuid] === 'number') {
+            const engine = await import('@gamehub/poker-engine');
+            const allowed = engine.computeAllowedActions(engineState, seatPosByUuid[uuid]);
+            canCheck = allowed.includes('CHECK');
+            canRaise = allowed.includes('RAISE');
+            (gctx as any)?.log?.debug?.('roomService.keyboardForUser', {
+              roomId,
+              chatId,
+              uuid,
+              pos: seatPosByUuid[uuid],
+              allowed,
+              isActing
+            });
+          } else {
+            const userInfo = info;
+            canCheck = typeof userInfo?.stack === 'number' && typeof userInfo?.bet === 'number' ? userInfo.bet >= currentBetGlobal : false;
+          }
           const toggleDetailsText = isDetailed 
             ? gctx.t('poker.room.buttons.toggleSummary')
             : gctx.t('poker.room.buttons.toggleDetails');
           
           const actingRows: Btn[][] = [
-            ...(canCheck
-              ? [
-                  [{ text: gctx.t('poker.game.buttons.check'), callback_data: 'g.pk.r.ck' }],
-                  [{ text: gctx.t('poker.actions.raise'), callback_data: 'g.pk.r.rs' }],
-                  [{ text: gctx.t('poker.game.buttons.fold'), callback_data: 'g.pk.r.fd' }]
-                ]
-              : [
-                  [{ text: gctx.t('poker.game.buttons.call'), callback_data: 'g.pk.r.cl' }],
-                  [{ text: gctx.t('poker.actions.raise'), callback_data: 'g.pk.r.rs' }],
-                  [{ text: gctx.t('poker.game.buttons.fold'), callback_data: 'g.pk.r.fd' }]
-                ]
-            ),
+            [canCheck ? { text: gctx.t('poker.game.buttons.check'), callback_data: 'g.pk.r.ck' } : { text: gctx.t('poker.game.buttons.call'), callback_data: 'g.pk.r.cl' }],
+            ...(canRaise ? [[{ text: gctx.t('poker.actions.raise'), callback_data: 'g.pk.r.rs' }]] : []),
+            [{ text: gctx.t('poker.game.buttons.fold'), callback_data: 'g.pk.r.fd' }],
             [{ text: toggleDetailsText, callback_data: `g.pk.r.in?r=${roomId}&d=${!isDetailed}` }]
           ];
           const waitingRows: Btn[][] = [
@@ -396,8 +489,19 @@ export async function broadcastRoomInfo(
             [{ text: toggleDetailsText, callback_data: `g.pk.r.in?r=${roomId}&d=${!isDetailed}` }]
           ];
 
+          let rowsToUse = waitingRows;
+          if (isActing) {
+            if (engineState && typeof seatPosByUuid[uuid] === 'number') {
+              const engine = await import('@gamehub/poker-engine');
+              const al = engine.computeAllowedActions(engineState, seatPosByUuid[uuid]);
+              rowsToUse = al && al.length > 0 ? actingRows : waitingRows;
+            } else {
+              rowsToUse = (canCheck || canRaise) ? actingRows : waitingRows;
+            }
+          }
+
           if (usePhotoFlow) {
-            await sendOrEditPhotoToUsers(gctx, roomId, [chatId], message, isActing ? actingRows : waitingRows, {
+            await sendOrEditPhotoToUsers(gctx, roomId, [chatId], message, rowsToUse, {
               isPlaying,
               boardCards,
               seatInfoByUser,
@@ -415,7 +519,7 @@ export async function broadcastRoomInfo(
               message,
               {
                 parse_mode: 'HTML',
-                reply_markup: { inline_keyboard: isActing ? actingRows : waitingRows }
+                reply_markup: { inline_keyboard: rowsToUse }
               }
             );
           }
@@ -504,9 +608,8 @@ function normalizeCardCodeToAssetName(code: string): string {
   return `${rank}_of_${suit}`;
 }
 
-function toAssetCards(board: string[], hole: string[]): string[] {
-  // poker-table template positions:
-  // [ flop-1, flop-2, flop-3, turn, river, player-1, player-2 ]
+function toAssetCards(board: string[], hole: string[]): { cards: string[]; template: 'poker-table' } {
+  // Always use poker-table: [ flop-1, flop-2, flop-3, turn, river, player-1, player-2 ]
   const paddedBoard = [
     board[0] ?? 'blank',
     board[1] ?? 'blank',
@@ -514,16 +617,22 @@ function toAssetCards(board: string[], hole: string[]): string[] {
     board[3] ?? 'blank',
     board[4] ?? 'blank',
   ];
-  const paddedHole = [hole[0] ?? 'blank', hole[1] ?? 'blank'];
-  return [...paddedBoard, ...paddedHole].map(normalizeCardCodeToAssetName);
+  const paddedHole = [
+    (hole && hole[0]) ? hole[0] : 'blank',
+    (hole && hole[1]) ? hole[1] : 'blank',
+  ];
+  const cards = [...paddedBoard, ...paddedHole].map((c) => normalizeCardCodeToAssetName(c));
+  return { cards, template: 'poker-table' };
 }
 
-async function getTemplateFileId(cardsAssets: string[], debugTag?: string): Promise<{ fileId?: string; usedTemplate: 'poker-table' | 'full-game' } > {
-  // Prefer poker-table; both support 5 board + 2 hole
-  const templateId: 'poker-table' | 'full-game' = 'poker-table';
+async function getTemplateFileId(cardsAssets: string[], debugTag: string | undefined, templateId: 'poker-table' | 'full-game'): Promise<{ fileId?: string; usedTemplate: 'poker-table' | 'full-game' } > {
   // Generate and send to card service channel to obtain a reusable fileId
   // Then read it from cache
-  const cardImageService = await import('../../../../../../packages/card-image-service/src/index.js');
+  // Skip remote send in environments without bot credentials; fall back to buffer path
+  if (!process.env.BOT_TOKEN || !process.env.TARGET_CHANNEL_ID) {
+    return { fileId: undefined, usedTemplate: templateId };
+  }
+    const cardImageService = await import('../../../../../../packages/card-image-service/dist/index.js');
   const { generateAndSendTemplateImage, generateTemplateRequestHash, ImageCache } = cardImageService as {
     generateAndSendTemplateImage: (
       templateId: string,
@@ -561,9 +670,9 @@ async function sendOrEditPhotoToUsers(
     const chatId = userId;
     const uuid = extra.telegramIdToUuid[chatId];
     const hole = (uuid && extra.seatInfoByUser[uuid]?.hole) ? (extra.seatInfoByUser[uuid]?.hole as string[]) : [];
-    const cardsAssets = toAssetCards(extra.boardCards, hole);
+    const { cards: cardsAssets, template } = toAssetCards(extra.boardCards, hole);
     const debugTag = `room:${roomId}`;
-    const { fileId } = await getTemplateFileId(cardsAssets, debugTag);
+    const { fileId } = await getTemplateFileId(cardsAssets, debugTag, template);
 
     const previous = usersMessageHistory[String(chatId)];
     const callbackMessage = (gctx as any)?.callbackQuery?.message as { message_id?: number; chat?: { id?: number | string }; photo?: Array<{ file_id: string }> } | undefined;
@@ -571,18 +680,26 @@ async function sendOrEditPhotoToUsers(
     const callbackMessageId = callbackMessage?.message_id;
     const isInitiator = String((gctx as any)?.from?.id ?? '') === String(chatId);
     const isFromCallbackAndSameChat = Boolean(callbackMessageId && callbackChatId === String(chatId));
-    const isEditingCurrentMessage = Boolean(isInitiator && isFromCallbackAndSameChat && previous && previous.messageId === callbackMessageId);
+    const hasCallbackPhoto = Array.isArray(callbackMessage?.photo) && callbackMessage!.photo!.length > 0;
+    const existingPhotoFileId = hasCallbackPhoto ? callbackMessage!.photo![callbackMessage!.photo!.length - 1]!.file_id : undefined;
+    const isEditingCurrentMessage = Boolean(isInitiator && isFromCallbackAndSameChat && hasCallbackPhoto && previous && previous.messageId === callbackMessageId);
 
     const inline_keyboard: InlineKeyboardMarkup['inline_keyboard'] = keyboard as InlineKeyboardMarkup['inline_keyboard'];
 
     try {
+      (gctx as any)?.log?.debug?.('roomService.sendOrEditPhotoToUsers.intent', { roomId, chatId: String(chatId), isEditingCurrentMessage, hasPrevious: !!previous, hasCallbackPhoto, fileId: !!fileId, existingPhotoFileId: !!existingPhotoFileId });
       if (isEditingCurrentMessage && previous) {
-        // Prefer editing media with fileId if available; else edit caption
+        // Prefer editing media: use new fileId when available, otherwise regenerate buffer and edit media with new content
         if (fileId) {
-          const media: InputMediaPhoto = { type: 'photo', media: fileId, caption, parse_mode: 'HTML' };
+          const media: InputMediaPhoto = { type: 'photo', media: fileId as string, caption, parse_mode: 'HTML' };
           await (gctx as any).api.editMessageMedia(String(chatId), previous.messageId, media, { reply_markup: { inline_keyboard } });
         } else {
-          await (gctx as any).api.editMessageCaption(String(chatId), previous.messageId, { caption, parse_mode: 'HTML', reply_markup: { inline_keyboard } });
+          const cardImageService = await import('../../../../../../packages/card-image-service/dist/index.js');
+          const { generateTemplateBufferOnly } = cardImageService as { generateTemplateBufferOnly: (templateId: string, cards: string[], style?: string, debugTag?: string, format?: 'png' | 'webp' | 'jpeg', transparent?: boolean) => Promise<Buffer> };
+          const { InputFile } = await import('grammy');
+          const buffer = await generateTemplateBufferOnly(template, cardsAssets, 'general', debugTag, 'jpeg', false);
+          const media: InputMediaPhoto = { type: 'photo', media: new InputFile(buffer, 'table.jpg') as any, caption, parse_mode: 'HTML' };
+          await (gctx as any).api.editMessageMedia(String(chatId), previous.messageId, media, { reply_markup: { inline_keyboard } });
         }
         // Update history timestamp
         usersMessageHistory[String(chatId)] = {
@@ -606,14 +723,16 @@ async function sendOrEditPhotoToUsers(
 
       if (fileId) {
         const sent = await (gctx as any).api.sendPhoto(String(chatId), fileId, { caption, parse_mode: 'HTML', reply_markup: { inline_keyboard } });
+        (gctx as any)?.log?.debug?.('roomService.sendPhoto.sent', { roomId, chatId: String(chatId), via: 'fileId', messageId: sent?.message_id });
         usersMessageHistory[String(chatId)] = { chatId: String(chatId), messageId: sent.message_id, timestamp: Date.now(), userId: String(chatId), messageType: 'room_info' };
       } else {
         // Fallback to buffer generation
-        const cardImageService = await import('../../../../../../packages/card-image-service/src/index.js');
+        const cardImageService = await import('../../../../../../packages/card-image-service/dist/index.js');
         const { generateTemplateBufferOnly } = cardImageService as { generateTemplateBufferOnly: (templateId: string, cards: string[], style?: string, debugTag?: string, format?: 'png' | 'webp' | 'jpeg', transparent?: boolean) => Promise<Buffer> };
         const { InputFile } = await import('grammy');
-        const buffer = await generateTemplateBufferOnly('poker-table', cardsAssets, 'general', debugTag, 'jpeg', false);
+        const buffer = await generateTemplateBufferOnly(template, cardsAssets, 'general', debugTag, 'jpeg', false);
         const sent = await (gctx as any).api.sendPhoto(String(chatId), new InputFile(buffer, 'table.jpg'), { caption, parse_mode: 'HTML', reply_markup: { inline_keyboard } });
+        (gctx as any)?.log?.debug?.('roomService.sendPhoto.sent', { roomId, chatId: String(chatId), via: 'buffer', messageId: sent?.message_id });
         usersMessageHistory[String(chatId)] = { chatId: String(chatId), messageId: sent.message_id, timestamp: Date.now(), userId: String(chatId), messageType: 'room_info' };
       }
     } catch (error) {

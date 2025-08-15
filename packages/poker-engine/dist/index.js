@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.SUITS = exports.RANKS = void 0;
+exports.progressStreet = exports.isBettingRoundComplete = exports.computeToCall = exports.computeAllowedActions = exports.reconstructStateFromDb = exports.SUITS = exports.RANKS = void 0;
 exports.createDeck = createDeck;
 exports.dealCards = dealCards;
 exports.cardToString = cardToString;
@@ -111,7 +111,99 @@ function startHand(config, seats) {
     };
     return { nextState, events };
 }
-function applyAction(state, _pos, _action) {
-    return { nextState: state, events: [] };
+function applyAction(state, pos, action) {
+    const events = [];
+    const nextState = {
+        ...state,
+        seats: state.seats.map((s) => ({ ...s })),
+        pots: state.pots.map((p) => ({ amount: p.amount, eligible: [...p.eligible] })),
+    };
+    if (pos !== nextState.actingPos) {
+        throw new Error('not_players_turn');
+    }
+    const seat = nextState.seats[pos];
+    if (!seat || !seat.inHand) {
+        throw new Error('seat_not_in_hand');
+    }
+    const toCall = Math.max(0, nextState.currentBet - seat.bet);
+    switch (action.type) {
+        case 'CHECK': {
+            if (toCall > 0) {
+                throw new Error('cannot_check_when_behind');
+            }
+            events.push({ type: 'ACTION_APPLIED', pos, action, toCall });
+            nextState.actingPos = (pos + 1) % nextState.seats.length;
+            return { nextState, events };
+        }
+        case 'CALL': {
+            const callAmount = Math.min(toCall, seat.stack);
+            seat.stack -= callAmount;
+            seat.bet += callAmount;
+            if (seat.stack === 0)
+                seat.isAllIn = true;
+            nextState.pots[0].amount += callAmount;
+            events.push({ type: 'ACTION_APPLIED', pos, action, toCall });
+            nextState.actingPos = (pos + 1) % nextState.seats.length;
+            return { nextState, events };
+        }
+        case 'RAISE': {
+            const toCall = Math.max(0, nextState.currentBet - seat.bet);
+            const raiseAmount = Math.max(0, Number(action.amount || 0));
+            if (toCall > seat.stack)
+                throw new Error('cannot_call_full_amount');
+            if (raiseAmount <= 0)
+                throw new Error('invalid_raise_amount');
+            if (raiseAmount < nextState.minRaise)
+                throw new Error('raise_below_min');
+            const totalCost = toCall + raiseAmount;
+            if (totalCost > seat.stack)
+                throw new Error('insufficient_stack_for_raise');
+            seat.stack -= toCall;
+            seat.bet += toCall;
+            nextState.pots[0].amount += toCall;
+            seat.stack -= raiseAmount;
+            seat.bet += raiseAmount;
+            nextState.pots[0].amount += raiseAmount;
+            const previousBet = nextState.currentBet;
+            nextState.currentBet = seat.bet;
+            nextState.minRaise = Math.max(nextState.minRaise, nextState.currentBet - previousBet);
+            events.push({ type: 'ACTION_APPLIED', pos, action, toCall });
+            nextState.actingPos = (pos + 1) % nextState.seats.length;
+            return { nextState, events };
+        }
+        case 'ALL_IN': {
+            const toCall = Math.max(0, nextState.currentBet - seat.bet);
+            const commit = Math.min(seat.stack, seat.stack);
+            const callPortion = Math.min(toCall, commit);
+            seat.stack -= callPortion;
+            seat.bet += callPortion;
+            nextState.pots[0].amount += callPortion;
+            const remaining = commit - callPortion;
+            if (remaining > 0) {
+                const previousBet = nextState.currentBet;
+                seat.stack -= remaining;
+                seat.bet += remaining;
+                nextState.pots[0].amount += remaining;
+                if (seat.bet > previousBet) {
+                    nextState.minRaise = Math.max(nextState.minRaise, seat.bet - previousBet);
+                    nextState.currentBet = seat.bet;
+                }
+            }
+            seat.isAllIn = true;
+            events.push({ type: 'ACTION_APPLIED', pos, action, toCall });
+            nextState.actingPos = (pos + 1) % nextState.seats.length;
+            return { nextState, events };
+        }
+        default: {
+            events.push({ type: 'ACTION_APPLIED', pos, action, toCall });
+            return { nextState, events };
+        }
+    }
 }
+var state_1 = require("./state");
+Object.defineProperty(exports, "reconstructStateFromDb", { enumerable: true, get: function () { return state_1.reconstructStateFromDb; } });
+Object.defineProperty(exports, "computeAllowedActions", { enumerable: true, get: function () { return state_1.computeAllowedActions; } });
+Object.defineProperty(exports, "computeToCall", { enumerable: true, get: function () { return state_1.computeToCall; } });
+Object.defineProperty(exports, "isBettingRoundComplete", { enumerable: true, get: function () { return state_1.isBettingRoundComplete; } });
+Object.defineProperty(exports, "progressStreet", { enumerable: true, get: function () { return state_1.progressStreet; } });
 //# sourceMappingURL=index.js.map

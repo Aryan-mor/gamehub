@@ -283,6 +283,39 @@ describe('Poker Room Service E2E', () => {
   });
 
   describe('broadcastRoomInfo', () => {
+    it('should use text flow (not photo) when room is waiting', async () => {
+      const { broadcastRoomInfo } = await import('./roomService');
+      const roomId = 'waiting-room-id';
+      mockGetRoom.mockResolvedValue({
+        id: roomId,
+        isPrivate: false,
+        maxPlayers: 4,
+        smallBlind: 200,
+        turnTimeoutSec: 240,
+        players: ['u1'],
+        readyPlayers: [],
+        lastUpdate: Date.now(),
+        status: 'waiting',
+        createdBy: 'u1'
+      });
+      mockGetByIds.mockResolvedValue([
+        { id: 'u1', first_name: 'A', last_name: 'A', username: 'a', telegram_id: 1001 }
+      ]);
+
+      // Ensure text path is called on context
+      const sent: any[] = [];
+      context.sendOrEditMessageToUsers = vi.fn().mockImplementation(async (_uids, _text, _opts) => {
+        sent.push({ text: _text, opts: _opts });
+        return [{ userId: 1001, success: true }];
+      });
+      // Simulate presence of api.sendPhoto but we still expect text because status is waiting
+      (context as any).api = { sendPhoto: vi.fn() };
+
+      await broadcastRoomInfo(context as any, roomId);
+      expect(context.sendOrEditMessageToUsers).toHaveBeenCalled();
+      expect((context as any).api.sendPhoto).not.toHaveBeenCalled();
+      expect(sent.length).toBeGreaterThan(0);
+    });
     it('should show Check/Raise/Fold when player can check (bet >= current bet) and mark acting 🎯', async () => {
       const { broadcastRoomInfo } = await import('./roomService');
       const roomId = 'playing-room-id';

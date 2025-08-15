@@ -115,7 +115,7 @@ export async function sendCardImagesToUser(
 		// Try to use card-image-service for buffer generation only
 		try {
 			// Dynamic import with fallback
-			const cardImageService = await import('../../../../../../packages/card-image-service/src/index.js').catch(() => null);
+			const cardImageService = await import('../../../../../../packages/card-image-service/dist/index.js').catch(() => null);
 			if (!cardImageService) {
 				throw new Error('Card image service not available');
 			}

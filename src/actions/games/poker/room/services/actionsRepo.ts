@@ -1,6 +1,6 @@
 import { logFunctionStart, logFunctionEnd, logError } from '@/modules/core/logger';
 
-export type ActionType = 'CHECK' | 'CALL' | 'FOLD' | 'RAISE' | 'ALL_IN' | 'POST_SB' | 'POST_BB' | 'DEAL' | 'REVEAL' | 'AWARD';
+export type ActionType = 'CHECK' | 'CALL' | 'FOLD' | 'RAISE' | 'ALL_IN' | 'POST_SB' | 'POST_BB' | 'DEAL' | 'REVEAL' | 'AWARD' | 'STREET';
 
 export interface CreateActionParams {
   handId: string;

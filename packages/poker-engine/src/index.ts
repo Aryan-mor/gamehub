@@ -78,7 +78,7 @@ export interface Seat {
   inHand: boolean;
   isAllIn: boolean;
   bet: number;
-  hole?: [string, string];
+  hole?: [string, string] | null;
 }
 
 export interface EngineState {
@@ -190,9 +190,113 @@ export function startHand(config: EngineConfig, seats: Seat[]): ApplyResult {
   return { nextState, events };
 }
 
-export function applyAction(state: EngineState, _pos: number, _action: PlayerAction): ApplyResult {
-  // placeholder no-op for now
-  return { nextState: state, events: [] };
+export function applyAction(state: EngineState, pos: number, action: PlayerAction): ApplyResult {
+  // Basic betting logic for CHECK and CALL; placeholders for others
+  const events: EngineEvent[] = [];
+  const nextState: EngineState = {
+    ...state,
+    seats: state.seats.map((s) => ({ ...s })),
+    pots: state.pots.map((p) => ({ amount: p.amount, eligible: [...p.eligible] })),
+  };
+
+  if (pos !== nextState.actingPos) {
+    throw new Error('not_players_turn');
+  }
+  const seat = nextState.seats[pos];
+  if (!seat || !seat.inHand) {
+    throw new Error('seat_not_in_hand');
+  }
+
+  const toCall = Math.max(0, nextState.currentBet - seat.bet);
+
+  switch (action.type) {
+    case 'CHECK': {
+      if (toCall > 0) {
+        throw new Error('cannot_check_when_behind');
+      }
+      // No chip movement
+      events.push({ type: 'ACTION_APPLIED', pos, action, toCall });
+      // Advance acting position
+      nextState.actingPos = (pos + 1) % nextState.seats.length;
+      return { nextState, events };
+    }
+    case 'CALL': {
+      const callAmount = Math.min(toCall, seat.stack);
+      // Update seat
+      seat.stack -= callAmount;
+      seat.bet += callAmount;
+      if (seat.stack === 0) seat.isAllIn = true;
+      // Put into main pot (simple model)
+      nextState.pots[0].amount += callAmount;
+      events.push({ type: 'ACTION_APPLIED', pos, action, toCall });
+      // Advance acting position
+      nextState.actingPos = (pos + 1) % nextState.seats.length;
+      return { nextState, events };
+    }
+    case 'RAISE': {
+      const toCall = Math.max(0, nextState.currentBet - seat.bet);
+      const raiseAmount = Math.max(0, Number(action.amount || 0));
+      if (toCall > seat.stack) throw new Error('cannot_call_full_amount');
+      if (raiseAmount <= 0) throw new Error('invalid_raise_amount');
+      if (raiseAmount < nextState.minRaise) throw new Error('raise_below_min');
+      const totalCost = toCall + raiseAmount;
+      if (totalCost > seat.stack) throw new Error('insufficient_stack_for_raise');
+      // Call first
+      seat.stack -= toCall;
+      seat.bet += toCall;
+      nextState.pots[0].amount += toCall;
+      // Then raise
+      seat.stack -= raiseAmount;
+      seat.bet += raiseAmount;
+      nextState.pots[0].amount += raiseAmount;
+      // Update current bet and minRaise
+      const previousBet = nextState.currentBet;
+      nextState.currentBet = seat.bet;
+      nextState.minRaise = Math.max(nextState.minRaise, nextState.currentBet - previousBet);
+      events.push({ type: 'ACTION_APPLIED', pos, action, toCall });
+      // Advance acting
+      nextState.actingPos = (pos + 1) % nextState.seats.length;
+      return { nextState, events };
+    }
+    case 'ALL_IN': {
+      const toCall = Math.max(0, nextState.currentBet - seat.bet);
+      const commit = Math.min(seat.stack, seat.stack); // commit all stack
+      // Move all-in: first cover call portion, then extra counts as raise if exceeds
+      const callPortion = Math.min(toCall, commit);
+      seat.stack -= callPortion;
+      seat.bet += callPortion;
+      nextState.pots[0].amount += callPortion;
+      const remaining = commit - callPortion;
+      if (remaining > 0) {
+        const previousBet = nextState.currentBet;
+        seat.stack -= remaining;
+        seat.bet += remaining;
+        nextState.pots[0].amount += remaining;
+        if (seat.bet > previousBet) {
+          nextState.minRaise = Math.max(nextState.minRaise, seat.bet - previousBet);
+          nextState.currentBet = seat.bet;
+        }
+      }
+      seat.isAllIn = true;
+      events.push({ type: 'ACTION_APPLIED', pos, action, toCall });
+      nextState.actingPos = (pos + 1) % nextState.seats.length;
+      return { nextState, events };
+    }
+    default: {
+      // For now, do not change state for unimplemented actions
+      events.push({ type: 'ACTION_APPLIED', pos, action, toCall });
+      return { nextState, events };
+    }
+  }
 }
+
+// Re-export state helpers for external use
+export {
+  reconstructStateFromDb,
+  computeAllowedActions,
+  computeToCall,
+  isBettingRoundComplete,
+  progressStreet,
+} from './state';
 
 

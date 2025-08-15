@@ -86,6 +86,13 @@ export async function generateTemplateImageBuffer(options: TemplateImageOptions)
       const cardPath = path.join(__dirname, '../../../assets/card', style, `${card}.png`);
       
       if (!fs.existsSync(cardPath)) {
+        // Gracefully skip known placeholders even if assets are missing
+        if (typeof card === 'string') {
+          const lower = card.toLowerCase();
+          if (lower === 'blank' || lower === 'joker') {
+            continue;
+          }
+        }
         throw new Error(`Card image not found: ${cardPath}`);
       }
       

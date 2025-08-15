@@ -97,6 +97,9 @@ export async function startHandForRoom(context: HandlerContext, roomId: string):
   await postBlind(hand.id, bbPos, bb);
   await createAction({ handId: hand.id, seq: 2, actorPos: bbPos, type: 'POST_BB', amount: bb, resultingVersion: 2 });
 
+  // Mark start of preflop betting round as a boundary for round-completion logic using DEAL
+  await createAction({ handId: hand.id, seq: 3, actorPos: dealerPos, type: 'DEAL', resultingVersion: 2 });
+
   // Set room status to playing so info broadcast shows it
   try {
     const rooms = await import('@/api/rooms');

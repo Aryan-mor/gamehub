@@ -25,7 +25,7 @@ export interface Seat {
     inHand: boolean;
     isAllIn: boolean;
     bet: number;
-    hole?: [string, string];
+    hole?: [string, string] | null;
 }
 export interface EngineState {
     handId: string;
@@ -90,5 +90,6 @@ export interface ApplyResult {
     events: EngineEvent[];
 }
 export declare function startHand(config: EngineConfig, seats: Seat[]): ApplyResult;
-export declare function applyAction(state: EngineState, _pos: number, _action: PlayerAction): ApplyResult;
+export declare function applyAction(state: EngineState, pos: number, action: PlayerAction): ApplyResult;
+export { reconstructStateFromDb, computeAllowedActions, computeToCall, isBettingRoundComplete, progressStreet, } from './state';
 //# sourceMappingURL=index.d.ts.map
