@@ -91,10 +91,11 @@ export function buildWaitingView(ctx: BuildContext, isDetailed = false): ViewPay
   const toggleDetailsText = isDetailed 
     ? ctx.t('poker.room.buttons.toggleSummary')
     : ctx.t('poker.room.buttons.toggleDetails');
+  const hasCapacity = ctx.playerCount < ctx.maxPlayers;
 
   const baseRows: Btn[][] = [];
   baseRows.push([{ text: refreshText, callback_data: `g.pk.r.in?r=${ctx.roomId}` }]);
-  baseRows.push([{ text: shareText, switch_inline_query: `poker ${ctx.roomId}` }]);
+  if (hasCapacity) baseRows.push([{ text: shareText, switch_inline_query: `poker ${ctx.roomId}` }]);
   baseRows.push([{ text: leaveText, callback_data: `g.pk.r.lv?r=${ctx.roomId}` }]);
   baseRows.push([{ text: toggleDetailsText, callback_data: `g.pk.r.in?r=${ctx.roomId}&d=${!isDetailed}` }]);
 
@@ -102,7 +103,7 @@ export function buildWaitingView(ctx: BuildContext, isDetailed = false): ViewPay
     ? [
         [{ text: startText, callback_data: 'g.pk.r.st' }],
         [{ text: refreshText, callback_data: `g.pk.r.in?r=${ctx.roomId}` }],
-        [{ text: shareText, switch_inline_query: `poker ${ctx.roomId}` }],
+        ...(hasCapacity ? [[{ text: shareText, switch_inline_query: `poker ${ctx.roomId}` }]] : []),
         [{ text: leaveText, callback_data: `g.pk.r.lv?r=${ctx.roomId}` }],
         [{ text: toggleDetailsText, callback_data: `g.pk.r.in?r=${ctx.roomId}&d=${!isDetailed}` }],
       ]

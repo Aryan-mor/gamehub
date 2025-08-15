@@ -87,6 +87,33 @@ async function handleLeaveRoom(context: HandlerContext, query: Record<string, st
       throw new Error('You are not in this room');
     }
 
+    // If room is in playing state, fold user first when still in-hand (to avoid blocking the hand)
+    try {
+      const roomStatus: string | undefined = (room as any)?.status;
+      if (roomStatus === 'playing') {
+        const { supabaseFor } = await import('@/lib/supabase');
+        const poker = supabaseFor('poker');
+        const { data: hands } = await poker
+          .from('hands')
+          .select('*')
+          .eq('room_id', roomIdParam)
+          .order('created_at', { ascending: false })
+          .limit(1);
+        const hand = hands && (hands[0] as any);
+        if (hand?.id) {
+          const { listSeatsByHand } = await import('../services/seatsRepo');
+          const seats = await listSeatsByHand(String(hand.id));
+          const meSeat = (seats || []).find((s: any) => String(s.user_id) === String(userUuid));
+          if (meSeat && meSeat.in_hand === true && meSeat.is_all_in !== true) {
+            const { applyFoldForUser } = await import('../services/actionFlow');
+            await applyFoldForUser(context, roomIdParam);
+          }
+        }
+      }
+    } catch (e) {
+      ctx.log.warn?.('leave:pre-fold-check failed (ignored)', { roomId: roomIdParam, err: (e as Error)?.message });
+    }
+
     // Remove player from room (pass Telegram ID, the function will convert it)
     ctx.log.info('Attempting to remove player from room', { telegramUserId, userUuid, roomId: roomIdParam });
     await removePlayer(roomIdParam, telegramUserId);

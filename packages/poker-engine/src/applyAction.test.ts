@@ -116,6 +116,25 @@ describe('poker-engine.applyAction', () => {
     expect(nextState.seats[0].isAllIn).toBe(true);
     expect(nextState.actingPos).toBe(1);
   });
+
+  it('FOLD: when only one player remains in hand, ends hand with showdown results', () => {
+    const state = createState({
+      actingPos: 0,
+      currentBet: 0,
+      seats: [
+        { seatPos: 0, userRef: 'u1', stack: 10000, inHand: true, isAllIn: false, bet: 0 },
+        { seatPos: 1, userRef: 'u2', stack: 10000, inHand: true, isAllIn: false, bet: 0 },
+      ]
+    });
+    const { nextState, events } = applyAction(state, 1, { type: 'FOLD' });
+    expect(nextState.street).toBe('showdown');
+    const showdown = events.find((e) => e.type === 'SHOWDOWN_RESULTS');
+    expect(showdown).toBeDefined();
+    if (showdown && showdown.type === 'SHOWDOWN_RESULTS') {
+      expect(showdown.winners.length).toBe(1);
+      expect(showdown.winners[0].pos).toBe(0);
+    }
+  });
 });
 
 

@@ -1,30 +1,59 @@
 import { api } from '@/lib/api';
 import { logFunctionStart, logFunctionEnd, logError } from '@/modules/core/logger';
 
-const preferredLanguageCache = new Map<string, string>();
+// Persistent-like preferred language cache (per-process)
+const preferredLanguageCache = new Map<string, 'en' | 'fa'>();
 
-export function getPreferredLanguageFromCache(userId: string): string | undefined {
+// Runtime language cache reflecting the most recent language the bot should use
+// This represents the user's current in-session language choice or suggestion
+const runtimeUserLanguageCache = new Map<string, 'en' | 'fa'>();
+
+function normalizeLanguageCode(language?: string | null): 'en' | 'fa' | undefined {
+  if (!language) return undefined;
+  const lower = language.toLowerCase();
+  if (lower === 'fa' || lower.startsWith('fa-') || lower.startsWith('fa_')) return 'fa';
+  if (lower === 'en' || lower.startsWith('en-') || lower.startsWith('en_')) return 'en';
+  return undefined;
+}
+
+export function getPreferredLanguageFromCache(userId: string): 'en' | 'fa' | undefined {
   return preferredLanguageCache.get(userId);
 }
 
-export function setPreferredLanguageInCache(userId: string, language: string): void {
+export function setPreferredLanguageInCache(userId: string, language: 'en' | 'fa'): void {
   preferredLanguageCache.set(userId, language);
 }
 
-export async function getPreferredLanguage(userId: string): Promise<string | undefined> {
-  const cached = preferredLanguageCache.get(userId);
-  if (cached) return cached;
+export function getRuntimeUserLanguage(userId: string): 'en' | 'fa' | undefined {
+  return runtimeUserLanguageCache.get(userId);
+}
+
+export function setRuntimeUserLanguage(userId: string, language: 'en' | 'fa'): void {
+  runtimeUserLanguageCache.set(userId, language);
+}
+
+export async function getPreferredLanguage(userId: string): Promise<'en' | 'fa' | undefined> {
+  // First consult runtime (userLanguage) cache as the immediate source of truth
+  const runtimeLang = runtimeUserLanguageCache.get(userId);
+  if (runtimeLang) return runtimeLang;
+
+  // Then consult preferred cache (persisted from DB)
+  const cachedPreferred = preferredLanguageCache.get(userId);
+  if (cachedPreferred) return cachedPreferred;
 
   logFunctionStart('language.getPreferred', { userId });
   try {
     const user = await api.users.getByTelegramId(userId);
     // Try explicit language column; if missing, fallback to telegram language_code
-    const lang = (user as unknown as { language?: string; language_code?: string } | null)?.language
+    const rawLang = (user as unknown as { language?: string; language_code?: string } | null)?.language
       || (user as unknown as { language_code?: string } | null)?.language_code;
-    if (lang && typeof lang === 'string') {
-      preferredLanguageCache.set(userId, lang);
-      logFunctionEnd('language.getPreferred', { language: lang }, { userId });
-      return lang;
+    const normalized = normalizeLanguageCode(rawLang);
+    if (normalized) {
+      // Update both caches: runtime and preferred
+      runtimeUserLanguageCache.set(userId, normalized);
+      preferredLanguageCache.set(userId, normalized);
+      logFunctionEnd('language.getPreferred', { language: normalized }, { userId });
+      return normalized;
     }
     logFunctionEnd('language.getPreferred', { language: null }, { userId });
     return undefined;

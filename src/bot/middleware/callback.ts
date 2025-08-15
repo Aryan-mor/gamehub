@@ -89,8 +89,6 @@ export function registerCallbackDispatcher(bot: Bot<GameHubContext>): void {
         }
       }
 
-      await ctx.api.answerCallbackQuery(ctx.callbackQuery.id);
-
       const { dispatch } = await import('@/modules/core/smart-router');
       const { decodeAction } = await import('@/modules/core/route-alias');
 
@@ -106,6 +104,17 @@ export function registerCallbackDispatcher(bot: Bot<GameHubContext>): void {
 
       const fullRoute = decodeAction(action);
       await dispatch(fullRoute, context);
+
+      // Always answer callback after handler; include toast if provided by handler
+      try {
+        const maybeToast = (ctx as any)?.callbackToastText as string | undefined;
+        await ctx.api.answerCallbackQuery(ctx.callbackQuery.id, maybeToast ? { text: maybeToast } : {});
+        // Clear to avoid leaking to next callbacks
+        (ctx as any).callbackToastText = undefined;
+      } catch (toastErr) {
+        // Non-fatal; log and continue
+        ctx.log?.warn?.('callback_dispatch.toast_failed', { error: toastErr instanceof Error ? toastErr.message : String(toastErr) });
+      }
 
       logFunctionEnd('callback_dispatch', {}, { userId: String(ctx.from?.id || ''), action });
     } catch (error) {

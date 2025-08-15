@@ -210,6 +210,38 @@ export function applyAction(state: EngineState, pos: number, action: PlayerActio
   const toCall = Math.max(0, nextState.currentBet - seat.bet);
 
   switch (action.type) {
+    case 'FOLD': {
+      // Mark player folded
+      seat.inHand = false;
+      events.push({ type: 'ACTION_APPLIED', pos, action, toCall });
+
+      // If only one player remains, end hand immediately
+      const remaining = nextState.seats.filter((s) => s.inHand);
+      if (remaining.length <= 1) {
+        const winnerPos = remaining.length === 1 ? remaining[0].seatPos : pos; // fallback
+        const totalPot = nextState.pots.reduce((sum, p) => sum + Number(p.amount || 0), 0);
+        // Move to showdown and emit winners
+        nextState.street = 'showdown';
+        // Reset bets and pots
+        nextState.seats = nextState.seats.map((s) => ({ ...s, bet: 0 }));
+        nextState.currentBet = 0;
+        nextState.pots = [{ amount: 0, eligible: [] }];
+        events.push({ type: 'STREET_CHANGED', to: 'showdown' });
+        events.push({ type: 'SHOWDOWN_RESULTS', winners: [{ pos: winnerPos, amount: totalPot, hand: 'last_player_standing' }] });
+        return { nextState, events };
+      }
+
+      // Otherwise advance acting position to next active
+      const len = nextState.seats.length;
+      let nextPos = pos;
+      for (let i = 0; i < len; i++) {
+        nextPos = (nextPos + 1) % len;
+        const s = nextState.seats[nextPos];
+        if (s && s.inHand) break;
+      }
+      nextState.actingPos = nextPos;
+      return { nextState, events };
+    }
     case 'CHECK': {
       if (toCall > 0) {
         throw new Error('cannot_check_when_behind');

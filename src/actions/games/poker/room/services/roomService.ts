@@ -121,7 +121,7 @@ export async function broadcastRoomInfo(
     // If playing, enrich per-user context (light placeholder using seats/pots when available)
     const isPlaying = room.status === 'playing';
     let potTotal: number | undefined;
-    const seatInfoByUser: Record<string, { stack: number; bet: number; hole?: string[] | null }> = {};
+    const seatInfoByUser: Record<string, { stack: number; bet: number; hole?: string[] | null; inHand: boolean }> = {};
     let actingUuid: string | undefined;
     let currentBetGlobal: number = 0;
     let boardCards: string[] = [];
@@ -149,7 +149,7 @@ export async function broadcastRoomInfo(
         if (handId) {
           const { listSeatsByHand } = await import('./seatsRepo');
           const seats = await listSeatsByHand(String(handId));
-          for (const s of seats) seatInfoByUser[s.user_id] = { stack: s.stack, bet: s.bet, hole: s.hole };
+          for (const s of seats) seatInfoByUser[s.user_id] = { stack: s.stack, bet: s.bet, hole: s.hole, inHand: s.in_hand === true };
           const actingPos = overrideActingPos !== undefined ? overrideActingPos : Number(hand?.acting_pos || 0);
           if (typeof actingPos === 'number') {
             const actingSeat = seats.find((s) => Number(s.seat_pos) === actingPos);
@@ -444,29 +444,35 @@ export async function broadcastRoomInfo(
             ...(adminCanCheck
               ? [
                   [{ text: tAdmin('poker.game.buttons.check'), callback_data: 'g.pk.r.ck' }],
-                  [{ text: tAdmin('poker.actions.raise'), callback_data: 'g.pk.r.rs' }],
+                  [{ text: tAdmin('poker.actions.raise'), callback_data: `g.pk.r.rs?r=${roomId}` }],
                   [{ text: tAdmin('poker.game.buttons.fold'), callback_data: 'g.pk.r.fd' }]
                 ]
               : [
                   [{ text: tAdmin('poker.game.buttons.call'), callback_data: 'g.pk.r.cl' }],
-                  [{ text: tAdmin('poker.actions.raise'), callback_data: 'g.pk.r.rs' }],
+                  [{ text: tAdmin('poker.actions.raise'), callback_data: `g.pk.r.rs?r=${roomId}` }],
                   [{ text: tAdmin('poker.game.buttons.fold'), callback_data: 'g.pk.r.fd' }]
                 ]
             ),
+            [{ text: tAdmin('poker.room.buttons.leave'), callback_data: `g.pk.r.lv?r=${roomId}` }],
             [{ text: toggleDetailsText, callback_data: `g.pk.r.in?r=${roomId}&d=${!isDetailed}` }]
           ];
           const waitingRows: Btn[][] = [
             [{ text: tAdmin('bot.buttons.refresh'), callback_data: `g.pk.r.in?r=${roomId}` }],
+            [{ text: tAdmin('poker.room.buttons.leave'), callback_data: `g.pk.r.lv?r=${roomId}` }],
             [{ text: toggleDetailsText, callback_data: `g.pk.r.in?r=${roomId}&d=${!isDetailed}` }]
           ];
 
       const isAdminActing = actingUuid && adminId === actingUuid;
+      const adminInHand = adminInfo?.inHand !== false;
+      const hasCapacity = playerCount < maxPlayers;
       const postRoundRows: Btn[][] = [
         [{ text: tAdmin('poker.room.buttons.startGame') || '▶️ Start Game', callback_data: 'g.pk.r.st' }],
+        ...(hasCapacity ? [[{ text: tAdmin('bot.buttons.share') || '📤 Share', switch_inline_query: `poker ${roomId}` }]] : []),
+        [{ text: tAdmin('poker.room.buttons.leave') || '🚪 Leave Room', callback_data: `g.pk.r.lv?r=${roomId}` }],
         [{ text: tAdmin('bot.buttons.refresh') || '🔄 Refresh', callback_data: `g.pk.r.in?r=${roomId}` }],
         [{ text: (isDetailed ? tAdmin('poker.room.buttons.toggleSummary') : tAdmin('poker.room.buttons.toggleDetails')), callback_data: `g.pk.r.in?r=${roomId}&d=${!isDetailed}` }]
       ];
-      let keyboard = isPlaying ? (isAdminActing ? actingRows : waitingRows) : adminBaseView.keyboardForAdmin;
+      let keyboard = isPlaying ? (isAdminActing && adminInHand ? actingRows : waitingRows) : adminBaseView.keyboardForAdmin;
       if (isPlaying && engineState) {
         if (engineState.street === 'showdown') {
           keyboard = postRoundRows;
@@ -485,15 +491,21 @@ export async function broadcastRoomInfo(
           allowed,
           acting
         });
+        const toCallAdmin = (!canCheck && typeof pos === 'number' && engineState)
+          ? (await import('@gamehub/poker-engine')).computeToCall(engineState, pos)
+          : Math.max(0, Number(currentBetGlobal || 0) - Number(adminInfo?.bet || 0));
         const actionRows: Btn[][] = [
           [
-            canCheck ? { text: tAdmin('poker.game.buttons.check'), callback_data: 'g.pk.r.ck' } : { text: tAdmin('poker.game.buttons.call'), callback_data: 'g.pk.r.cl' }
+            canCheck
+              ? { text: tAdmin('poker.game.buttons.check'), callback_data: `g.pk.r.ck?r=${roomId}` }
+              : { text: tAdmin('poker.actions.callWithAmount', { amount: toCallAdmin }), callback_data: `g.pk.r.cl?r=${roomId}` }
           ],
-          ...(canRaise ? [[{ text: tAdmin('poker.actions.raise'), callback_data: 'g.pk.r.rs' }]] : []),
-          [{ text: tAdmin('poker.game.buttons.fold'), callback_data: 'g.pk.r.fd' }],
+          ...(canRaise ? [[{ text: tAdmin('poker.actions.raise'), callback_data: `g.pk.r.rs?r=${roomId}` }]] : []),
+          [{ text: tAdmin('poker.game.buttons.fold'), callback_data: `g.pk.r.fd?r=${roomId}` }],
+          [{ text: tAdmin('poker.room.buttons.leave'), callback_data: `g.pk.r.lv?r=${roomId}` }],
           [{ text: toggleDetailsText, callback_data: `g.pk.r.in?r=${roomId}&d=${!isDetailed}` }]
         ];
-        keyboard = acting && allowed.length > 0 ? actionRows : waitingRows;
+        keyboard = acting && adminInHand && allowed.length > 0 ? actionRows : waitingRows;
         }
       }
 
@@ -531,11 +543,12 @@ export async function broadcastRoomInfo(
       }
 
       
-      // Insert cards and stack before "Last update"
-      const lastUpdatePattern = `\n\nLast update:`;
-      const parts = base.split(lastUpdatePattern);
+      // Insert cards and stack before "Last update" (use localized label)
+      const lastUpdateLabelAdmin = tAdmin('poker.room.info.field.lastUpdate') || 'Last update';
+      const lastUpdatePatternAdmin = `\n\n${lastUpdateLabelAdmin}:`;
+      const parts = base.split(lastUpdatePatternAdmin);
       const adminCaption = parts.length > 1 
-        ? `${parts[0]}${boardBlock}${cardsBlock}${stackBlock}${resultsBlock}${lastUpdatePattern}${parts[1]}`
+        ? `${parts[0]}${boardBlock}${cardsBlock}${stackBlock}${resultsBlock}${lastUpdatePatternAdmin}${parts[1]}`
         : `${base}${boardBlock}${cardsBlock}${stackBlock}${resultsBlock}`;
 
       if (usePhotoFlow) {
@@ -596,7 +609,7 @@ export async function broadcastRoomInfo(
             const boardLabel = tUser('poker.game.section.communityCards') || 'Community Cards';
             boardBlock = `\n\n${boardLabel}:\n${boardCards.join(' ')}`;
           }
-          if (info?.hole && Array.isArray(info.hole) && info.hole.length > 0) {
+          if (info?.inHand !== false && info?.hole && Array.isArray(info.hole) && info.hole.length > 0) {
             const cardsText = info.hole.join(' ');
             cardsBlock = `\n\n${tUser('poker.game.section.yourCards')}:\n${cardsText}`;
           }
@@ -621,11 +634,12 @@ export async function broadcastRoomInfo(
           }
 
 
-          // Insert cards and stack before "Last update"
-          const lastUpdatePattern = `\n\nLast update:`;
-          const parts = base.split(lastUpdatePattern);
+          // Insert cards and stack before "Last update" (use localized label)
+          const lastUpdateLabelUser = tUser('poker.room.info.field.lastUpdate') || 'Last update';
+          const lastUpdatePatternUser = `\n\n${lastUpdateLabelUser}:`;
+          const parts = base.split(lastUpdatePatternUser);
           const message = parts.length > 1 
-            ? `${parts[0]}${boardBlock}${cardsBlock}${stackBlock}${resultsBlock}${lastUpdatePattern}${parts[1]}`
+            ? `${parts[0]}${boardBlock}${cardsBlock}${stackBlock}${resultsBlock}${lastUpdatePatternUser}${parts[1]}`
             : `${base}${boardBlock}${cardsBlock}${stackBlock}${resultsBlock}`;
           const isActing = actingUuid && uuid === actingUuid;
           let canCheck = false;
@@ -633,7 +647,7 @@ export async function broadcastRoomInfo(
           if (engineState && typeof seatPosByUuid[uuid] === 'number') {
             const engine = await import('@gamehub/poker-engine');
             const allowed = engine.computeAllowedActions(engineState, seatPosByUuid[uuid]);
-            canCheck = allowed.includes('CHECK');
+            canCheck = allowed.includes('CHECK') || (typeof info?.bet === 'number' && info.bet >= currentBetGlobal);
             canRaise = allowed.includes('RAISE');
             (gctx as any)?.log?.debug?.('roomService.keyboardForUser', {
               roomId,
@@ -651,21 +665,32 @@ export async function broadcastRoomInfo(
             ? tUser('poker.room.buttons.toggleSummary')
             : tUser('poker.room.buttons.toggleDetails');
           
+          const toCallUser = (!canCheck && engineState && typeof seatPosByUuid[uuid] === 'number')
+            ? (await import('@gamehub/poker-engine')).computeToCall(engineState, seatPosByUuid[uuid])
+            : Math.max(0, Number(currentBetGlobal || 0) - Number(info?.bet || 0));
           const actingRows: Btn[][] = [
-            [canCheck ? { text: tUser('poker.game.buttons.check'), callback_data: 'g.pk.r.ck' } : { text: tUser('poker.game.buttons.call'), callback_data: 'g.pk.r.cl' }],
-            ...(canRaise ? [[{ text: tUser('poker.actions.raise'), callback_data: 'g.pk.r.rs' }]] : []),
+            [canCheck ? { text: tUser('poker.game.buttons.check'), callback_data: `g.pk.r.ck?r=${roomId}` } : { text: tUser('poker.actions.callWithAmount', { amount: toCallUser }), callback_data: `g.pk.r.cl?r=${roomId}` }],
+            ...(canRaise ? [[{ text: tUser('poker.actions.raise'), callback_data: `g.pk.r.rs?r=${roomId}` }]] : []),
             [{ text: tUser('poker.game.buttons.fold'), callback_data: 'g.pk.r.fd' }],
+            [{ text: tUser('poker.game.buttons.fold'), callback_data: `g.pk.r.fd?r=${roomId}` }],
+            [{ text: tUser('poker.room.buttons.leave'), callback_data: `g.pk.r.lv?r=${roomId}` }],
             [{ text: toggleDetailsText, callback_data: `g.pk.r.in?r=${roomId}&d=${!isDetailed}` }]
           ];
           const waitingRows: Btn[][] = [
             [{ text: tUser('bot.buttons.refresh'), callback_data: `g.pk.r.in?r=${roomId}` }],
+            [{ text: tUser('poker.room.buttons.leave'), callback_data: `g.pk.r.lv?r=${roomId}` }],
             [{ text: toggleDetailsText, callback_data: `g.pk.r.in?r=${roomId}&d=${!isDetailed}` }]
           ];
 
           let rowsToUse = waitingRows;
           if (engineState?.street === 'showdown') {
-            rowsToUse = waitingRows;
-          } else if (isActing) {
+            rowsToUse = [
+              [{ text: tUser('bot.buttons.refresh'), callback_data: `g.pk.r.in?r=${roomId}` }],
+              ...(playerCount < maxPlayers ? [[{ text: tUser('bot.buttons.share'), switch_inline_query: `poker ${roomId}` }]] : []),
+              [{ text: tUser('poker.room.buttons.leave'), callback_data: `g.pk.r.lv?r=${roomId}` }],
+              [{ text: toggleDetailsText, callback_data: `g.pk.r.in?r=${roomId}&d=${!isDetailed}` }]
+            ];
+          } else if (isActing && info?.inHand !== false) {
             if (engineState && typeof seatPosByUuid[uuid] === 'number') {
               const engine = await import('@gamehub/poker-engine');
               const al = engine.computeAllowedActions(engineState, seatPosByUuid[uuid]);

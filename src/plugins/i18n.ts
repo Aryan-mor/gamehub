@@ -2,7 +2,7 @@ import { Context } from 'grammy';
 import i18next from 'i18next';
 import Backend from 'i18next-fs-backend';
 import { GameHubContext, GameHubPlugin, ContextBuilder } from './context';
-import { getPreferredLanguageFromCache } from '@/modules/global/language';
+import { getPreferredLanguageFromCache, getPreferredLanguage, getRuntimeUserLanguage, setRuntimeUserLanguage } from '@/modules/global/language';
 import { logFunctionStart, logFunctionEnd, logError } from '../modules/core/logger';
 
 /**
@@ -52,11 +52,11 @@ export class I18nPlugin implements GameHubPlugin {
     return {
       t: (key: string, options?: Record<string, unknown>): string => {
         // Prefer cached preferred language if available
-        const preferred = ctx.from?.id ? getPreferredLanguageFromCache(String(ctx.from.id)) : undefined;
-        const userLanguage = (preferred || ctx.from?.language_code || 'en') as string;
-        // Validate against supported languages instead of i18next.languages order
-        const SUPPORTED_LANGUAGES = ['en', 'fa'] as const;
-        const language = (SUPPORTED_LANGUAGES as readonly string[]).includes(userLanguage) ? userLanguage : 'en';
+        const preferred = ctx.from?.id ? (getRuntimeUserLanguage(String(ctx.from.id)) || getPreferredLanguageFromCache(String(ctx.from.id))) : undefined;
+        // Normalize telegram language_code heuristically
+        const tgCode = ctx.from?.language_code?.toLowerCase();
+        const normalizedTg = tgCode?.startsWith('fa') ? 'fa' : tgCode?.startsWith('en') ? 'en' : undefined;
+        const language = (preferred || normalizedTg || 'en');
         const result = i18next.t(key, { lng: language, ...options });
         
         // If result is empty string and language is English, return the key itself
@@ -80,6 +80,21 @@ export class I18nPlugin implements GameHubPlugin {
       if (!this.initialized) {
         await this.initialize();
       }
+
+      // Best-effort warm cache for user preferred language on each update (non-blocking)
+      try {
+        const userId = ctx.from?.id ? String(ctx.from.id) : undefined;
+        if (userId) {
+          // If neither runtime nor preferred cache has value, warm from DB once
+          if (!getRuntimeUserLanguage(userId) && !getPreferredLanguageFromCache(userId)) {
+            void getPreferredLanguage(userId);
+          }
+          // Also, if telegram gives us a strong hint, set runtime cache immediately
+          const tgCode = ctx.from?.language_code?.toLowerCase();
+          const normalizedTg = tgCode?.startsWith('fa') ? 'fa' : tgCode?.startsWith('en') ? 'en' : undefined;
+          if (normalizedTg) setRuntimeUserLanguage(userId, normalizedTg);
+        }
+      } catch {}
       
       await next();
       

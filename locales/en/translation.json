@@ -382,7 +382,8 @@
   "poker.room.leave.error.generic": "❌ <b>Failed to leave room</b>\n\n{{error}}",
   "poker.room.start.error.onlyCreator": "Only the room creator can start the game",
   "poker.room.start.error.alreadyStarted": "The game has already started",
-  "poker.room.start.error.minPlayers": "At least 2 players are required to start the game"
+  "poker.room.start.error.minPlayers": "At least 2 players are required to start the game",
+  "At least two players are required to start the game. Invite another player or leave the room.": "At least two players are required to start the game. Invite another player or leave the room."
   ,
   "bot.buttons.yes": "✅ Yes"
 }

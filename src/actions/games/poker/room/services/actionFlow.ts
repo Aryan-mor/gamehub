@@ -321,8 +321,39 @@ export async function applyFoldForUser(context: HandlerContext, roomId: string):
       resulting_version: resultingVersion,
     });
 
+    // Refresh seats to determine remaining in-hand players
+    const { data: freshSeats } = await poker
+      .from('seats')
+      .select('*')
+      .eq('hand_id', handId)
+      .order('seat_pos', { ascending: true });
+    const remainingInHand: any[] = (freshSeats || []).filter((s: any) => s.in_hand);
+
+    if (remainingInHand.length <= 1) {
+      // End hand immediately: set showdown, reset bets/current_bet, clear pot (visual only; payout handled elsewhere)
+      const winner = remainingInHand[0];
+      const { data: potsRows } = await poker.from('pots').select('*').eq('hand_id', handId);
+      const totalPot = (potsRows || []).reduce((sum: number, p: any) => sum + Number(p.amount || 0), 0);
+
+      // Reset all bets to 0
+      await poker.from('seats').update({ bet: 0 }).eq('hand_id', handId);
+      // Update hand to showdown and zero current_bet
+      await poker
+        .from('hands')
+        .update({ street: 'showdown', current_bet: 0, acting_pos: Number(winner?.seat_pos ?? hand.acting_pos), version: resultingVersion })
+        .eq('id', handId);
+
+      // Optionally record a DEAL boundary for UI separation (not required)
+      const { data: last } = await poker.from('actions').select('seq').eq('hand_id', handId).order('seq', { ascending: false }).limit(1);
+      const nextSeq = Array.isArray(last) && (last as any[])[0]?.seq ? Number((last as any[])[0].seq) + 1 : seq + 1;
+      await poker.from('actions').insert({ hand_id: handId, seq: nextSeq, type: 'DEAL' });
+
+      logFunctionEnd('actionFlow.applyFoldForUser', { ok: true, ended: true, winnerSeatPos: winner?.seat_pos, totalPot });
+      return;
+    }
+
     // Advance acting_pos to next active seat
-    const orderedSeats: any[] = (seats || []).sort((a: any, b: any) => Number(a.seat_pos) - Number(b.seat_pos));
+    const orderedSeats: any[] = (freshSeats || []).sort((a: any, b: any) => Number(a.seat_pos) - Number(b.seat_pos));
     let nextPos = Number(hand.acting_pos);
     const len = orderedSeats.length;
     for (let i = 0; i < len; i++) {
@@ -332,7 +363,7 @@ export async function applyFoldForUser(context: HandlerContext, roomId: string):
     }
     await poker.from('hands').update({ acting_pos: nextPos, version: resultingVersion }).eq('id', handId);
 
-    logFunctionEnd('actionFlow.applyFoldForUser', { ok: true, nextPos });
+    logFunctionEnd('actionFlow.applyFoldForUser', { ok: true, nextPos, ended: false });
   } catch (err) {
     logError('actionFlow.applyFoldForUser', err as Error, { roomId, userId: context.user.id });
   }

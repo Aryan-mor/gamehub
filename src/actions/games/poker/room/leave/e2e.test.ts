@@ -450,6 +450,92 @@ describe('Poker Room Leave E2E', () => {
     });
   });
 
+  describe('Playing-state rules', () => {
+    it('should fold the user first when leaving during playing and user is still in-hand', async () => {
+      // Arrange
+      const { default: handleLeave } = await import('./index');
+      const roomId = 'playing-room-id';
+      const userUuid = 'u1';
+      const otherUuid = 'u2';
+      context._query = { roomId, c: '1' } as any;
+
+      // Mock room in playing state
+      const mockRoom = { id: roomId, players: [userUuid, otherUuid], readyPlayers: [userUuid, otherUuid], status: 'playing' } as any;
+      const updatedRoom = { id: roomId, players: [otherUuid], readyPlayers: [otherUuid], status: 'playing' } as any;
+      vi.mocked(getRoom)
+        .mockResolvedValueOnce(mockRoom)
+        .mockResolvedValueOnce(updatedRoom);
+      vi.mocked(ensureUserUuid).mockResolvedValue(userUuid);
+
+      // Mock seats in current hand (user is in-hand)
+      vi.doMock('@/lib/supabase', () => ({
+        supabaseFor: (_schema: string) => ({
+          from: (table: string) => ({
+            select: () => ({ eq: () => ({ order: () => ({ limit: async () => ({ data: table === 'hands' ? [{ id: 'h1' }] : [] }) }) }) })
+          })
+        })
+      }));
+      const listSeatsByHand = vi.fn(async () => ([
+        { user_id: userUuid, seat_pos: 0, in_hand: true, is_all_in: false },
+        { user_id: otherUuid, seat_pos: 1, in_hand: true, is_all_in: false },
+      ]));
+      vi.doMock('../services/seatsRepo', () => ({ listSeatsByHand }));
+
+      // Track fold invocation
+      const applyFoldForUser = vi.fn().mockResolvedValue(undefined);
+      vi.doMock('../services/actionFlow', () => ({ applyFoldForUser }));
+
+      vi.mocked(removePlayer).mockResolvedValue(undefined);
+
+      // Act
+      await handleLeave(context);
+
+      // Assert: fold was called once before removal
+      expect(applyFoldForUser).toHaveBeenCalledTimes(1);
+      expect(removePlayer).toHaveBeenCalledWith(roomId, context.user.id.toString());
+    });
+
+    it('should NOT fold when leaving during playing but user already out of hand', async () => {
+      // Arrange
+      const { default: handleLeave } = await import('./index');
+      const roomId = 'playing-room-id-2';
+      const userUuid = 'u1';
+      const otherUuid = 'u2';
+      context._query = { roomId, c: '1' } as any;
+
+      const mockRoom = { id: roomId, players: [userUuid, otherUuid], readyPlayers: [otherUuid], status: 'playing' } as any;
+      const updatedRoom = { id: roomId, players: [otherUuid], readyPlayers: [otherUuid], status: 'playing' } as any;
+      vi.mocked(getRoom)
+        .mockResolvedValueOnce(mockRoom)
+        .mockResolvedValueOnce(updatedRoom);
+      vi.mocked(ensureUserUuid).mockResolvedValue(userUuid);
+
+      vi.doMock('@/lib/supabase', () => ({
+        supabaseFor: (_schema: string) => ({
+          from: (_table: string) => ({
+            select: () => ({ eq: () => ({ order: () => ({ limit: async () => ({ data: [{ id: 'h2' }] }) }) }) })
+          })
+        })
+      }));
+      const listSeatsByHand = vi.fn(async () => ([
+        { user_id: userUuid, seat_pos: 0, in_hand: false, is_all_in: false },
+        { user_id: otherUuid, seat_pos: 1, in_hand: true, is_all_in: false },
+      ]));
+      vi.doMock('../services/seatsRepo', () => ({ listSeatsByHand }));
+
+      const applyFoldForUser = vi.fn().mockResolvedValue(undefined);
+      vi.doMock('../services/actionFlow', () => ({ applyFoldForUser }));
+
+      vi.mocked(removePlayer).mockResolvedValue(undefined);
+
+      // Act
+      await handleLeave(context);
+
+      // Assert
+      expect(applyFoldForUser).not.toHaveBeenCalled();
+      expect(removePlayer).toHaveBeenCalledWith(roomId, context.user.id.toString());
+    });
+  });
   describe('Confirmation Step', () => {
     it('should show confirmation UI before leaving when not confirmed', async () => {
       // Arrange
