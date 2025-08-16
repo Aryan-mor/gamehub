@@ -14,13 +14,34 @@ function normalizeTelegramId(input: string): string {
 export async function ensureUserUuid(telegramIdRaw: string): Promise<string> {
   const users = await import('@/api/users');
   const telegramId = normalizeTelegramId(telegramIdRaw);
-  const existing = await users.getByTelegramId(telegramId);
+  let existing: unknown;
+  // Retry getByTelegramId briefly to tolerate transient network hiccups
+  for (let attempt = 1; attempt <= 2; attempt += 1) {
+    try {
+      existing = await users.getByTelegramId(telegramId);
+      break;
+    } catch (err) {
+      logError('roomRepo.ensureUserUuid.getByTelegramId', err as Error, { telegramId, attempt });
+      existing = undefined;
+      if (attempt < 2) await new Promise((r) => setTimeout(r, 150));
+    }
+  }
   if (existing && typeof existing === 'object' && existing !== null && 'id' in existing) {
     const idVal = (existing as Record<string, unknown>).id;
     if (typeof idVal === 'string') return idVal;
   }
-  const created = await users.upsert({ telegram_id: Number(telegramId) });
-  return created.id;
+  // Retry upsert as well; if it still fails, surface a user-friendly error code
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    try {
+      const created = await users.upsert({ telegram_id: Number(telegramId) });
+      return created.id as string;
+    } catch (err) {
+      logError('roomRepo.ensureUserUuid.upsert', err as Error, { telegramId, attempt });
+      if (attempt < 3) await new Promise((r) => setTimeout(r, 250 * attempt));
+    }
+  }
+  // Give up with a friendly, translatable error key for the handler to show as toast
+  throw new Error('bot.error.generic');
 }
 
 function mapDbRoom(dbRoom: any, players: Array<{ user_id: string; ready?: boolean }>): PokerRoom {
@@ -88,7 +109,14 @@ export async function createRoom(params: Omit<PokerRoom, 'players' | 'readyPlaye
       ]);
     };
 
-    const creatorUuid = await withTimeout(ensureUserUuid(params.createdBy), 4000, 'ensureUserUuid');
+    let creatorUuid: string;
+    try {
+      creatorUuid = await withTimeout(ensureUserUuid(params.createdBy), 4000, 'ensureUserUuid');
+    } catch (err) {
+      // Map low-level network errors to a friendly key and log for observability
+      logError('roomRepo.createRoom.ensureUserUuid', err as Error, { roomId: params.id });
+      throw new Error('bot.error.generic');
+    }
     const maybeUuid = /^[0-9a-fA-F-]{36}$/.test(params.id) ? params.id : undefined;
     const db = await withTimeout(rooms.create({
       id: maybeUuid,
@@ -111,8 +139,12 @@ export async function createRoom(params: Omit<PokerRoom, 'players' | 'readyPlaye
     logFunctionEnd('roomRepo.createRoom', { ok: true, roomId: params.id });
     return mapped;
   } catch (err) {
-    // Log detailed error for observability
+    // Log detailed error for observability and rethrow a friendly key if it's a network-style error
     logError('roomRepo.createRoom', err as Error, { roomId: params.id });
+    const message = err instanceof Error ? err.message : String(err);
+    if (message.includes('timeout') || message.includes('fetch failed')) {
+      throw new Error('bot.error.generic');
+    }
     throw err;
   }
 }

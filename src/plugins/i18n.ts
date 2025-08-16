@@ -58,6 +58,12 @@ export class I18nPlugin implements GameHubPlugin {
         const normalizedTg = tgCode?.startsWith('fa') ? 'fa' : tgCode?.startsWith('en') ? 'en' : undefined;
         const language = (preferred || normalizedTg || 'en');
         const result = i18next.t(key, { lng: language, ...options });
+        // Log missing Persian translations to surface why English might appear
+        try {
+          if (language === 'fa' && !i18next.exists(key, { lng: 'fa' })) {
+            logFunctionStart('i18n.missingFaTranslation', { key });
+          }
+        } catch {}
         
         // If result is empty string and language is English, return the key itself
         if (language === 'en' && result === '') {
@@ -92,7 +98,24 @@ export class I18nPlugin implements GameHubPlugin {
           // Also, if telegram gives us a strong hint, set runtime cache immediately
           const tgCode = ctx.from?.language_code?.toLowerCase();
           const normalizedTg = tgCode?.startsWith('fa') ? 'fa' : tgCode?.startsWith('en') ? 'en' : undefined;
-          if (normalizedTg) setRuntimeUserLanguage(userId, normalizedTg);
+          // Do NOT override explicit user selection; only set from Telegram when no preference is known
+          if (normalizedTg && !getRuntimeUserLanguage(userId) && !getPreferredLanguageFromCache(userId)) {
+            setRuntimeUserLanguage(userId, normalizedTg);
+          }
+        }
+      } catch {}
+
+      // Log the selected language and its source for visibility
+      try {
+        const userId = ctx.from?.id ? String(ctx.from.id) : undefined;
+        if (userId) {
+          const runtime = getRuntimeUserLanguage(userId);
+          const preferred = getPreferredLanguageFromCache(userId);
+          const tgCode = ctx.from?.language_code?.toLowerCase();
+          const normalizedTg = tgCode?.startsWith('fa') ? 'fa' : tgCode?.startsWith('en') ? 'en' : undefined;
+          const language = (runtime || preferred || normalizedTg || 'en');
+          const source = runtime ? 'runtime' : preferred ? 'preferred-cache' : normalizedTg ? 'telegram' : 'fallback-en';
+          logFunctionStart('i18n.languageSelected', { userId, language, source });
         }
       } catch {}
       

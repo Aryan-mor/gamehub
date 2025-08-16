@@ -24,6 +24,7 @@ import { keyboardPluginInstance } from './keyboard';
 import { pokerPluginInstance } from './poker';
 import { formStatePluginInstance } from './form-state';
 import { pluginRegistry } from './context';
+import { financePluginInstance } from './finance';
 import { Context } from 'grammy';
 
 /**
@@ -41,6 +42,7 @@ export function initializeCorePlugins(): void {
   pluginRegistry.register(keyboardPluginInstance);
   pluginRegistry.register(pokerPluginInstance);
   pluginRegistry.register(formStatePluginInstance);
+  pluginRegistry.register(financePluginInstance);
 }
 
 /**

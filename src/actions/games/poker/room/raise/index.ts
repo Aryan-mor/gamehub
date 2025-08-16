@@ -18,6 +18,8 @@ async function handleRaise(context: HandlerContext): Promise<void> {
 
   const amountRaw = context._query?.a;
   const amount = Number(amountRaw);
+  const callbackVersionRaw = context._query?.v;
+  const callbackVersion = Number(callbackVersionRaw);
 
   // Guard: only acting player can raise
   const ensureActing = async (): Promise<boolean> => {
@@ -56,22 +58,24 @@ async function handleRaise(context: HandlerContext): Promise<void> {
       (ctx as any).callbackToastText = ctx.t('poker.middleware.error.notYourTurn') || 'Not your turn';
       try {
         const { broadcastRoomInfo } = await import('../services/roomService');
-        await broadcastRoomInfo(ctx as any, roomId || '');
+        await broadcastRoomInfo(ctx, roomId || '');
       } catch {}
       return;
     }
     let minRaise = 0;
+    let currentVersion = 0;
     try {
       const { supabaseFor } = await import('@/lib/supabase');
       const poker = supabaseFor('poker');
       const { data: hands } = await poker
         .from('hands')
-        .select('id,min_raise')
+        .select('id,min_raise,version')
         .eq('room_id', roomId)
         .order('created_at', { ascending: false })
         .limit(1);
       const hand = hands && (hands[0] as any);
       minRaise = Number(hand?.min_raise || 0);
+      currentVersion = Number(hand?.version || 0);
     } catch {
       // ignore; fallback to defaults
     }
@@ -80,12 +84,12 @@ async function handleRaise(context: HandlerContext): Promise<void> {
       : [10, 25, 50, 100];
     const kb = [
       [
-        { text: ctx.t('poker.actions.raisePlus', { amount: options[0] }), callback_data: `g.pk.r.rs?r=${roomId}&a=${options[0]}` },
-        { text: ctx.t('poker.actions.raisePlus', { amount: options[1] }), callback_data: `g.pk.r.rs?r=${roomId}&a=${options[1]}` },
+        { text: ctx.t('poker.actions.raisePlus', { amount: options[0] }), callback_data: `g.pk.r.rs?r=${roomId}&a=${options[0]}&v=${currentVersion}` },
+        { text: ctx.t('poker.actions.raisePlus', { amount: options[1] }), callback_data: `g.pk.r.rs?r=${roomId}&a=${options[1]}&v=${currentVersion}` },
       ],
       [
-        { text: ctx.t('poker.actions.raisePlus', { amount: options[2] }), callback_data: `g.pk.r.rs?r=${roomId}&a=${options[2]}` },
-        { text: ctx.t('poker.actions.raisePlus', { amount: options[3] }), callback_data: `g.pk.r.rs?r=${roomId}&a=${options[3]}` },
+        { text: ctx.t('poker.actions.raisePlus', { amount: options[2] }), callback_data: `g.pk.r.rs?r=${roomId}&a=${options[2]}&v=${currentVersion}` },
+        { text: ctx.t('poker.actions.raisePlus', { amount: options[3] }), callback_data: `g.pk.r.rs?r=${roomId}&a=${options[3]}&v=${currentVersion}` },
       ],
       [
         { text: ctx.t('bot.buttons.refresh'), callback_data: `g.pk.r.in?r=${roomId}` }
@@ -103,8 +107,30 @@ async function handleRaise(context: HandlerContext): Promise<void> {
     if (!isActing) {
       (ctx as any).callbackToastText = ctx.t('poker.middleware.error.notYourTurn') || 'Not your turn';
       const { broadcastRoomInfo } = await import('../services/roomService');
-      await broadcastRoomInfo(ctx as any, roomId);
+      await broadcastRoomInfo(ctx, roomId);
       return;
+    }
+    // Stale guard: verify hand version if provided
+    if (Number.isFinite(callbackVersion)) {
+      try {
+        const { supabaseFor } = await import('@/lib/supabase');
+        const poker = supabaseFor('poker');
+        const { data: hands } = await poker
+          .from('hands')
+          .select('version')
+          .eq('room_id', roomId)
+          .order('created_at', { ascending: false })
+          .limit(1);
+        const dbVersion = Number((hands && (hands[0] as any)?.version) || 0);
+        if (dbVersion !== callbackVersion) {
+          (ctx as any).callbackToastText = ctx.t('Action expired. Please use the latest message.');
+          const { broadcastRoomInfo } = await import('../services/roomService');
+          await broadcastRoomInfo(ctx, roomId);
+          return;
+        }
+      } catch {
+        // ignore, best-effort guard
+      }
     }
     const { applyRaiseForUser } = await import('../services/actionFlow');
     await applyRaiseForUser(context, roomId, amount);
@@ -114,7 +140,7 @@ async function handleRaise(context: HandlerContext): Promise<void> {
   }
   try {
     const { broadcastRoomInfo } = await import('../services/roomService');
-    await broadcastRoomInfo(ctx as any, roomId);
+    await broadcastRoomInfo(ctx, roomId);
   } catch {}
 }
 

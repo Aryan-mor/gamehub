@@ -38,6 +38,11 @@ const eslintConfig = [
     },
     rules: {
       ...tseslint.configs.recommended.rules,
+      // Enforce max 500 lines per TS/TSX file (excluding blanks/comments)
+      "max-lines": [
+        "error",
+        { max: 500, skipBlankLines: true, skipComments: true }
+      ],
       "@typescript-eslint/no-unused-vars": [
         "error",
         {

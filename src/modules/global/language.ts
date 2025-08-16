@@ -78,6 +78,20 @@ export async function updatePreferredLanguage(userId: string, language: 'en' | '
       logFunctionEnd('language.updatePreferred.cacheOnly', { fallback: true }, { userId, language });
       return;
     }
+    // Network/Fetch errors: fallback to cache-only to avoid breaking UX
+    if (
+      (err?.message && (
+        err.message.includes('fetch failed') ||
+        err.message.includes('ECONNREFUSED') ||
+        err.message.includes('ENOTFOUND') ||
+        err.message.includes('ETIMEDOUT')
+      )) ||
+      err?.code === 'FETCH_ERROR'
+    ) {
+      preferredLanguageCache.set(userId, language);
+      logFunctionEnd('language.updatePreferred.cacheOnly', { fallback: true, reason: 'network' }, { userId, language });
+      return;
+    }
     logError('language.updatePreferred', err, { userId, language });
     throw err;
   }

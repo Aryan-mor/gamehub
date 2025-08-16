@@ -204,14 +204,22 @@ export const setUserProfile = async (
   
   try {
     const usersApi = await import('@/api/users');
-    await usersApi.upsert({
-      telegram_id: Number(userId),
-      username,
-      first_name: firstName,
-      last_name: lastName,
-    });
-    
-    logFunctionEnd('setUserProfile', {}, { userId, username, firstName, lastName });
+    for (let attempt = 1; attempt <= 3; attempt += 1) {
+      try {
+        await usersApi.upsert({
+          telegram_id: Number(userId),
+          username,
+          first_name: firstName,
+          last_name: lastName,
+        });
+        logFunctionEnd('setUserProfile', {}, { userId, username, firstName, lastName });
+        return;
+      } catch (err) {
+        logError('setUserProfile', err as Error, { userId, username, firstName, lastName, attempt });
+        if (attempt < 3) await new Promise((r) => setTimeout(r, 200 * attempt));
+      }
+    }
+    throw new Error('bot.error.generic');
   } catch (error) {
     logError('setUserProfile', error as Error, { userId, username, firstName, lastName });
     throw error;

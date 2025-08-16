@@ -24,7 +24,7 @@ async function handleFold(context: HandlerContext): Promise<void> {
     }
     try {
       const { broadcastRoomInfo } = await import('../services/roomService');
-      await broadcastRoomInfo(ctx as any, roomId);
+      await broadcastRoomInfo(ctx, roomId);
     } catch {
       // ignore
     }

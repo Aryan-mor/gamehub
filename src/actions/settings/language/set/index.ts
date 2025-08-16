@@ -13,9 +13,12 @@ async function handleLanguageSet(context: HandlerContext, query: Record<string, 
   }
 
   const { updatePreferredLanguage, setPreferredLanguageInCache, setRuntimeUserLanguage } = await import('@/modules/global/language');
-  await updatePreferredLanguage(String(ctx.from?.id || ''), lang);
-  setPreferredLanguageInCache(String(ctx.from?.id || ''), lang);
-  setRuntimeUserLanguage(String(ctx.from?.id || ''), lang);
+  const userId = String(ctx.from?.id || '');
+  await updatePreferredLanguage(userId, lang);
+  setPreferredLanguageInCache(userId, lang);
+  setRuntimeUserLanguage(userId, lang);
+  // Log explicit selection for visibility
+  (ctx as any)?.ctx?.log?.debug?.('language.set.selected', { userId: String(ctx.from?.id || ''), lang });
   // Redirect to start flow to continue normal onboarding/menu with new language
   const { dispatch } = await import('@/modules/core/smart-router');
   await dispatch('start', context);

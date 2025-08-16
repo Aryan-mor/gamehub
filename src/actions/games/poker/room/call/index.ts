@@ -30,7 +30,7 @@ async function handleCall(context: HandlerContext): Promise<void> {
     try {
       const { broadcastRoomInfo } = await import('../services/roomService');
       // Broadcast to all room players so everyone sees the updated state
-      await broadcastRoomInfo(ctx as any, roomId);
+      await broadcastRoomInfo(ctx, roomId);
     } catch {
       // ignore UI broadcast error
     }

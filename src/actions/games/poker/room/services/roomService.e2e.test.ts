@@ -777,4 +777,47 @@ describe('Poker Room Service E2E', () => {
       expect(firstCallback).toBe('g.pk.r.st');
     });
   });
+
+  it('calls finance plugin on showdown with winners payload', async () => {
+    const { broadcastRoomInfo } = await import('./roomService');
+    const { createTestGameHubContext } = await import('@/__tests__/helpers/context');
+    const testCtx = createTestGameHubContext();
+
+    const mockFinance = { onHandEnd: vi.fn(async () => {}) };
+    vi.doMock('@/plugins/finance', () => ({ financePluginInstance: mockFinance }));
+
+    vi.doMock('pokersolver', () => ({
+      Hand: {
+        solve: (cards: string[]) => ({ descr: 'MockHand', cards }),
+        winners: (hands: Array<{ descr?: string }>) => [hands[0]],
+      }
+    }));
+
+    vi.doMock('@/lib/supabase', () => ({
+      supabaseFor: (_schema: string) => ({
+        from: (table: string) => ({
+          select: () => ({
+            eq: () => ({ order: () => ({ limit: async () => ({ data: table === 'hands'
+              ? [{ id: 'h1', room_id: 'r1', street: 'showdown', acting_pos: 0, version: 3, board: ['As','Ks','Qs','Js','Ts'], min_raise: 200, button_pos: 0, current_bet: 0, deck_seed: 'x' }]
+              : table === 'seats'
+                ? [
+                    { hand_id: 'h1', seat_pos: 0, user_id: 'u1', stack: 1000, bet: 0, in_hand: true, is_all_in: false, hole: ['Ah','Kh'] },
+                    { hand_id: 'h1', seat_pos: 1, user_id: 'u2', stack: 1000, bet: 0, in_hand: false, is_all_in: false, hole: ['2c','3d'] }
+                  ]
+                : table === 'pots'
+                  ? [{ hand_id: 'h1', amount: 500, eligible_seats: [0] }]
+                  : [] }) }) })
+          })
+        })
+      })
+    }));
+    vi.doMock('@/api/users', () => ({ getByTelegramId: async (tg: string) => ({ id: tg }) }));
+
+    await broadcastRoomInfo(testCtx as any, 'r1');
+    expect(mockFinance.onHandEnd).toHaveBeenCalled();
+    const call = (mockFinance.onHandEnd as any).mock.calls.at(-1);
+    expect(call?.[1]?.roomId).toBe('r1');
+    expect(call?.[1]?.handId).toBe('h1');
+    expect(Array.isArray(call?.[1]?.winners)).toBe(true);
+  });
 });

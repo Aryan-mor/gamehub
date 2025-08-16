@@ -22,7 +22,7 @@ async function handleCheck(context: HandlerContext): Promise<void> {
       const result = await applyCallForUser(context, roomId);
       try {
         const { broadcastRoomInfo } = await import('../services/roomService');
-        await broadcastRoomInfo(ctx as any, roomId, undefined, undefined, result?.nextPos);
+        await broadcastRoomInfo(ctx, roomId, undefined, undefined, result?.nextPos);
       } catch {
         // ignore
       }

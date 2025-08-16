@@ -30,7 +30,7 @@ async function handleRoomStart(context: HandlerContext): Promise<void> {
         const msg = ctx.t('At least two players are required to start the game. Invite another player or leave the room.');
         (ctx as any).callbackToastText = msg;
         // Still refresh room info so user sees current state
-        await broadcastRoomInfo(ctx as any, roomId);
+        await broadcastRoomInfo(ctx, roomId);
         return;
         }
       }
@@ -40,13 +40,13 @@ async function handleRoomStart(context: HandlerContext): Promise<void> {
     try {
       await startHandForRoom(context, roomId);
       // Notify all room players about game start
-      await broadcastRoomInfo(ctx as any, roomId);
+      await broadcastRoomInfo(ctx, roomId);
     } catch (err) {
       // Specific toast when not enough players
       if (err instanceof Error && err.message === 'not_enough_players') {
         const msg = ctx.t('At least two players are required to start the game. Invite another player or leave the room.');
         (ctx as any).callbackToastText = msg;
-        await broadcastRoomInfo(ctx as any, roomId);
+        await broadcastRoomInfo(ctx, roomId);
         return;
       }
       // Generic error fallback
